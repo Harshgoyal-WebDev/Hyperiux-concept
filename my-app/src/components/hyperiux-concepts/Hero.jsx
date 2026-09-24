@@ -1,21 +1,24 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
-import { Leva, useControls } from "leva";
+import { Leva, useControls, useCreateStore } from "leva";
 import * as THREE from "three";
 import Terrain from "./Terrain";
 import LakeSurface from "./LakeSurface";
 import HyperiuxLogoModel from "./HyperiuxLogoModel";
+import LogoSparkles from "./LogoSparkles";
 import Pebbles from "./Pebbles";
 import Rocks from "./Rocks";
 import Parallax from "./Parallax";
 import Starfield from "./Starfield";
+import SkyGradient from "./SkyGradient";
 import RidgeFog from "./RidgeFog";
+import GroundFog from "./GroundFog";
 import ScrollCameraRig from "./ScrollCameraRig";
 import PortalRenderer from "./PortalRenderer";
-import PortalInnerScene from "./PortalInnerScene";
+import PortalRidgePlaneScene from "./PortalRidgePlaneScene";
 import { createWetnessMaps } from "./wetnessTexture";
 import { OrbitControls } from "@react-three/drei";
 
@@ -39,25 +42,72 @@ const HIDDEN_FOLDER = { render: () => false };
 // diorama itself, always fully rendered, navigated with OrbitControls
 // instead of scroll.
 //
-// The scrollable page is three back-to-back stretches: the first (0..
+// The scrollable page is four back-to-back stretches: the first (0..
 // CAMERA_VH) is the half-revolution camera arc around the logo (see
 // ScrollCameraRig); then a dead zone (CAMERA_VH..CAMERA_VH+DEAD_VH) where
 // scrolling does nothing — the camera arc has already finished (clamped at
 // 1) and the portal hasn't started yet (still clamped at 0) — a deliberate
-// pause before the reveal; then the last stretch is where the shockwave
-// portal (see PortalRenderer.jsx) opens over the live scene and reveals a
-// second one in its place.
+// pause before the reveal; then the shockwave portal (see
+// PortalRenderer.jsx) opens over the live scene, revealing the ridge-plane
+// scene (cylinder + glass panels, see PortalRidgePlaneScene.jsx) in its
+// place; then, once that reveal has fully finished, the LAST stretch is
+// the ridge scene's own scroll-driven choreography (camera stepping down
+// through each panel) — the same scroll behavior RidgePlane.jsx drives on
+// its own standalone page, here reusing this page's single scroll
+// container instead of a second one.
 const CAMERA_VH = 200;
-const DEAD_VH = 80;
+const DEAD_VH = 50;
 const PORTAL_VH = 100;
-const TOTAL_VH = CAMERA_VH + DEAD_VH + PORTAL_VH;
+const RIDGE_VH = 150;
+const TOTAL_VH = CAMERA_VH + DEAD_VH + PORTAL_VH + RIDGE_VH;
 const CAMERA_FRACTION = CAMERA_VH / TOTAL_VH;
 const PORTAL_START_FRACTION = (CAMERA_VH + DEAD_VH) / TOTAL_VH;
+// Was "1 - PORTAL_START_FRACTION" (correct only because the portal used to
+// be the LAST stretch, so "everything remaining" and "the portal's own
+// span" were the same fraction) — now that RIDGE_VH follows it, those two
+// are different, so the portal's own progress needs its own explicit end
+// fraction instead of silently stretching across the ridge stretch too.
+const PORTAL_END_FRACTION = (CAMERA_VH + DEAD_VH + PORTAL_VH) / TOTAL_VH;
+// How far BEFORE the portal finishes expanding the ridge scene starts its
+// own scroll motion, as a fraction of PORTAL_VH (0.3 = starts at 70% of
+// the portal's expansion). 0 = waits until the portal is fully open.
+const RIDGE_OVERLAP = 0.7;
+const RIDGE_START_FRACTION =
+  (CAMERA_VH + DEAD_VH + PORTAL_VH * (1 - RIDGE_OVERLAP)) / TOTAL_VH;
+
+// Fades Bloom's intensity to 0 across the portal's own reveal — the bloom
+// is tuned for the hero's glow and would otherwise wash out the ridge
+// scene's bright video panels. Driven per-frame through the effect's own
+// `intensity` setter rather than a React prop, so scrolling doesn't
+// re-render anything.
+// Also eases the Vignette's darkness from `vignetteStart` to `vignetteEnd`
+// on the same curve — the heavy hero vignette otherwise crushes the ridge
+// scene's corners.
+function PostFade({ bloomRef, vignetteRef, progressRef, baseIntensity, vignetteStart, vignetteEnd }) {
+  useFrame(() => {
+    const p = THREE.MathUtils.clamp(progressRef.current ?? 0, 0, 1);
+    const t = THREE.MathUtils.smoothstep(p, 0, 1);
+    const bloom = bloomRef.current;
+    if (bloom) bloom.intensity = baseIntensity * (1 - t);
+    const vignette = vignetteRef.current;
+    if (vignette) vignette.darkness = THREE.MathUtils.lerp(vignetteStart, vignetteEnd, t);
+  });
+  return null;
+}
 
 // `showLeva` is just the initial state — pressing "h" toggles it live
 // regardless (see the effect below), so a caller can start it hidden for
 // a clean embed while still leaving the tuning panel a keystroke away.
 export default function Hero({ showLeva: showLevaProp = true }) {
+  // A second, independent Leva store/panel just for the ridge-plane scene
+  // (see PortalRidgePlaneScene.jsx, which uses this via its `store` prop
+  // on every one of its own useControls calls) — that scene alone has 7
+  // folders' worth of controls, which was making the single shared panel
+  // unwieldy alongside the hero environment's own dozen-plus folders.
+  const ridgeStore = useCreateStore();
+  const bloomRef = useRef(null);
+  const vignetteRef = useRef(null);
+
   // Canvas textures need document/canvas, which don't exist during SSR —
   // build them client-side only, after mount.
   const [wetnessMaps, setWetnessMaps] = useState(null);
@@ -86,13 +136,16 @@ export default function Hero({ showLeva: showLevaProp = true }) {
   // written outside React state so the camera/portal rigs can read it
   // every frame without a re-render triggering on every scroll pixel —
   // same pattern as the scroll-driven Concepts page this was copied from.
-  // `cameraProgressRef`/`portalProgressRef` are the same overall scroll
-  // fraction remapped to each stretch's own local 0..1 range, so the
-  // camera arc finishes exactly at CAMERA_VH and the portal doesn't start
-  // opening until scroll actually enters its own stretch.
+  // `cameraProgressRef`/`portalProgressRef`/`ridgeProgressRef` are the same
+  // overall scroll fraction remapped to each stretch's own local 0..1
+  // range, so the camera arc finishes exactly at CAMERA_VH, the portal
+  // doesn't start opening until scroll actually enters its own stretch,
+  // and the ridge scene's own scroll choreography doesn't start until the
+  // portal has fully finished opening.
   const scrollContainerRef = useRef(null);
   const cameraProgressRef = useRef(0);
   const portalProgressRef = useRef(0);
+  const ridgeProgressRef = useRef(0);
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -104,7 +157,12 @@ export default function Hero({ showLeva: showLevaProp = true }) {
       const clamped = THREE.MathUtils.clamp(progress, 0, 1);
       cameraProgressRef.current = THREE.MathUtils.clamp(clamped / CAMERA_FRACTION, 0, 1);
       portalProgressRef.current = THREE.MathUtils.clamp(
-        (clamped - PORTAL_START_FRACTION) / (1 - PORTAL_START_FRACTION),
+        (clamped - PORTAL_START_FRACTION) / (PORTAL_END_FRACTION - PORTAL_START_FRACTION),
+        0,
+        1
+      );
+      ridgeProgressRef.current = THREE.MathUtils.clamp(
+        (clamped - RIDGE_START_FRACTION) / (1 - RIDGE_START_FRACTION),
         0,
         1
       );
@@ -212,24 +270,48 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     glowColor: "#ff7000",
     opacity: { value: 1, min: 0.3, max: 1, step: 0.01 },
     reflectivity: { value: 0.4, min: 0, max: 1, step: 0.02 },
-    heightScale: { value: 0.6, min: 0, max: 2, step: 0.05 },
+    heightScale: { value: 1.5, min: 0, max: 2, step: 0.05 },
     reflectionBend: { value: 1.18, min: 0, max: 2, step: 0.02 },
     viscosity: { value: 0.91, min: 0.9, max: 0.999, step: 0.001 },
     mouseSize: { value: 0.03, min: 0.01, max: 0.3, step: 0.005 },
     mouseIntensity: { value: 0.2, min: 0, max: 1, step: 0.01, label: "click intensity" },
-    // Constantly-moving surface current, no pointer needed — dense,
-    // elongated ripple streaks that scroll continuously in one direction,
-    // like open water under a steady breeze (see waterSimulation.js).
-    currentStrength: { value: 0.07, min: 0, max: 0.2, step: 0.002, label: "current: strength" },
-    currentFrequency: { value: 100, min: 2, max: 100, step: 1, label: "current: ripple density" },
-    currentStretch: { value:30, min: 0.5, max: 30, step: 0.1, label: "current: streak length" },
-    currentSpeed: { value: 0.06, min: 0, max: 1, step: 0.01, label: "current: speed" },
-    currentAngleDeg: { value: 122, min: 0, max: 360, step: 1, label: "current: direction" },
+    // A continuous train of concentric ripples expanding outward from a
+    // fixed point on the lake, like a slow drip constantly feeding the
+    // surface — no pointer needed (see waterSimulation.js).
+    rippleStrength: { value: 0.03, min: 0, max: 0.4, step: 0.005, label: "ripple: strength" },
+    rippleFrequency: {
+      value: 400,
+      min: 5,
+      max: 400,
+      step: 1,
+      label: "ripple: density (1/wavelength)",
+    },
+    rippleSpeed: { value: 10, min: 0, max: 20, step: 0.1, label: "ripple: outward speed" },
+    rippleDecay: {
+      value: 0.0,
+      min: 0,
+      max: 10,
+      step: 0.05,
+      label: "ripple: fade with distance",
+    },
+    rippleOriginX: { value: 0.77, min: 0, max: 1, step: 0.01, label: "ripple: origin X (UV)" },
+    rippleOriginY: { value: 0.0, min: 0, max: 1, step: 0.01, label: "ripple: origin Y (UV)" },
     hoverIntensityRatio: { value: 0.35, min: 0, max: 1, step: 0.05, label: "hover ripple strength" },
     hoverFadeSpeed: { value: 6, min: 0.5, max: 20, step: 0.5, label: "hover fade speed" },
     clickBurstDuration: { value: 0.05, min: 0.05, max: 1, step: 0.01, label: "click burst length" },
-    specularPower: { value: 60, min: 4, max: 200, step: 1 },
-    specularIntensity: { value: 0.15, min: 0, max: 3, step: 0.05 },
+    // Raised from the old 60/0.15 — the directional-light glint riding
+    // each ripple's slope was barely visible; a lower power spreads the
+    // highlight wider (easier to actually catch) and the higher intensity
+    // makes it read clearly instead of needing to look closely for it.
+    // The lake's own baked-in sun glint (see LakeSurface's fragment shader)
+    // — NOT driven by the scene lights. At the old power 36 in the
+    // near-white directional color, the highlight lobe was so wide that
+    // whenever the camera faced the sun direction, a huge part of the lake
+    // washed out silver. A tight power keeps it to sparkles on ripple
+    // crests; its own warm color keeps it from ever reading as silver.
+    specularPower: { value: 220, min: 4, max: 600, step: 1 },
+    specularIntensity: { value: 1.2, min: 0, max: 3, step: 0.05 },
+    specularColor: { value: "#ff9a4a", label: "specular (glint) color" },
     glowReflectionStrength: {
       value: 0.35,
       min: 0,
@@ -249,12 +331,40 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     colorB: "#ff5f00",
     mix: { value: 0.3, min: 0, max: 1, step: 0.01 },
     modelScale: { value: 0.6, min: 0.05, max: 1, step: 0.01, label: "model scale" },
-    emissiveIntensity: { value: 2.2, min: 0, max: 10, step: 0.1, label: "glow (bloom) intensity" },
+    emissiveIntensity: { value: 3, min: 0, max: 10, step: 0.1, label: "glow (bloom) intensity" },
     roughness: { value: 0.45, min: 0, max: 1, step: 0.01 },
     metalness: { value: 0.0, min: 0, max: 1, step: 0.01 },
     lightIntensity: { value: 12, min: 0, max: 40, step: 0.5 },
     lightDistance: { value: 30, min: 5, max: 80, step: 1 },
     height: { value: 4.5, min: -3, max: 6, step: 0.1 },
+  });
+
+  // Small glowing embers drifting straight up past the logo, looping from
+  // baseOffset to topOffset (both Y offsets from the logo's own position)
+  // then fading out over the next `fadeBeyondTop` fraction of that span
+  // before wrapping back to the bottom — see LogoSparkles.jsx.
+  const sparkles = useControls("Logo Sparkles", {
+    count: { value: 200, min: 0, max: 400, step: 5 },
+    // Spans the whole lake now (lake.size default 47 → ~radius 23), not
+    // just a tight ring around the logo's own base — reads as particles
+    // rising off the entire water surface, not an emitter stuck to the
+    // model.
+    radius: { value: 22, min: 0, max: 60, step: 0.5, label: "spawn radius (lake-wide)" },
+    // -5.5 puts the bottom of the rise at the lake's own surface (lakeY
+    // 1.2, LOGO_POSITION.y 6.7 → 1.2 - 6.7 = -5.5), so particles visibly
+    // originate from the water instead of appearing already mid-air.
+    baseOffset: { value: -5.5, min: -10, max: 0, step: 0.1, label: "rise from (Y offset)" },
+    topOffset: { value: 2.2, min: 0, max: 6, step: 0.1, label: "rise to (Y offset)" },
+    fadeBeyondTop: {
+      value: 0.4,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "fade distance past top (%)",
+    },
+    speed: { value: 0.4, min: 0, max: 3, step: 0.01, label: "rise speed" },
+    size: { value: 0.2, min: 0.0, max: 40, step: 0.5, label: "point size" },
+    opacity: { value: 1, min: 0, max: 1, step: 0.01 },
   });
 
   const parallax = useControls("Parallax", {
@@ -267,7 +377,13 @@ export default function Hero({ showLeva: showLevaProp = true }) {
   // scroll so it reads as moving atmosphere regardless of camera/scroll
   // state.
   const ridgeFog = useControls("Ridge Mist", {
-    count: { value: 50, min: 0, max: 50, step: 1 },
+    // Was 50 x layerCount 2 = 100 overlapping additive planes, each with
+    // its own multi-octave noise + curl field per fragment — the single
+    // biggest remaining fill-rate cost in the scene. Cut to 20 x 1 = 20
+    // planes (5x fewer draws) now that GroundFog (see below) provides the
+    // broad atmospheric coverage across the whole terrain; this is back to
+    // being just close-up wisps clinging to the ridge line itself.
+    count: { value: 20, min: 0, max: 50, step: 1 },
     bandInner: { value: 34, min: 0, max: 100, step: 1, label: "band: inner radius" },
     bandOuter: { value: 80, min: 0, max: 140, step: 1, label: "band: outer radius" },
     heightOffset: { value: -5, min: -5, max: 15, step: 0.5, label: "height above ground" },
@@ -280,7 +396,7 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     // planes instead of one card that spins to face the camera (see
     // RidgeFog.jsx) — 1 is the old flat-card behavior; 2+ is what actually
     // reads as volume from any angle you orbit the camera to.
-    layerCount: { value: 2, min: 1, max: 5, step: 1, label: "volume: layers per patch" },
+    layerCount: { value: 1, min: 1, max: 5, step: 1, label: "volume: layers per patch" },
     flowSpeed: { value: 0.70, min: 0, max: 2, step: 0.005, label: "drift speed" },
     // Now additive-blended (see RidgeFog.jsx) — a near-black color like the
     // old #262626 default contributes almost nothing when added to the
@@ -295,9 +411,32 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     swirl: { value: 1.2, min: 0, max: 3, step: 0.05, label: "swirl amount" },
   });
 
+  // Wide, dense ground-hugging atmosphere across the whole terrain — see
+  // GroundFog.jsx for why this uses an exponential radial falloff instead
+  // of a hard-edged plane/box (no visible boundary), plus orange
+  // scattering toward the logo's own glow.
+  const groundFog = useControls("Ground Mist", {
+    density: { value: 0.55, min: 0, max: 1.5, step: 0.02 },
+    opacity: { value: 0.60, min: 0, max: 1, step: 0.01 },
+    coverageRadius: {
+      value: 15,
+      min: 10,
+      max: 200,
+      step: 5,
+      label: "coverage radius (1/e falloff)",
+    },
+    baseHeight: { value: 0.7, min: -3, max: 6, step: 0.1, label: "height above ground" },
+    layerSpread: { value: 1.5, min: 0, max: 6, step: 0.1, label: "layer spacing (thickness)" },
+    noiseScale: { value: 0.09, min: 0.002, max: 0.12, step: 0.001, label: "noise cloud size" },
+    flowSpeed: { value: 0.14, min: 0, max: 0.3, step: 0.005, label: "drift speed" },
+    // Same curl-based rolling motion as Ridge Mist's own "swirl amount" —
+    // see RidgeFog.jsx's curl(), reused verbatim in GroundFog.jsx.
+    swirl: { value: 0.95, min: 0, max: 4, step: 0.05, label: "swirl amount" },
+  });
+
   const camera = useControls("Camera", {
     scrollThrough: { value: true, label: "scroll-driven orbit" },
-    start: { value: [-3, 19, -52], label: "start position" },
+    start: { value: [-3, 19, -45], label: "start position" },
     // Direct world-space point, not a multiplier on `start` — where the
     // camera ends up once scroll reaches the bottom of its 200vh. Defaults
     // to roughly a half-revolution around `target`, higher and farther
@@ -309,9 +448,12 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     // `start`/`target`, so this mostly matters for the very first
     // rendered frame before that kicks in.
     rotationDeg: { value: [0, 0, 0], label: "initial rotation (deg)" },
-    target: { value: [0, 6, 0], label: "look at (logo)" },
+    // The look-at point itself now rises over the scroll arc too, not
+    // just the camera position — see ScrollCameraRig.jsx.
+    targetStart: { value: [0, 3, 0], label: "look at: start" },
+    targetEnd: { value: [0, 6, 0], label: "look at: end" },
     damping: { value: 6, min: 0.5, max: 20, step: 0.5, label: "scroll: camera smoothing" },
-  }, HIDDEN_FOLDER);
+  });
 
   // The shockwave portal that opens once scroll enters its own stretch
   // (see PORTAL_VH above) — see PortalRenderer.jsx, ported from the
@@ -334,49 +476,52 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     // plus its own stronger chromatic dispersion (a proper prism-style RGB
     // split, not just a faint tint), so the reveal itself reads as warped
     // rather than a flat cut sitting underneath the bent background.
-    portalWarp: { value: 1.4, min: 0, max: 4, step: 0.05, label: "inner: portal warp strength" },
+    portalWarp: { value: 0.25, min: 0, max: 4, step: 0.05, label: "inner: portal warp strength" },
     portalChromatic: {
-      value: 1.5,
+      value: 0.3,
       min: 0,
       max: 4,
       step: 0.05,
       label: "inner: portal chromatic dispersion",
     },
-    modelScale: { value: 0.65, min: 0.2, max: 6, step: 0.05, label: "inner: logo scale" },
-    // Full-screen bg-video.mp4 plane behind the glass logo (see
-    // PortalBackgroundVideo.jsx) — otherwise this scene is bare black
-    // behind the model, and MeshTransmissionMaterial has nothing to
-    // actually refract through the glass.
-    bgVideoOpacity: { value: 1, min: 0, max: 1, step: 0.01, label: "inner: bg video opacity" },
+    // Anti-aliasing of the ridge scene behind the portal (see
+    // PortalRenderer). resolution multiplies the canvas's own pixel ratio.
+    innerResolution: { value: 1, min: 0.5, max: 2, step: 0.05, label: "inner: resolution (AA)" },
+    innerMsaa: { value: 4, options: [0, 2, 4, 8], label: "inner: MSAA samples (AA)" },
   });
 
-  // The inner logo's glass material itself (drei's MeshTransmissionMaterial
-  // — see FrostedLogoModel.jsx) — its own folder, separate from the
-  // shockwave-shader "Portal" controls above. Defaults ported straight
-  // from the working glass-logo hero reference (HyperiuxGlassHeroModel):
-  // an aggressive chromaticAberration/distortion combo (not the subtler,
-  // more "physically correct" values tried before) plus
-  // `<Environment preset="city">` lighting instead of manual point lights
-  // (see PortalInnerScene.jsx) is what that reference actually uses to
-  // make a fully clear transmission material read as visible glass rather
-  // than nearly invisible.
-  const glass = useControls("Glass Material", {
-    // 1 = uniform scale, no shear. This model isn't perfectly axis-aligned
-    // the way the reference model this stretch was ported from is, so any
-    // value off 1 here reads as the model sitting slightly tilted rather
-    // than evenly "thicker" (see FrostedLogoModel.jsx).
-    depthScale: { value: 1, min: 0.5, max: 4, step: 0.05, label: "depth stretch" },
-    transmission: { value: 1, min: 0, max: 1, step: 0.01 },
-    reflectivity: { value: 0.02, min: 0, max: 1, step: 0.01 },
-    roughness: { value: 0.27, min: 0, max: 1, step: 0.01 },
-    thickness: { value: 5, min: 0, max: 5, step: 0.05 },
-    ior: { value: 1.55, min: 1, max: 2.5, step: 0.01 },
-    chromaticAberration: { value: 1.5, min: 0, max: 5, step: 0.01, label: "chromatic split" },
-    anisotropy: { value: 0.0, min: 0, max: 1, step: 0.01 },
-    distortion: { value: 1, min: 0, max: 5, step: 0.01 },
-    distortionScale: { value: 0.19, min: 0, max: 2, step: 0.01 },
-    temporalDistortion: { value: 0, min: 0, max: 1, step: 0.01, label: "distortion motion" },
-    backside: { value: false, label: "backside sampling" },
+  // Vignette darkness eases from `darkness` to `endDarkness` across the
+  // portal reveal (see PostFade) — same timing as the bloom fade.
+  const vignette = useControls("Vignette", {
+    offset: { value: 0.1, min: 0, max: 1, step: 0.01 },
+    darkness: { value: 0.9, min: 0, max: 1.5, step: 0.01, label: "darkness (hero)" },
+    endDarkness: { value: 0.2, min: 0, max: 1.5, step: 0.01, label: "darkness (after portal)" },
+  });
+
+  // Vertical gradient sky, behind everything including Starfield — see
+  // Was hardcoded (intensity 1, threshold 0.15) — fine for the hero's own
+  // small, very bright emissive highlights (logo, sparkles), but the ridge
+  // scene's glass panels can show much bigger, ordinarily-bright video
+  // content that blooms far more aggressively under the same settings
+  // since it's a much larger bright screen area, not a small hot spot.
+  // Exposed here (rather than left hardcoded) so both halves of the scene
+  // can actually be tuned against each other.
+  const bloom = useControls("Bloom", {
+    intensity: { value: 0.6, min: 0, max: 3, step: 0.05 },
+    luminanceThreshold: { value: 0.3, min: 0, max: 1, step: 0.01, label: "threshold" },
+    luminanceSmoothing: { value: 0.4, min: 0, max: 1, step: 0.01, label: "smoothing" },
+    radius: { value: 0.8, min: 0, max: 1, step: 0.01 },
+  });
+
+  // SkyGradient.jsx. Previously there was no background at all (flat
+  // black), so the horizon never picked up any of the scene's warm tone.
+  const sky = useControls("Sky", {
+    radius: { value: 100, min: 100, max: 600, step: 10 },
+    bottomColor: { value: "#eb7c01", label: "horizon color" },
+    topColor: { value: "#000000", label: "zenith color" },
+    horizon: { value: -1, min: -1, max: 1, step: 0.01, label: "horizon band position" },
+    zenith: { value: 0.22, min: -1, max: 1, step: 0.01, label: "zenith band position" },
+    power: { value: 0.4, min: 0.2, max: 4, step: 0.05, label: "gradient curve" },
   });
 
   const stars = useControls("Stars", {
@@ -384,7 +529,7 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     // hemisphere shell (see Starfield.jsx) is built around its own local
     // origin, so this is where that origin sits in the world, not an
     // offset like the old flat card needed.
-    position: { value: [0, 0, 0] },
+    position: { value: [0, -10, 0] },
     rotationDeg: { value: [0, 0, 0], label: "rotation (deg)" },
     count: { value: 1000, min: 0, max: 3000, step: 10 },
     radius: { value: 220, min: 60, max: 500, step: 10, label: "dome radius" },
@@ -430,16 +575,34 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     hemisphereIntensity: { value: 2.1, min: 0, max: 2, step: 0.05 },
     hemisphereSky: "#4d5049",
     hemisphereGround: "#141410",
-    directionalIntensity: { value: 10, min: 0, max: 5, step: 0.05 },
+    directionalIntensity: { value: 1.5, min: 0, max: 5, step: 0.05 },
     directionalColor: "#e8ece6",
-    fillDirIntensity: { value: 3.1, min: 0, max: 5, step: 0.05, label: "fill light intensity" },
+    fillDirIntensity: { value: 5, min: 0, max: 5, step: 0.05, label: "fill light intensity" },
     fillDirColor: { value: "#ffb073", label: "fill light color" },
-    rimDirIntensity: { value: 3.3, min: 0, max: 5, step: 0.05, label: "rim light intensity" },
+    rimDirIntensity: { value: 2, min: 0, max: 5, step: 0.05, label: "rim light intensity" },
     rimDirColor: { value: "#7fb3ff", label: "rim light color" },
     accentAIntensity: { value: 20, min: 0, max: 30, step: 0.5 },
     accentAColor: "#ff5f00",
     accentBIntensity: { value: 20, min: 0, max: 30, step: 0.5 },
     accentBColor: "#ff9900",
+    // Was a hardcoded 40 — at that reach, both lights decay to almost
+    // nothing well before the terrain slopes actually facing the logo,
+    // so the ground around it never visibly picked up any of its color.
+    // Exposed here (rather than left hardcoded) since "how far the glow
+    // spreads onto the terrain" is exactly the knob this needed.
+    accentDistance: { value: 90, min: 10, max: 150, step: 5, label: "accent light reach" },
+    // A dedicated light for "the model visibly casts light on the lake and
+    // terrain around it" — reusing accentA's own intensity (20) here was
+    // nowhere near enough: at intensity/distance²  falloff (decay=2), 20
+    // decays to a fraction of a unit by the time it reaches terrain 15-25
+    // units away, invisible next to the much stronger sun/fill/rim lights
+    // already lighting the scene. This gets its own much higher intensity
+    // and a gentler decay (1, not 2) so it actually reaches and reads at
+    // those distances instead of needing an unreasonably huge number.
+    modelGlowColor: { value: "#ff5f00", label: "model glow: color" },
+    modelGlowIntensity: { value: 300, min: 0, max: 400, step: 5, label: "model glow: intensity" },
+    modelGlowDistance: { value: 50, min: 10, max: 150, step: 5, label: "model glow: reach" },
+    modelGlowDecay: { value: 1, min: 0.5, max: 2, step: 0.1, label: "model glow: falloff" },
   });
 
   const waterLevel = -terrain.basinDepth + 0.35;
@@ -461,6 +624,17 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     >
       <div className="sticky top-0 h-screen w-full overflow-hidden">
       <Leva titleBar={{ title: "Hyperiux Concept" }} collapsed hidden={!showLeva} />
+      <Leva
+        store={ridgeStore}
+        // Both panels default to the same fixed top-right position, which
+        // would stack this directly on top of the first one — anchored to
+        // the top-LEFT instead so both are visible side by side (still
+        // freely draggable from there via the title bar, same as the
+        // first panel).
+        titleBar={{ title: "Ridge Scene", position: { x: 10, y: 10 } }}
+        collapsed
+        hidden={!showLeva}
+      />
 
       <Canvas
         shadows
@@ -499,7 +673,8 @@ export default function Hero({ showLeva: showLevaProp = true }) {
             progressRef={cameraProgressRef}
             start={camera.start}
             end={camera.end}
-            target={camera.target}
+            targetStart={camera.targetStart}
+            targetEnd={camera.targetEnd}
             damping={camera.damping}
           />
         ) : (
@@ -510,7 +685,7 @@ export default function Hero({ showLeva: showLevaProp = true }) {
             minDistance={6}
             maxDistance={180}
             maxPolarAngle={Math.PI / 2 - 0.02}
-            target={camera.target}
+            target={camera.targetEnd}
             // Left click is reserved for rippling the lake — without this,
             // OrbitControls also grabs left-drag for rotate, which fights
             // the click-to-ripple detection and nudges the camera mid-click.
@@ -533,23 +708,14 @@ export default function Hero({ showLeva: showLevaProp = true }) {
           ring2Strength={portal.ring2Strength}
           portalWarp={portal.portalWarp}
           portalChromatic={portal.portalChromatic}
+          portalResolution={portal.innerResolution}
+          portalMsaa={Number(portal.innerMsaa)}
           portalScene={
-            <PortalInnerScene
-              position={LOGO_POSITION}
-              modelScale={portal.modelScale}
-              depthScale={glass.depthScale}
-              transmission={glass.transmission}
-              reflectivity={glass.reflectivity}
-              glassRoughness={glass.roughness}
-              thickness={glass.thickness}
-              ior={glass.ior}
-              chromaticAberration={glass.chromaticAberration}
-              anisotropy={glass.anisotropy}
-              distortion={glass.distortion}
-              distortionScale={glass.distortionScale}
-              temporalDistortion={glass.temporalDistortion}
-              backside={glass.backside}
-              bgVideoOpacity={portal.bgVideoOpacity}
+            <PortalRidgePlaneScene
+              ridgeProgressRef={ridgeProgressRef}
+              portalProgressRef={portalProgressRef}
+              pointerRef={pointerRef}
+              store={ridgeStore}
             />
           }
         >
@@ -593,15 +759,27 @@ export default function Hero({ showLeva: showLevaProp = true }) {
           position={[10, 6, 10]}
           intensity={lights.accentAIntensity}
           color={lights.accentAColor}
-          distance={40}
+          distance={lights.accentDistance}
           decay={2}
         />
         <pointLight
           position={[-12, 5, -10]}
           intensity={lights.accentBIntensity}
           color={lights.accentBColor}
-          distance={40}
+          distance={lights.accentDistance}
           decay={2}
+        />
+        {/* Sits low, near the water's own surface (not up at the logo's
+            own height) so its spill actually grazes the nearby terrain
+            slopes and the lake alike, reading as the logo's glow visibly
+            pooling around its own base rather than a light floating in
+            the air beside it. */}
+        <pointLight
+          position={[LOGO_POSITION[0], lakeY + 1, LOGO_POSITION[2]]}
+          intensity={lights.modelGlowIntensity}
+          color={lights.modelGlowColor}
+          distance={lights.modelGlowDistance}
+          decay={lights.modelGlowDecay}
         />
 
         <Suspense fallback={null}>
@@ -611,6 +789,15 @@ export default function Hero({ showLeva: showLevaProp = true }) {
             center={[0, 0, 0]}
             pointerRef={pointerRef}
           >
+            <SkyGradient
+              radius={sky.radius}
+              bottomColor={sky.bottomColor}
+              topColor={sky.topColor}
+              horizon={sky.horizon}
+              zenith={sky.zenith}
+              power={sky.power}
+            />
+
             <Starfield
               position={stars.position}
               rotation={stars.rotationDeg.map((deg) => THREE.MathUtils.degToRad(deg))}
@@ -684,6 +871,19 @@ export default function Hero({ showLeva: showLevaProp = true }) {
               ridgedFrequency={terrain.ridgedFrequency}
             />
 
+            <GroundFog
+              groundSize={terrain.groundSize}
+              density={groundFog.density}
+              opacity={groundFog.opacity}
+              coverageRadius={groundFog.coverageRadius}
+              baseHeight={groundFog.baseHeight}
+              layerSpread={groundFog.layerSpread}
+              noiseScale={groundFog.noiseScale}
+              flowSpeed={groundFog.flowSpeed}
+              swirl={groundFog.swirl}
+              color={ridgeFog.color}
+            />
+
             <Rocks
               count={rocks.count}
               minScale={rocks.minScale}
@@ -742,20 +942,33 @@ export default function Hero({ showLeva: showLevaProp = true }) {
               viscosity={lake.viscosity}
               mouseSize={lake.mouseSize}
               mouseIntensity={lake.mouseIntensity}
-              currentStrength={lake.currentStrength}
-              currentFrequency={lake.currentFrequency}
-              currentStretch={lake.currentStretch}
-              currentSpeed={lake.currentSpeed}
-              currentAngleDeg={lake.currentAngleDeg}
+              rippleStrength={lake.rippleStrength}
+              rippleFrequency={lake.rippleFrequency}
+              rippleSpeed={lake.rippleSpeed}
+              rippleDecay={lake.rippleDecay}
+              rippleOriginX={lake.rippleOriginX}
+              rippleOriginY={lake.rippleOriginY}
               hoverIntensityRatio={lake.hoverIntensityRatio}
               hoverFadeSpeed={lake.hoverFadeSpeed}
               clickBurstDuration={lake.clickBurstDuration}
               lightDirection={SUN_DIRECTION}
-              lightColor={lights.directionalColor}
+              lightColor={lake.specularColor}
               specularPower={lake.specularPower}
               specularIntensity={lake.specularIntensity}
               reflectionResolution={lake.reflectionResolution}
               glowReflectionStrength={lake.glowReflectionStrength}
+              // This gate (skip the reflection render + GPGPU sim + hover
+              // raycast entirely once past activeUntil) already existed in
+              // LakeSurface but was never actually wired up here — it was
+              // running all three, full cost, for the component's entire
+              // lifetime regardless of scroll position. portalProgressRef
+              // is 0 for the whole 200vh camera arc + 80vh dead zone, then
+              // ramps 0..1 across the portal's own 100vh reveal, so 0.3
+              // stops the lake's per-frame cost once the shockwave has
+              // opened enough that the background scene it's part of is
+              // mostly obscured anyway.
+              progressRef={portalProgressRef}
+              activeUntil={0.3}
             />
 
             <HyperiuxLogoModel
@@ -770,19 +983,45 @@ export default function Hero({ showLeva: showLevaProp = true }) {
               lightIntensity={logo.lightIntensity}
               lightDistance={logo.lightDistance}
             />
+
+            <LogoSparkles
+              position={LOGO_POSITION}
+              count={sparkles.count}
+              radius={sparkles.radius}
+              baseOffset={sparkles.baseOffset}
+              topOffset={sparkles.topOffset}
+              fadeBeyondTop={sparkles.fadeBeyondTop}
+              speed={sparkles.speed}
+              size={sparkles.size}
+              opacity={sparkles.opacity}
+            />
           </Parallax>
         </Suspense>
         </PortalRenderer>
 
+        <PostFade
+          bloomRef={bloomRef}
+          vignetteRef={vignetteRef}
+          progressRef={portalProgressRef}
+          baseIntensity={bloom.intensity}
+          vignetteStart={vignette.darkness}
+          vignetteEnd={vignette.endDarkness}
+        />
         <EffectComposer>
           <Bloom
-            intensity={1}
-            luminanceThreshold={0.15}
-            luminanceSmoothing={0.4}
+            ref={bloomRef}
+            intensity={bloom.intensity}
+            luminanceThreshold={bloom.luminanceThreshold}
+            luminanceSmoothing={bloom.luminanceSmoothing}
             mipmapBlur
-            radius={0.8}
+            radius={bloom.radius}
           />
-          <Vignette eskil={false} offset={0.1} darkness={0.9} />
+          <Vignette
+            ref={vignetteRef}
+            eskil={false}
+            offset={vignette.offset}
+            darkness={vignette.darkness}
+          />
         </EffectComposer>
       </Canvas>
       </div>

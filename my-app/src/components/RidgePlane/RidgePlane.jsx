@@ -99,11 +99,20 @@ function ScrollCylinderPanel({ progressRef, radius, angleSlot, totalRotation, ba
 // empty), this calls camera.lookAt directly so the view is still level
 // even with OrbitControls commented out for debugging.
 //
-// Mirrors SCROLL_TOTAL_ROTATION's own panel-0-at-0/last-panel-at-1 mapping
+// Mirrors the ring rotation's own panel-0-at-0/last-panel-at-1 mapping
 // directly (progress * (n-1)), clamped rather than wrapped — so this can
 // never loop back toward panel 0's height once scroll reaches the end, the
 // same "shouldn't come back" fix as the rotation itself.
-function CameraHeightFollow({ progressRef, panelBaseYs, controlsRef }) {
+//
+// Also cancels the room's own apparent vertical drift: the big background
+// cylinder itself never moves, but the camera's own height does (that's
+// the whole staircase effect) — so relative to the camera, a perfectly
+// static room reads as sliding upward while scrolling down. Shifting the
+// cylinder mesh by the SAME delta the camera moves keeps the vector
+// between camera and room constant, so the room reads as anchored/fixed
+// while the panels (whose own Y is independent of this) still visibly
+// descend against it.
+function CameraHeightFollow({ progressRef, panelBaseYs, controlsRef, cylinderRef, baseCameraY }) {
   useFrame((state) => {
     const overall = progressRef.current ?? 0;
     const n = panelBaseYs.length;
@@ -123,8 +132,39 @@ function CameraHeightFollow({ progressRef, panelBaseYs, controlsRef }) {
     } else {
       state.camera.lookAt(0, y, 0);
     }
+
+    const cylinder = cylinderRef.current;
+    if (cylinder) {
+      cylinder.position.y = y - baseCameraY;
+    }
   });
 
+  return null;
+}
+
+// three.js's OWN automatic transmission pass — separate from and IN
+// ADDITION TO drei's own transmissionResolution prop on
+// MeshTransmissionMaterial (which only governs its own extra
+// chromatic-aberration/distortion buffer). This native one fires
+// unconditionally whenever ANY material with transmission>0 is visible —
+// including the two "cheap" fallback meshPhysicalMaterial panels, not just
+// the one highQuality panel — and defaults to capturing the WHOLE SCENE at
+// FULL CANVAS RESOLUTION (transmissionResolutionScale=1), every frame.
+// This was the single biggest lag source found so far; live-tunable here
+// (rather than a hardcoded guess) since how blurry it can go before it
+// stops looking like glass is a visual call, not a fixed number — dial it
+// up for more clarity, down for more smoothness.
+function NativeTransmissionScale({ value }) {
+  // Set via useFrame's own `state.gl` (matching CameraHeightFollow's
+  // `state.camera.position.y = y` above) rather than useThree()'s return
+  // value directly — mutating a value returned straight from a hook call
+  // is what the React Compiler's immutability rule flags; a value handed
+  // in through a callback argument isn't.
+  useFrame((state) => {
+    if (state.gl.transmissionResolutionScale !== value) {
+      state.gl.transmissionResolutionScale = value;
+    }
+  });
   return null;
 }
 
@@ -136,23 +176,19 @@ function CameraHeightFollow({ progressRef, panelBaseYs, controlsRef }) {
 // be swapped without touching code.
 const PANEL_COUNT = 3;
 const DEFAULT_PANEL_MEDIA = [
-  // { type: "video", url: "/assets/videos/patronum.mp4" },
-  // { type: "video", url: "/assets/videos/gcm.mp4" },
-  // { type: "video", url: "/assets/videos/dharan.mp4" },
-  { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-18.jpg" },
-  { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-20.jpg" },
-  { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-25.jpg" },
+  { type: "video", url: "/assets/videos/patronum.mp4" },
+  { type: "video", url: "/assets/videos/quickx.mp4" },
+  { type: "video", url: "/assets/videos/dharan.mp4" },
+  // { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-18.jpg" },
+  // { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-20.jpg" },
+  // { type: "image", url: "https://pub-8abee449136941f5b0a1cd2c014534e9.r2.dev/vault-listing-images/assets-images/h-25.jpg" },
 ];
 
-// How far the ring rotates across the FULL scroll range — sized so panel 0
-// is centered at scroll=0 and the LAST panel is centered at scroll=1,
-// exactly, with nothing left over. A full 2*PI turn (one per-panel slot's
-// worth too many) would bring panel 0's own slot back around to dead
-// center right as scroll reaches the end, reading as the ring "coming
-// back"/resetting instead of stopping on the last panel — this is
-// deliberately (n-1)/n of a turn, not a whole one, so there's no leftover
-// rotation left to snap back with.
-const SCROLL_TOTAL_ROTATION = ((PANEL_COUNT - 1) / PANEL_COUNT) * Math.PI * 2;
+// Panel angular spacing (and therefore SCROLL_TOTAL_ROTATION, which has to
+// match it) is now a Leva-tunable value read inside the component — see
+// "panelAngleGapDeg" in Scroll Motion — rather than always the full circle
+// divided evenly, so the panels can sit in a tighter arc instead of
+// wrapping the whole invisible cylinder.
 
 // Rebuilt (not mutated per-frame) whenever an input changes — this shape is
 // static, so there's no useFrame loop here, just a fresh geometry each time
@@ -205,8 +241,14 @@ export default function RidgePlane() {
   const cylinder = useControls("Cylinder", {
     radius: { value: 150, min: 1, max: 200, step: 0.5 },
     height: { value: 250, min: 5, max: 350, step: 1, label: "height (tall)" },
-    radialSegments: { value: 128, min: 8, max: 256, step: 1, label: "resolution (around)" },
-    heightSegments: { value: 64, min: 4, max: 200, step: 1, label: "resolution (vertical)" },
+    // Lowered from 128/64 — this mesh gets drawn TWICE every frame (once
+    // for the main view, once again inside MeshTransmissionMaterial's own
+    // backdrop capture for whichever panel is highQuality), and at
+    // Ridge>amplitude=0 (no dents) the extra tessellation has zero visual
+    // effect anyway — pure wasted vertex cost. Raise this back up if
+    // amplitude is pushed up enough that dents start looking faceted.
+    radialSegments: { value: 48, min: 8, max: 256, step: 1, label: "resolution (around)" },
+    heightSegments: { value: 24, min: 4, max: 200, step: 1, label: "resolution (vertical)" },
     // Also the cube-grid texture's own background fill (see the Texture
     // panel below) — the material's own base color is left neutral so the
     // texture's baked-in colors show through true, not multiplied.
@@ -219,7 +261,7 @@ export default function RidgePlane() {
 
   const texture = useControls("Texture", {
     enabled: { value: true, label: "cube grid texture" },
-    outlineColor: { value: "#4e4e4e", label: "cube outline color" },
+    outlineColor: { value: "#909090", label: "cube outline color" },
     // A fixed WORLD-SPACE size (same convention as Terrain's own
     // grainScale/dirtScale) rather than a fixed repeat count — with a
     // fixed count, growing the radius had to stretch every cube bigger to
@@ -227,8 +269,8 @@ export default function RidgePlane() {
     // canceled out the wall actually moving farther away. A fixed size
     // means the room genuinely gets bigger (more same-size cubes, wall
     // farther off) as radius grows, instead of just stretching them.
-    cubeWorldSize: { value: 4.5, min: 0.5, max: 40, step: 0.5, label: "cube size (world units)" },
-    size: { value: 70, min: 8, max: 256, step: 1, label: "cube detail size" },
+    cubeWorldSize: { value: 6.5, min: 0.5, max: 40, step: 0.5, label: "cube size (world units)" },
+    size: { value: 90, min: 8, max: 256, step: 1, label: "cube detail size" },
     // The drawn tile itself is taller than it is wide (a triangular
     // lattice period is `cubeSize * sqrt(3)` tall for `cubeSize` wide —
     // see cubeGridTexture.js), which the repeat math below already
@@ -311,6 +353,12 @@ export default function RidgePlane() {
     // panels pay this cost at once (see "high-quality window" below), but
     // each occurrence is a full extra scene render, so this is worth
     // keeping as low as still reads clean.
+    // 1920 here was ~9x the pixel cost of 640 (a render-target SIZE, not a
+    // texture — MeshTransmissionMaterial redoes a full scene render at
+    // this resolution every frame for whichever panel is highQuality) and
+    // was the dominant cause of reported lag. Back down to something that
+    // still reads clean without that cost; crank it up live via Leva if
+    // more clarity is worth the tradeoff on a given machine.
     transmissionResolution: {
       value: 1920,
       min: 256,
@@ -336,6 +384,20 @@ export default function RidgePlane() {
     // How far outside the panel ring (radius = Glass Panel > distance) the
     // camera's own resting orbit sits.
     cameraOrbitDistance: { value: 40, min: 6, max: 150, step: 1, label: "camera orbit distance" },
+    // three.js's OWN automatic transmission capture resolution (0-1, scales
+    // the canvas' own size) — see NativeTransmissionScale above. This is a
+    // MUCH bigger lever on lag than transmissionResolution in Glass Panel
+    // (that one only covers drei's own extra buffer); this one governs a
+    // separate full-scene capture that fires for ANY transmissive
+    // material, at full canvas resolution by default. Lower = smoother,
+    // blurrier glass; higher = sharper, heavier.
+    nativeTransmissionScale: {
+      value: 0.2,
+      min: 0.05,
+      max: 1,
+      step: 0.05,
+      label: "perf: native transmission scale",
+    },
   });
 
   // Drives the invisible cylinder the glass panels sit on — see
@@ -348,6 +410,13 @@ export default function RidgePlane() {
     // scroll. The camera/target height glides between these same fixed
     // values as scroll brings each one to center (see CameraHeightFollow).
     panelHeightStep: { value: 12, min: -30, max: 30, step: 0.5, label: "panel height step (staircase)" },
+    // Angular spacing between adjacent panels — was always the full circle
+    // divided evenly (120° for 3 panels), wrapping the whole invisible
+    // cylinder. Lower this to pull them into a tighter arc instead; the
+    // ring's own total rotation (see scrollTotalRotation below) is
+    // derived straight from this so panel 0 still centers at scroll=0 and
+    // the last panel still centers at scroll=1, just over a smaller sweep.
+    panelAngleGapDeg: { value: 45, min: 10, max: 170, step: 1, label: "panel angle gap (deg)" },
     activeWindowDeg: {
       value: 40,
       min: 20,
@@ -356,6 +425,20 @@ export default function RidgePlane() {
       label: "high-quality window (deg, perf)",
     },
   });
+
+  // How far the ring rotates across the FULL scroll range — sized so panel
+  // 0 is centered at scroll=0 and the LAST panel is centered at scroll=1,
+  // exactly, with nothing left over (same reasoning as before, just now
+  // built from the tunable gap instead of always a full-circle division —
+  // see panelAngleGapDeg above).
+  const panelAngleGap = THREE.MathUtils.degToRad(scrollMotion.panelAngleGapDeg);
+  const scrollTotalRotation = (PANEL_COUNT - 1) * panelAngleGap;
+  // Clamped below half the gap so two adjacent panels' windows can never
+  // overlap — without this, pulling panelAngleGapDeg down without also
+  // lowering activeWindowDeg would let 2 panels go `highQuality`
+  // (full MeshTransmissionMaterial backdrop capture) at once, undoing the
+  // perf work that assumes only ever one does.
+  const activeWindow = Math.min(THREE.MathUtils.degToRad(scrollMotion.activeWindowDeg), panelAngleGap / 2 - 0.01);
 
   // Per-panel media, swappable live between video and image without
   // touching code — each panel's own CurvedGlassPanel (see the loop below)
@@ -502,9 +585,16 @@ export default function RidgePlane() {
         // considerably higher than any resolution setting alone suggests.
         dpr={[1, 1.25]}
         camera={{ position: [0, panelBaseYs[0], scene.cameraOrbitDistance], fov: 55, near: 0.5, far: 500 }}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        // MSAA (antialias) multiplies fragment cost on top of a scene
+        // that's already being drawn twice a frame (main view + the
+        // transmission backdrop capture) — off, since dpr's own
+        // supersampling above already softens edges somewhat and this is
+        // one of the more expensive remaining levers that doesn't touch
+        // how transmission itself looks.
+        gl={{ antialias: false, powerPreference: "high-performance" }}
       >
         <color attach="background" args={[scene.background]} />
+        <NativeTransmissionScale value={scene.nativeTransmissionScale} />
 
         <ambientLight intensity={0.6} />
         {/* Key + fill + rim, from clearly different angles — one
@@ -512,14 +602,16 @@ export default function RidgePlane() {
             with only a single glint; a transmission/clearcoat material
             needs more than one bright source around it for the shiny
             curved rim to actually catch highlights from multiple sides.
-            Trimmed from 5 down to 3 — every one of these adds a real
-            per-fragment cost across the whole screen (the big cylinder
-            alone covers most of it), and 3 well-placed ones read almost
-            identically to 5 here. */}
+            Trimmed from 5 down to 3, then dropped the hemisphere light
+            too (redundant fill on top of ambient+point) — every one of
+            these adds a real per-fragment cost across the whole screen
+            (the big cylinder alone covers most of it), and this happens
+            TWICE per frame for whichever panel is highQuality (once for
+            the main view, once again inside its transmission backdrop
+            capture), so trimming here is worth double what it looks like. */}
         <directionalLight position={[10, cylinder.height, 8]} intensity={1.2} color="#ffffff" />
         <directionalLight position={[-14, eyeHeight + 6, -12]} intensity={0.9} color="#dfe8ff" />
         <directionalLight position={[0, eyeHeight - 4, 10]} intensity={0.7} color="#ffe9d0" />
-        <hemisphereLight args={["#ffffff", "#202020", 0.5]} />
         {/* Sits right where the camera does — a directional/hemisphere
             light alone leaves most of an enclosing tube's inner wall in
             shadow from any given angle; this keeps the surface around the
@@ -579,10 +671,10 @@ export default function RidgePlane() {
                 key={`panel-${i}`}
                 progressRef={scrollProgressRef}
                 radius={glassPanel.distance}
-                angleSlot={(i * Math.PI * 2) / PANEL_COUNT}
-                totalRotation={SCROLL_TOTAL_ROTATION}
+                angleSlot={i * panelAngleGap}
+                totalRotation={scrollTotalRotation}
                 baseY={panelBaseYs[i]}
-                activeWindow={THREE.MathUtils.degToRad(scrollMotion.activeWindowDeg)}
+                activeWindow={activeWindow}
               >
                 {(highQuality) => (
                   <CurvedGlassPanel
@@ -631,6 +723,8 @@ export default function RidgePlane() {
           progressRef={scrollProgressRef}
           panelBaseYs={panelBaseYs}
           controlsRef={orbitControlsRef}
+          cylinderRef={cylinderMeshRef}
+          baseCameraY={panelBaseYs[0]}
         />
 
         {/* A genuine orbit now — the camera sits outside the panel ring

@@ -228,12 +228,15 @@ export default function CurvedGlassPanel({
   // Fillet radius on the box's own edges/corners (in local, unbent space)
   // — 0 is a sharp box. See roundBoxCorners above.
   edgeRadius = 0.25,
-  widthSegments = 48,
-  heightSegments = 24,
+  // Lowered from 48/24 — a secondary lever next to the transmission
+  // backdrop capture, but this geometry still gets its own vertex pass
+  // every frame and the curve/fillet hold up fine at this resolution.
+  widthSegments = 32,
+  heightSegments = 16,
   // Undivided depth (1 segment, front/back only) can't show any rounding
   // along the box's thin side faces — this needs real subdivision there
   // for the fillet to read as a smooth curve instead of a single facet.
-  depthSegments = 8,
+  depthSegments = 6,
   showMedia = false,
   // "video" (default) or "image" — see CurvedMediaPlane above for how each
   // one builds its own texture.
@@ -269,6 +272,16 @@ export default function CurvedGlassPanel({
   // of motion, not just riding along with the glass around it.
   videoParallaxStrength = 0.08,
   videoParallaxLerp = 0.08,
+  // Optional shared backdrop texture (see SharedGlassBackdrop in
+  // PortalRidgePlaneScene.jsx). When given, this panel ALWAYS uses
+  // MeshTransmissionMaterial but skips its own per-frame backdrop render —
+  // one capture feeds every panel, so there's never a material swap (and
+  // no blur->sharp pop) as a panel moves in and out of focus.
+  transmissionBuffer = null,
+  // Exposed so a parent can hide the glass during a shared backdrop
+  // capture, and ramp material params (e.g. roughness) per frame.
+  glassRef,
+  materialRef,
 }) {
   // `width` is the panel's own visible CHORD width (its on-screen span,
   // left edge to right edge) — curveRadius is picked so that bending
@@ -354,9 +367,11 @@ export default function CurvedGlassPanel({
         />
       )}
 
-      <mesh geometry={glassGeometry}>
-        {highQuality ? (
+      <mesh ref={glassRef} geometry={glassGeometry}>
+        {transmissionBuffer || highQuality ? (
           <MeshTransmissionMaterial
+            ref={materialRef}
+            buffer={transmissionBuffer ?? undefined}
             transmission={transmission}
             roughness={roughness}
             thickness={thickness}
@@ -381,7 +396,10 @@ export default function CurvedGlassPanel({
             // (how many times that buffer gets re-sampled for roughness/
             // distortion).
             samples={transmissionSamples}
-            resolution={transmissionResolution}
+            // With a shared buffer the material's own FBOs are never
+            // rendered into, so keep them tiny instead of allocating two
+            // full-size targets per panel for nothing.
+            resolution={transmissionBuffer ? 1 : transmissionResolution}
             side={THREE.DoubleSide}
           />
         ) : (

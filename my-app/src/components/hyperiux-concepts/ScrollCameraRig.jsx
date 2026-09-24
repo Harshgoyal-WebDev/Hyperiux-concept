@@ -14,21 +14,38 @@ function shortestAngleDelta(from, to) {
   return ((raw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 }
 
-// Drives the camera on an arc around `target` as the page scrolls through
-// its 0..1 progress: it starts at `start`, always looking at `target`, and
-// by the time progress reaches 1 it's at `end` — both `start` and `end`
-// are plain world-space points (not derived multipliers), so placing them
-// in Leva directly controls where the camera begins and ends up. The path
-// between them sweeps around `target` at an interpolated radius/height
+// Drives the camera on an arc as the page scrolls through its 0..1
+// progress: it starts at `start` looking at `targetStart`, and by the time
+// progress reaches 1 it's at `end` looking at `targetEnd` — all four are
+// plain world-space points (not derived multipliers), so placing them in
+// Leva directly controls where the camera begins/ends and what it's
+// looking at each time. The path between the two positions sweeps around
+// the (also-interpolating) look-at point at an interpolated radius/height
 // rather than a straight line, so it still reads as an orbit rather than
 // cutting through the scene.
 //
 // Both endpoints' radius/angle/height are recomputed from `start`/`end`/
-// `target` every frame (not cached once at mount) specifically so
-// dragging those values in Leva updates the camera immediately, instead
-// of only taking effect on the next full remount — the flat cost of a few
-// trig calls a frame is nothing next to the win of live-tunable endpoints.
-export default function ScrollCameraRig({ progressRef, start, end, target, damping = 6 }) {
+// the current interpolated target every frame (not cached once at mount)
+// specifically so dragging those values in Leva updates the camera
+// immediately, instead of only taking effect on the next full remount —
+// the flat cost of a few trig calls a frame is nothing next to the win of
+// live-tunable endpoints.
+export default function ScrollCameraRig({
+  progressRef,
+  start,
+  end,
+  targetStart,
+  targetEnd,
+  damping = 6,
+  // Once this ref reads above ~0 (e.g. the shockwave portal has started
+  // opening), this rig goes completely silent and stops touching the
+  // camera at all — whatever comes after the portal (PortalRidgePlaneScene's
+  // own camera-follow) owns it from there. Without this, this rig would
+  // keep recomputing the exact same fixed "end" position every frame
+  // (progressRef stays clamped at 1) and lerping the camera back toward
+  // it forever, fighting whatever takes over afterward.
+  handoffRef,
+}) {
   const s = useRef(null);
   if (s.current === null) {
     s.current = {
@@ -41,6 +58,24 @@ export default function ScrollCameraRig({ progressRef, start, end, target, dampi
   const st = s.current;
 
   useFrame((state, delta) => {
+    if ((handoffRef?.current ?? 0) > 0.001) return;
+
+    const t = THREE.MathUtils.clamp(progressRef.current, 0, 1);
+    const eased = THREE.MathUtils.smoothstep(t, 0, 1);
+
+    // The look-at point itself now rises from targetStart to targetEnd
+    // over the same eased scroll progress as everything else, rather than
+    // staying fixed — the orbit's radius/angle (relative to whichever
+    // point the camera is currently looking at) and the final lookAt both
+    // use this same interpolated point, so the arc still reads as one
+    // continuous orbit around a (now gently climbing) pivot instead of
+    // orbiting a fixed point while the look-at snaps somewhere else.
+    const target = [
+      THREE.MathUtils.lerp(targetStart[0], targetEnd[0], eased),
+      THREE.MathUtils.lerp(targetStart[1], targetEnd[1], eased),
+      THREE.MathUtils.lerp(targetStart[2], targetEnd[2], eased),
+    ];
+
     const dx0 = start[0] - target[0];
     const dz0 = start[2] - target[2];
     const radius0 = Math.sqrt(dx0 * dx0 + dz0 * dz0) || 0.001;
@@ -52,9 +87,6 @@ export default function ScrollCameraRig({ progressRef, start, end, target, dampi
     const radius1 = Math.sqrt(dx1 * dx1 + dz1 * dz1) || 0.001;
     const angle1 = Math.atan2(dz1, dx1);
     const y1 = end[1];
-
-    const t = THREE.MathUtils.clamp(progressRef.current, 0, 1);
-    const eased = THREE.MathUtils.smoothstep(t, 0, 1);
 
     const angle = angle0 + shortestAngleDelta(angle0, angle1) * eased;
     const radius = THREE.MathUtils.lerp(radius0, radius1, eased);

@@ -13,27 +13,12 @@ const heightmapFragmentShader = /* glsl */ `
   uniform float uMouseSize;
   uniform float uMouseIntensity;
   uniform float uViscosity;
-  uniform float uCurrentTime;
-  uniform float uCurrentStrength;
-  uniform float uCurrentFrequency;
-  uniform float uCurrentStretch;
-  uniform float uCurrentSpeed;
-  uniform vec2 uCurrentDir;
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453123);
-  }
-
-  float valueNoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
-  }
+  uniform float uRippleTime;
+  uniform float uRippleStrength;
+  uniform float uRippleFrequency;
+  uniform float uRippleSpeed;
+  uniform float uRippleDecay;
+  uniform vec2 uRippleOrigin;
 
   void main() {
     vec2 cellSize = 1.0 / resolution.xy;
@@ -48,21 +33,21 @@ const heightmapFragmentShader = /* glsl */ `
 
     float newHeight = ((north.x + south.x + east.x + west.x) * 0.5 - heightmapValue.y) * uViscosity;
 
-    // Constantly-moving surface current — dense, fine ripple streaks all
-    // elongated and drifting in one direction, like real open water under
-    // a steady breeze (as opposed to the earlier wind+wave attempt, which
-    // read as undirected fuzz plus a few sparse wave crests). The trick is
-    // sampling noise in a basis rotated to the current direction: high
-    // frequency across the current packs many parallel ripple lines
-    // together, while a much lower frequency along the current stretches
-    // each one into a streak instead of a round blob; scrolling that same
-    // coordinate over time is what keeps the whole field visibly flowing
-    // rather than just shimmering in place.
-    float alongCurrent = dot(uv, uCurrentDir) - uCurrentTime * uCurrentSpeed;
-    float acrossCurrent = dot(uv, vec2(-uCurrentDir.y, uCurrentDir.x));
-    vec2 currentUv = vec2(alongCurrent * uCurrentStretch, acrossCurrent * uCurrentFrequency);
-    float current = valueNoise(currentUv) * 0.6 + valueNoise(currentUv * 2.3 + vec2(4.0, 9.0)) * 0.4 - 0.5;
-    newHeight += current * uCurrentStrength;
+    // A continuous train of concentric ripples expanding outward from a
+    // single fixed point — like a spring or a slow drip constantly
+    // feeding the surface, rather than one-off stamped ripples. Distance
+    // from the origin sets the ring phase (uRippleFrequency = how tightly
+    // packed the rings are, i.e. 1/wavelength), and subtracting time*speed
+    // from that phase is what makes the whole ring pattern visibly travel
+    // outward frame to frame. uRippleDecay exponentially fades each ring's
+    // amplitude the farther it's traveled from the source, so what reaches
+    // the far shore is a faint trace rather than the same strength ring
+    // that started at the center — matching how real ripples weaken as
+    // they spread.
+    float rippleDist = length(uv - uRippleOrigin);
+    float ripplePhase = rippleDist * uRippleFrequency - uRippleTime * uRippleSpeed;
+    float rippleDecay = exp(-rippleDist * uRippleDecay);
+    newHeight += cos(ripplePhase) * rippleDecay * uRippleStrength;
 
     // Push the surface DOWN at the touch point (like a finger pressing in),
     // not up — the depression then rebounds outward into a ripple, same as
@@ -97,12 +82,12 @@ export function createWaterSimulation({ renderer, resolution = 128 }) {
     uMouseSize: { value: 0.05 },
     uMouseIntensity: { value: 0.4 },
     uViscosity: { value: 0.985 },
-    uCurrentTime: { value: 0 },
-    uCurrentStrength: { value: 0.05 },
-    uCurrentFrequency: { value: 22 },
-    uCurrentStretch: { value: 3 },
-    uCurrentSpeed: { value: 0.12 },
-    uCurrentDir: { value: new THREE.Vector2(1, 0.35).normalize() },
+    uRippleTime: { value: 0 },
+    uRippleStrength: { value: 0.12 },
+    uRippleFrequency: { value: 60 },
+    uRippleSpeed: { value: 4 },
+    uRippleDecay: { value: 2.2 },
+    uRippleOrigin: { value: new THREE.Vector2(0.5, 0.5) },
   });
 
   const error = gpuCompute.init();
@@ -127,27 +112,26 @@ export function createWaterSimulation({ renderer, resolution = 128 }) {
       mouseSize,
       mouseIntensity,
       viscosity,
-      currentStrength,
-      currentFrequency,
-      currentStretch,
-      currentSpeed,
-      currentAngleDeg,
+      rippleStrength,
+      rippleFrequency,
+      rippleSpeed,
+      rippleDecay,
+      rippleOriginX,
+      rippleOriginY,
     }) {
       const uniforms = heightmapVariable.material.uniforms;
       if (mouseSize !== undefined) uniforms.uMouseSize.value = mouseSize;
       if (mouseIntensity !== undefined) uniforms.uMouseIntensity.value = mouseIntensity;
       if (viscosity !== undefined) uniforms.uViscosity.value = viscosity;
-      if (currentStrength !== undefined) uniforms.uCurrentStrength.value = currentStrength;
-      if (currentFrequency !== undefined) uniforms.uCurrentFrequency.value = currentFrequency;
-      if (currentStretch !== undefined) uniforms.uCurrentStretch.value = currentStretch;
-      if (currentSpeed !== undefined) uniforms.uCurrentSpeed.value = currentSpeed;
-      if (currentAngleDeg !== undefined) {
-        const rad = THREE.MathUtils.degToRad(currentAngleDeg);
-        uniforms.uCurrentDir.value.set(Math.cos(rad), Math.sin(rad));
-      }
+      if (rippleStrength !== undefined) uniforms.uRippleStrength.value = rippleStrength;
+      if (rippleFrequency !== undefined) uniforms.uRippleFrequency.value = rippleFrequency;
+      if (rippleSpeed !== undefined) uniforms.uRippleSpeed.value = rippleSpeed;
+      if (rippleDecay !== undefined) uniforms.uRippleDecay.value = rippleDecay;
+      if (rippleOriginX !== undefined) uniforms.uRippleOrigin.value.x = rippleOriginX;
+      if (rippleOriginY !== undefined) uniforms.uRippleOrigin.value.y = rippleOriginY;
     },
     setTime(t) {
-      heightmapVariable.material.uniforms.uCurrentTime.value = t;
+      heightmapVariable.material.uniforms.uRippleTime.value = t;
     },
   };
 }

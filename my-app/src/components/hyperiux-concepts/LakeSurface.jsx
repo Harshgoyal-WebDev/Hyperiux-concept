@@ -124,17 +124,18 @@ export default function LakeSurface({
   viscosity = 0.985,
   mouseSize = 0.06,
   mouseIntensity = 0.22,
-  // Constantly-moving surface current, independent of any pointer
-  // interaction — see waterSimulation.js. currentFrequency is how many
-  // parallel ripple streaks pack across the current direction (higher =
-  // denser/finer), currentStretch is how elongated each streak is along
-  // the flow, currentSpeed/currentAngleDeg control how fast and which way
-  // the whole field scrolls.
-  currentStrength = 0.05,
-  currentFrequency = 22,
-  currentStretch = 3,
-  currentSpeed = 0.12,
-  currentAngleDeg = 20,
+  // A continuous train of concentric ripples expanding outward from a
+  // fixed point, independent of any pointer interaction — see
+  // waterSimulation.js. rippleFrequency sets how tightly packed the rings
+  // are (1/wavelength), rippleSpeed how fast they travel outward,
+  // rippleDecay how quickly each ring's amplitude fades with distance
+  // from rippleOriginX/Y (both 0..1, UV space across the lake).
+  rippleStrength = 0.12,
+  rippleFrequency = 60,
+  rippleSpeed = 4,
+  rippleDecay = 2.2,
+  rippleOriginX = 0.5,
+  rippleOriginY = 0.5,
   hoverIntensityRatio = 0.35,
   hoverFadeSpeed = 6,
   clickBurstDuration = 0.2,
@@ -409,11 +410,12 @@ export default function LakeSurface({
       viscosity,
       mouseSize,
       mouseIntensity: mouseIntensity * intensityScale,
-      currentStrength,
-      currentFrequency,
-      currentStretch,
-      currentSpeed,
-      currentAngleDeg,
+      rippleStrength,
+      rippleFrequency,
+      rippleSpeed,
+      rippleDecay,
+      rippleOriginX,
+      rippleOriginY,
     });
     simulation.setTime(state.clock.elapsedTime);
     simulation.compute();

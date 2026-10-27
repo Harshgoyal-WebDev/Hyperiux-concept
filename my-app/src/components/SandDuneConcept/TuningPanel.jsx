@@ -221,9 +221,9 @@ export default function TuningPanel({ onScrub }) {
 
   return (
     <>
-      <LevaPanel store={objectStore} hidden={hidden} titleBar={{ title: "Monolith · cube · beams (H)" }} />
+      <LevaPanel store={objectStore} hidden={hidden} collapsed titleBar={{ title: "Monolith · cube · beams (H)" }} />
       <div style={{ position: "fixed", top: 10, right: 300, width: 280, zIndex: 1000 }}>
-        <LevaPanel store={worldStore} hidden={hidden} fill titleBar={{ title: "Atmosphere · sand · camera" }} />
+        <LevaPanel store={worldStore} hidden={hidden} fill collapsed titleBar={{ title: "Atmosphere · sand · camera" }} />
       </div>
     </>
   );

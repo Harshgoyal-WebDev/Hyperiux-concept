@@ -493,7 +493,7 @@ export default function Hero({ showLeva: showLevaProp = true }) {
   // Vignette darkness eases from `darkness` to `endDarkness` across the
   // portal reveal (see PostFade) — same timing as the bloom fade.
   const vignette = useControls("Vignette", {
-    offset: { value: 0.1, min: 0, max: 1, step: 0.01 },
+    offset: { value: 0.30, min: 0, max: 1, step: 0.01 },
     darkness: { value: 0.9, min: 0, max: 1.5, step: 0.01, label: "darkness (hero)" },
     endDarkness: { value: 0.2, min: 0, max: 1.5, step: 0.01, label: "darkness (after portal)" },
   });
@@ -517,7 +517,7 @@ export default function Hero({ showLeva: showLevaProp = true }) {
   // black), so the horizon never picked up any of the scene's warm tone.
   const sky = useControls("Sky", {
     radius: { value: 100, min: 100, max: 600, step: 10 },
-    bottomColor: { value: "#eb7c01", label: "horizon color" },
+    bottomColor: { value: "#aa5900", label: "horizon color" },
     topColor: { value: "#000000", label: "zenith color" },
     horizon: { value: -1, min: -1, max: 1, step: 0.01, label: "horizon band position" },
     zenith: { value: 0.22, min: -1, max: 1, step: 0.01, label: "zenith band position" },
@@ -577,9 +577,9 @@ export default function Hero({ showLeva: showLevaProp = true }) {
     hemisphereGround: "#141410",
     directionalIntensity: { value: 1.5, min: 0, max: 5, step: 0.05 },
     directionalColor: "#e8ece6",
-    fillDirIntensity: { value: 5, min: 0, max: 5, step: 0.05, label: "fill light intensity" },
+    fillDirIntensity: { value: 2, min: 0, max: 5, step: 0.05, label: "fill light intensity" },
     fillDirColor: { value: "#ffb073", label: "fill light color" },
-    rimDirIntensity: { value: 2, min: 0, max: 5, step: 0.05, label: "rim light intensity" },
+    rimDirIntensity: { value: 3.3, min: 0, max: 5, step: 0.05, label: "rim light intensity" },
     rimDirColor: { value: "#7fb3ff", label: "rim light color" },
     accentAIntensity: { value: 20, min: 0, max: 30, step: 0.5 },
     accentAColor: "#ff5f00",

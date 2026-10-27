@@ -1,0 +1,155 @@
+{
+  "asset": "hyperiux-monolith.glb",
+  "path": "public/models/hyperiux-monolith.glb",
+  "source": {
+    "blend": "blender/monolith/hyperiux_monolith.blend",
+    "svg": "public/hyperiux-icon-black.svg",
+    "svgViewBox": [
+      0,
+      0,
+      500,
+      501
+    ],
+    "textures": "blender/monolith/textures/",
+    "previews": [
+      "blender/monolith/hyperiux-monolith-front.png",
+      "blender/monolith/hyperiux-monolith-perspective.png"
+    ]
+  },
+  "units": "metres (1 glTF unit = 1 m)",
+  "orientation": {
+    "up": "+Y",
+    "front": "+Z (logo face; viewer camera should sit at +Z looking toward -Z)",
+    "blenderFront": "-Y",
+    "handedness": "right-handed glTF"
+  },
+  "design": "Two separate basalt monoliths. Stone is the space around the Hyperiux logo: the four filled SVG paths and the cube's hexagon are cut through; a 0.45 m gap runs from the top edge and from the ground into the hexagon, splitting the slab into left/right halves. Cut walls are deliberately roughened (not laser-perfect).",
+  "nodes": {
+    "root": {
+      "name": "MonolithRoot",
+      "transform": "identity at world origin (base centre of the whole monument, ground plane y=0)",
+      "children": [
+        "HyperiuxMonolith_Left",
+        "HyperiuxMonolith_Right"
+      ]
+    },
+    "HyperiuxMonolith_Left": {
+      "pivot": [
+        -2.6903,
+        0,
+        0
+      ],
+      "pivotNote": "base-centre of the piece, on the ground (y=0)",
+      "bboxMin": [
+        -5.23,
+        -0.0,
+        -1.538
+      ],
+      "bboxMax": [
+        -0.151,
+        12.417,
+        1.419
+      ],
+      "vertices": 5407
+    },
+    "HyperiuxMonolith_Right": {
+      "pivot": [
+        2.6895,
+        0,
+        0
+      ],
+      "pivotNote": "base-centre of the piece, on the ground (y=0)",
+      "bboxMin": [
+        0.13,
+        -0.0,
+        -1.544
+      ],
+      "bboxMax": [
+        5.249,
+        12.463,
+        1.417
+      ],
+      "vertices": 5246
+    }
+  },
+  "dimensions": {
+    "overallWidth": 10.479,
+    "height": 12.463,
+    "depth": 2.963,
+    "frontFaceZ": 1.4,
+    "triangles": {
+      "left": 7154,
+      "right": 7064
+    }
+  },
+  "svgMapping": {
+    "scale_m_per_svg_unit": 0.018,
+    "svgCentre": [
+      250.446,
+      250.4345
+    ],
+    "formula": "x = (svgX - 250.446) * 0.018 ;  y = 6.4 - (svgY - 250.4345) * 0.018 ;  z = 0 at mid-depth",
+    "logoExtent": {
+      "xMin": -3.788,
+      "xMax": 3.788,
+      "yMin": 2.1262,
+      "yMax": 10.6738
+    },
+    "cutRoughness_m": "outline wobble up to ~0.06 m, varying through depth, plus chipped bites along front/back edges"
+  },
+  "splitGap": {
+    "nominalWidth_m": 0.45,
+    "topChannelCentreX": 0.051,
+    "bottomChannelCentreX": -0.0683,
+    "note": "channels follow the hexagon apex (top) and bottom vertex; walls roughened \u00b10.05 m"
+  },
+  "cube": {
+    "meshIncluded": false,
+    "note": "Add the cube in React Three Fiber.",
+    "position": [
+      -0.0286,
+      6.284,
+      0.0
+    ],
+    "positionSource": "centre of the cube-outline hexagon path in the SVG (rounded top apex reconstructed)",
+    "rightOffset_m": 0.0,
+    "rightOffsetNote": "configurable; add to position.x if the art direction wants the cube nudged right",
+    "openingHexagon_m": {
+      "width": 1.816,
+      "height": 1.906
+    },
+    "svgDrawnCubeEdge_m": 1.195,
+    "recommendedEdge_m": [
+      1.0,
+      1.1
+    ],
+    "recommendedEdgeNote": "keeps clearance from the roughened opening walls at mid-depth",
+    "isometricRotationThree": "rotation={[Math.atan(1 / Math.SQRT2), Math.PI / 4, 0]} (corner toward the camera, matches the logo drawing)"
+  },
+  "material": {
+    "name": "HyperiuxBasalt",
+    "type": "glTF PBR metallic-roughness",
+    "maps": [
+      "baseColor (sRGB)",
+      "metallicRoughness (roughness in G, metallic 0)",
+      "normal (tangent space, OpenGL +Y)",
+      "emissive (sparse orange fissures)"
+    ],
+    "textureSize": 2048,
+    "format": "JPEG q90 embedded",
+    "doubleSided": false,
+    "r3fTips": "Raise material.emissiveIntensity (e.g. 2-4) with Bloom for glowing fissures; the cut openings are plain stone, light them from behind in R3F."
+  },
+  "validation": {
+    "reimportedInBlender": true,
+    "frontSilhouetteCoverageMatch": "73.64% source vs 73.64% reimport",
+    "pieces": 2,
+    "holes": "none (a few zero-width boolean seams, not visible)",
+    "mapsLinkedOnReimport": [
+      "Base Color",
+      "Roughness",
+      "Normal",
+      "Emission Color"
+    ]
+  }
+}

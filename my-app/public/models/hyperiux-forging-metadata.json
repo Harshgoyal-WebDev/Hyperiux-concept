@@ -1,0 +1,1825 @@
+{
+  "asset": "public/models/hyperiux-forging-assets.glb",
+  "source": {
+    "blend": "blender/forging/hyperiux_forging.blend",
+    "svg": "public/hyperiux-icon-black.svg (viewBox 0 0 500 501)",
+    "textures": "blender/forging/textures/",
+    "previews": [
+      "blender/forging/01_slab_initial.png",
+      "blender/forging/02_core_activated.png",
+      "blender/forging/03_logo_revealing.png",
+      "blender/forging/04_logo_forged.png",
+      "blender/forging/check_core_front.png"
+    ]
+  },
+  "units": "metres",
+  "coordinateSystem": {
+    "up": "+Y",
+    "front": "+Z (engraved face; camera at +Z looking toward -Z)",
+    "ground": "y = 0",
+    "rotationsAndScales": "none: every node is translation-only, so world = sum of translations up the tree"
+  },
+  "slab": {
+    "width": 10.0,
+    "height": 12.0,
+    "depth": 2.4,
+    "frontFaceZ": 1.2,
+    "note": "outer edges are irregular/chipped by up to ~0.2 m; front face flat to about \u00b10.015 m"
+  },
+  "svgMapping": {
+    "scale_m_per_svg_unit": 0.018,
+    "formula": "x = (svgX - 250.446) * 0.018 ;  y = 6.0 - (svgY - 250.4345) * 0.018 ;  z = 0 at mid-depth, +1.2 at the front face",
+    "logoExtent": {
+      "xMin": -3.788,
+      "xMax": 3.788,
+      "yMin": 1.7262,
+      "yMax": 10.2738
+    }
+  },
+  "hierarchy": "MonolithRoot > { BeamOrigin, LogoRoot > { HyperiuxLogoCore > LogoCore_*, CoreSphereAnchor > CoreSphere_Preview, BeamTarget }, SlabExcessChunks > BreakGroup_0N_* > SlabChunk_### } ; every Cracks_* mesh is a child of the stone piece it lies on",
+  "anchors": {
+    "MonolithRoot": {
+      "world": [
+        0,
+        0,
+        0
+      ],
+      "path": "MonolithRoot"
+    },
+    "LogoRoot": {
+      "world": [
+        0,
+        6,
+        0
+      ],
+      "path": "MonolithRoot/LogoRoot"
+    },
+    "CoreSphereAnchor": {
+      "world": [
+        -0.0286,
+        5.884,
+        0.58
+      ],
+      "path": "MonolithRoot/LogoRoot/CoreSphereAnchor"
+    },
+    "BeamTarget": {
+      "world": [
+        -0.0286,
+        5.884,
+        1.2
+      ],
+      "path": "MonolithRoot/LogoRoot/BeamTarget"
+    },
+    "BeamOrigin": {
+      "world": [
+        -0.0286,
+        0,
+        1.55
+      ],
+      "path": "MonolithRoot/BeamOrigin"
+    }
+  },
+  "logoCore": {
+    "root": "LogoRoot",
+    "pieces": {
+      "LogoCore_CubeFrame": {
+        "localPivot": [
+          -0.0594,
+          -0.14,
+          0.7044
+        ],
+        "world": [
+          -0.0594,
+          5.86,
+          0.7044
+        ]
+      },
+      "LogoCore_Path1_TopLeft": {
+        "localPivot": [
+          -3.1917,
+          2.3854,
+          -0.0228
+        ],
+        "world": [
+          -3.1917,
+          8.3854,
+          -0.0228
+        ]
+      },
+      "LogoCore_Path2_BottomRight": {
+        "localPivot": [
+          3.1694,
+          -2.3854,
+          -0.0374
+        ],
+        "world": [
+          3.1694,
+          3.6146,
+          -0.0374
+        ]
+      },
+      "LogoCore_Path3_LowerLeft": {
+        "localPivot": [
+          -2.3642,
+          -1.8984,
+          -0.0489
+        ],
+        "world": [
+          -2.3642,
+          4.1016,
+          -0.0489
+        ]
+      },
+      "LogoCore_Path4_UpperRight": {
+        "localPivot": [
+          2.2673,
+          1.7728,
+          -0.0379
+        ],
+        "world": [
+          2.2673,
+          7.7728,
+          -0.0379
+        ]
+      }
+    },
+    "notes": "Path1..4 are the four filled SVG paths at full slab depth, flush with the front face. LogoCore_CubeFrame is the 7-unit stroke of the cube-outline path: outer ring 1.0 m deep, inner Y strokes 0.3 m deep, trimmed where it meets Path3/Path4."
+  },
+  "coreSphere": {
+    "anchor": "CoreSphereAnchor",
+    "radius": 0.3,
+    "previewMesh": "CoreSphere_Preview",
+    "pocketDepthFromFront": 1.0,
+    "clearance_m": {
+      "toCubeFrame": 0.02,
+      "toPocketWalls": 0.09
+    },
+    "svgCentre": "hexagon centre of the cube-outline path (rounded top corner reconstructed): (248.86, 256.88)"
+  },
+  "beam": {
+    "origin": "BeamOrigin (ground, 0.35 m in front of the face, directly below the core)",
+    "target": "BeamTarget (front face, centre of the cube mark)",
+    "drawInR3F": true
+  },
+  "breakGroups": {
+    "BreakGroup_01_Perimeter": {
+      "order": 1,
+      "count": 29,
+      "chunks": [
+        {
+          "name": "SlabChunk_001",
+          "pivot": [
+            -3.6204,
+            11.1478,
+            -0.0704
+          ],
+          "break_order": 1,
+          "volume_m3": 4.0135,
+          "explode_dir_gltf": [
+            -0.4698,
+            0.7657,
+            0.4393
+          ],
+          "centroid_gltf": [
+            -3.9984,
+            11.3413,
+            -0.4894
+          ]
+        },
+        {
+          "name": "SlabChunk_002",
+          "pivot": [
+            4.1324,
+            10.602,
+            -0.0313
+          ],
+          "break_order": 2,
+          "volume_m3": 6.4452,
+          "explode_dir_gltf": [
+            0.527,
+            0.7262,
+            0.4416
+          ],
+          "centroid_gltf": [
+            4.3081,
+            10.869,
+            -0.1112
+          ]
+        },
+        {
+          "name": "SlabChunk_003",
+          "pivot": [
+            3.9438,
+            1.0263,
+            -0.0523
+          ],
+          "break_order": 3,
+          "volume_m3": 7.1451,
+          "explode_dir_gltf": [
+            0.6104,
+            -0.5924,
+            0.5258
+          ],
+          "centroid_gltf": [
+            4.1833,
+            0.8063,
+            -0.0418
+          ]
+        },
+        {
+          "name": "SlabChunk_004",
+          "pivot": [
+            -4.2606,
+            1.4452,
+            -0.0325
+          ],
+          "break_order": 4,
+          "volume_m3": 6.4871,
+          "explode_dir_gltf": [
+            -0.6644,
+            -0.535,
+            0.5218
+          ],
+          "centroid_gltf": [
+            -4.4857,
+            1.3402,
+            -0.098
+          ]
+        },
+        {
+          "name": "SlabChunk_005",
+          "pivot": [
+            -2.8707,
+            0.5642,
+            0.3801
+          ],
+          "break_order": 5,
+          "volume_m3": 3.1061,
+          "explode_dir_gltf": [
+            -0.446,
+            -0.7178,
+            0.5346
+          ],
+          "centroid_gltf": [
+            -2.8944,
+            0.3346,
+            0.6249
+          ]
+        },
+        {
+          "name": "SlabChunk_006",
+          "pivot": [
+            -3.315,
+            10.9521,
+            0.0506
+          ],
+          "break_order": 6,
+          "volume_m3": 5.1488,
+          "explode_dir_gltf": [
+            -0.3926,
+            0.8094,
+            0.4368
+          ],
+          "centroid_gltf": [
+            -3.0849,
+            11.2572,
+            0.5435
+          ]
+        },
+        {
+          "name": "SlabChunk_007",
+          "pivot": [
+            -4.0861,
+            9.7216,
+            0.2925
+          ],
+          "break_order": 7,
+          "volume_m3": 3.678,
+          "explode_dir_gltf": [
+            -0.6087,
+            0.6564,
+            0.4457
+          ],
+          "centroid_gltf": [
+            -4.4168,
+            9.7397,
+            0.5395
+          ]
+        },
+        {
+          "name": "SlabChunk_008",
+          "pivot": [
+            -2.5125,
+            1.0885,
+            -0.5317
+          ],
+          "break_order": 8,
+          "volume_m3": 4.083,
+          "explode_dir_gltf": [
+            -0.4212,
+            -0.7319,
+            0.5356
+          ],
+          "centroid_gltf": [
+            -2.4917,
+            0.7502,
+            -0.8115
+          ]
+        },
+        {
+          "name": "SlabChunk_009",
+          "pivot": [
+            -0.7789,
+            11.2704,
+            -0.0532
+          ],
+          "break_order": 9,
+          "volume_m3": 6.5428,
+          "explode_dir_gltf": [
+            -0.122,
+            0.8936,
+            0.4319
+          ],
+          "centroid_gltf": [
+            -0.9128,
+            11.5057,
+            -0.1867
+          ]
+        },
+        {
+          "name": "SlabChunk_010",
+          "pivot": [
+            2.106,
+            10.8364,
+            -0.0208
+          ],
+          "break_order": 10,
+          "volume_m3": 10.0529,
+          "explode_dir_gltf": [
+            0.3175,
+            0.8427,
+            0.4348
+          ],
+          "centroid_gltf": [
+            2.2526,
+            11.086,
+            -0.1012
+          ]
+        },
+        {
+          "name": "SlabChunk_011",
+          "pivot": [
+            3.9054,
+            9.9003,
+            -0.0224
+          ],
+          "break_order": 11,
+          "volume_m3": 2.494,
+          "explode_dir_gltf": [
+            0.58,
+            0.6829,
+            0.4441
+          ],
+          "centroid_gltf": [
+            4.0217,
+            9.8074,
+            0.2769
+          ]
+        },
+        {
+          "name": "SlabChunk_012",
+          "pivot": [
+            0.433,
+            0.9171,
+            -0.0538
+          ],
+          "break_order": 12,
+          "volume_m3": 5.3073,
+          "explode_dir_gltf": [
+            0.0825,
+            -0.8357,
+            0.543
+          ],
+          "centroid_gltf": [
+            0.4291,
+            0.4284,
+            0.2715
+          ]
+        },
+        {
+          "name": "SlabChunk_013",
+          "pivot": [
+            2.4291,
+            1.2229,
+            -0.056
+          ],
+          "break_order": 13,
+          "volume_m3": 9.8912,
+          "explode_dir_gltf": [
+            0.4443,
+            -0.7188,
+            0.5347
+          ],
+          "centroid_gltf": [
+            2.4507,
+            1.0588,
+            0.0455
+          ]
+        },
+        {
+          "name": "SlabChunk_014",
+          "pivot": [
+            4.3918,
+            3.3735,
+            -0.0164
+          ],
+          "break_order": 14,
+          "volume_m3": 7.5216,
+          "explode_dir_gltf": [
+            0.7983,
+            -0.3243,
+            0.5075
+          ],
+          "centroid_gltf": [
+            4.4249,
+            3.3028,
+            -0.0496
+          ]
+        },
+        {
+          "name": "SlabChunk_015",
+          "pivot": [
+            -4.3495,
+            8.0843,
+            -0.2995
+          ],
+          "break_order": 15,
+          "volume_m3": 2.1772,
+          "explode_dir_gltf": [
+            -0.7374,
+            0.4992,
+            0.455
+          ],
+          "centroid_gltf": [
+            -4.4968,
+            8.1567,
+            -0.6074
+          ]
+        },
+        {
+          "name": "SlabChunk_016",
+          "pivot": [
+            4.3565,
+            8.0704,
+            0.4104
+          ],
+          "break_order": 16,
+          "volume_m3": 3.2011,
+          "explode_dir_gltf": [
+            0.7443,
+            0.4882,
+            0.4557
+          ],
+          "centroid_gltf": [
+            4.4274,
+            8.0626,
+            0.5755
+          ]
+        },
+        {
+          "name": "SlabChunk_017",
+          "pivot": [
+            4.3514,
+            8.0481,
+            -0.5828
+          ],
+          "break_order": 17,
+          "volume_m3": 2.7546,
+          "explode_dir_gltf": [
+            0.7495,
+            0.4797,
+            0.4562
+          ],
+          "centroid_gltf": [
+            4.3797,
+            7.974,
+            -0.8091
+          ]
+        },
+        {
+          "name": "SlabChunk_018",
+          "pivot": [
+            -4.4026,
+            4.3608,
+            -0.0428
+          ],
+          "break_order": 18,
+          "volume_m3": 6.5618,
+          "explode_dir_gltf": [
+            -0.8522,
+            -0.164,
+            0.4968
+          ],
+          "centroid_gltf": [
+            -4.5583,
+            4.2921,
+            -0.0851
+          ]
+        },
+        {
+          "name": "SlabChunk_019",
+          "pivot": [
+            0.0349,
+            10.5731,
+            -0.012
+          ],
+          "break_order": 19,
+          "volume_m3": 8.7049,
+          "explode_dir_gltf": [
+            0.044,
+            0.901,
+            0.4315
+          ],
+          "centroid_gltf": [
+            0.2362,
+            10.597,
+            0.4036
+          ]
+        },
+        {
+          "name": "SlabChunk_020",
+          "pivot": [
+            -4.2029,
+            3.5593,
+            -0.0453
+          ],
+          "break_order": 20,
+          "volume_m3": 1.3484,
+          "explode_dir_gltf": [
+            -0.786,
+            -0.3505,
+            0.5092
+          ],
+          "centroid_gltf": [
+            -4.0224,
+            3.3976,
+            0.017
+          ]
+        },
+        {
+          "name": "SlabChunk_021",
+          "pivot": [
+            -1.1633,
+            1.3893,
+            0.283
+          ],
+          "break_order": 21,
+          "volume_m3": 4.4499,
+          "explode_dir_gltf": [
+            -0.2709,
+            -0.7967,
+            0.5402
+          ],
+          "centroid_gltf": [
+            -1.3072,
+            1.429,
+            0.7552
+          ]
+        },
+        {
+          "name": "SlabChunk_022",
+          "pivot": [
+            4.3222,
+            5.8916,
+            -0.0087
+          ],
+          "break_order": 22,
+          "volume_m3": 4.1752,
+          "explode_dir_gltf": [
+            0.8687,
+            0.1309,
+            0.4778
+          ],
+          "centroid_gltf": [
+            4.5612,
+            5.8874,
+            0.2093
+          ]
+        },
+        {
+          "name": "SlabChunk_023",
+          "pivot": [
+            -4.1601,
+            8.166,
+            0.4667
+          ],
+          "break_order": 23,
+          "volume_m3": 0.5875,
+          "explode_dir_gltf": [
+            -0.7054,
+            0.5458,
+            0.4522
+          ],
+          "centroid_gltf": [
+            -3.9486,
+            8.2315,
+            0.6333
+          ]
+        },
+        {
+          "name": "SlabChunk_024",
+          "pivot": [
+            -0.5201,
+            1.4351,
+            -0.2564
+          ],
+          "break_order": 24,
+          "volume_m3": 6.0438,
+          "explode_dir_gltf": [
+            -0.0955,
+            -0.8344,
+            0.5429
+          ],
+          "centroid_gltf": [
+            -0.4682,
+            1.3643,
+            -0.8724
+          ]
+        },
+        {
+          "name": "SlabChunk_025",
+          "pivot": [
+            -4.273,
+            6.8902,
+            0.1727
+          ],
+          "break_order": 25,
+          "volume_m3": 3.1548,
+          "explode_dir_gltf": [
+            -0.8345,
+            0.2914,
+            0.4677
+          ],
+          "centroid_gltf": [
+            -4.4843,
+            6.7587,
+            0.5504
+          ]
+        },
+        {
+          "name": "SlabChunk_026",
+          "pivot": [
+            4.0075,
+            4.2223,
+            -0.2817
+          ],
+          "break_order": 26,
+          "volume_m3": 0.1429,
+          "explode_dir_gltf": [
+            0.8431,
+            -0.2,
+            0.4992
+          ],
+          "centroid_gltf": [
+            3.8785,
+            4.3262,
+            -0.7186
+          ]
+        },
+        {
+          "name": "SlabChunk_027",
+          "pivot": [
+            -4.091,
+            6.7472,
+            -0.2767
+          ],
+          "break_order": 27,
+          "volume_m3": 2.2429,
+          "explode_dir_gltf": [
+            -0.8358,
+            0.2871,
+            0.468
+          ],
+          "centroid_gltf": [
+            -4.07,
+            6.6549,
+            -0.6417
+          ]
+        },
+        {
+          "name": "SlabChunk_028",
+          "pivot": [
+            3.741,
+            5.5234,
+            -0.0402
+          ],
+          "break_order": 28,
+          "volume_m3": 3.8046,
+          "explode_dir_gltf": [
+            0.8742,
+            0.051,
+            0.4829
+          ],
+          "centroid_gltf": [
+            3.8023,
+            5.5304,
+            -0.4449
+          ]
+        },
+        {
+          "name": "SlabChunk_029",
+          "pivot": [
+            -3.6818,
+            5.175,
+            0.2458
+          ],
+          "break_order": 29,
+          "volume_m3": 1.0201,
+          "explode_dir_gltf": [
+            -0.8737,
+            -0.0039,
+            0.4864
+          ],
+          "centroid_gltf": [
+            -3.8107,
+            5.293,
+            0.6007
+          ]
+        }
+      ]
+    },
+    "BreakGroup_02_Upper": {
+      "order": 2,
+      "count": 10,
+      "chunks": [
+        {
+          "name": "SlabChunk_030",
+          "pivot": [
+            -3.5943,
+            9.658,
+            -0.5137
+          ],
+          "break_order": 30,
+          "volume_m3": 2.1701,
+          "explode_dir_gltf": [
+            -0.541,
+            0.7153,
+            0.4422
+          ],
+          "centroid_gltf": [
+            -3.6493,
+            9.864,
+            -0.8638
+          ]
+        },
+        {
+          "name": "SlabChunk_031",
+          "pivot": [
+            2.4442,
+            9.537,
+            0.683
+          ],
+          "break_order": 31,
+          "volume_m3": 0.0702,
+          "explode_dir_gltf": [
+            0.4584,
+            0.7728,
+            0.4389
+          ],
+          "centroid_gltf": [
+            2.507,
+            9.4972,
+            0.8534
+          ]
+        },
+        {
+          "name": "SlabChunk_032",
+          "pivot": [
+            1.3228,
+            9.6452,
+            -0.0355
+          ],
+          "break_order": 32,
+          "volume_m3": 5.2237,
+          "explode_dir_gltf": [
+            0.3012,
+            0.8488,
+            0.4345
+          ],
+          "centroid_gltf": [
+            1.4944,
+            9.5768,
+            -0.5133
+          ]
+        },
+        {
+          "name": "SlabChunk_033",
+          "pivot": [
+            -1.38,
+            9.4407,
+            -0.0266
+          ],
+          "break_order": 33,
+          "volume_m3": 9.9768,
+          "explode_dir_gltf": [
+            -0.318,
+            0.8425,
+            0.4349
+          ],
+          "centroid_gltf": [
+            -1.575,
+            9.4039,
+            -0.2967
+          ]
+        },
+        {
+          "name": "SlabChunk_034",
+          "pivot": [
+            -2.2889,
+            8.4645,
+            0.0085
+          ],
+          "break_order": 34,
+          "volume_m3": 0.7351,
+          "explode_dir_gltf": [
+            -0.5761,
+            0.6863,
+            0.4439
+          ],
+          "centroid_gltf": [
+            -2.4616,
+            8.2709,
+            0.6169
+          ]
+        },
+        {
+          "name": "SlabChunk_035",
+          "pivot": [
+            1.9895,
+            8.3271,
+            -0.0247
+          ],
+          "break_order": 35,
+          "volume_m3": 2.4025,
+          "explode_dir_gltf": [
+            0.5539,
+            0.7051,
+            0.4428
+          ],
+          "centroid_gltf": [
+            2.2499,
+            8.2875,
+            0.1008
+          ]
+        },
+        {
+          "name": "SlabChunk_036",
+          "pivot": [
+            2.8987,
+            6.1106,
+            0.4451
+          ],
+          "break_order": 36,
+          "volume_m3": 0.7593,
+          "explode_dir_gltf": [
+            0.8651,
+            0.1582,
+            0.476
+          ],
+          "centroid_gltf": [
+            3.1009,
+            5.9865,
+            0.774
+          ]
+        },
+        {
+          "name": "SlabChunk_037",
+          "pivot": [
+            -2.4352,
+            7.7955,
+            -0.5932
+          ],
+          "break_order": 37,
+          "volume_m3": 0.0938,
+          "explode_dir_gltf": [
+            -0.6524,
+            0.611,
+            0.4483
+          ],
+          "centroid_gltf": [
+            -2.5136,
+            7.7458,
+            -0.9029
+          ]
+        },
+        {
+          "name": "SlabChunk_038",
+          "pivot": [
+            -2.9343,
+            6.4332,
+            -0.4438
+          ],
+          "break_order": 38,
+          "volume_m3": 2.431,
+          "explode_dir_gltf": [
+            -0.8417,
+            0.2671,
+            0.4692
+          ],
+          "centroid_gltf": [
+            -2.8369,
+            6.3482,
+            -0.7844
+          ]
+        },
+        {
+          "name": "SlabChunk_039",
+          "pivot": [
+            0.3682,
+            8.5166,
+            -0.0156
+          ],
+          "break_order": 39,
+          "volume_m3": 6.0874,
+          "explode_dir_gltf": [
+            0.0857,
+            0.8979,
+            0.4317
+          ],
+          "centroid_gltf": [
+            0.2721,
+            8.6209,
+            0.2794
+          ]
+        }
+      ]
+    },
+    "BreakGroup_03_Lower": {
+      "order": 3,
+      "count": 9,
+      "chunks": [
+        {
+          "name": "SlabChunk_040",
+          "pivot": [
+            -3.4129,
+            1.9829,
+            -0.0246
+          ],
+          "break_order": 40,
+          "volume_m3": 3.9808,
+          "explode_dir_gltf": [
+            -0.6086,
+            -0.5941,
+            0.5259
+          ],
+          "centroid_gltf": [
+            -3.2059,
+            2.034,
+            0.2592
+          ]
+        },
+        {
+          "name": "SlabChunk_041",
+          "pivot": [
+            2.8337,
+            2.6543,
+            -0.408
+          ],
+          "break_order": 41,
+          "volume_m3": 2.4709,
+          "explode_dir_gltf": [
+            0.597,
+            -0.6052,
+            0.5267
+          ],
+          "centroid_gltf": [
+            2.5888,
+            2.6008,
+            -0.8873
+          ]
+        },
+        {
+          "name": "SlabChunk_042",
+          "pivot": [
+            1.425,
+            2.6405,
+            0.046
+          ],
+          "break_order": 42,
+          "volume_m3": 4.9379,
+          "explode_dir_gltf": [
+            0.3796,
+            -0.7533,
+            0.5371
+          ],
+          "centroid_gltf": [
+            1.3656,
+            2.5798,
+            0.709
+          ]
+        },
+        {
+          "name": "SlabChunk_043",
+          "pivot": [
+            -2.1778,
+            3.5929,
+            -0.05
+          ],
+          "break_order": 43,
+          "volume_m3": 2.0906,
+          "explode_dir_gltf": [
+            -0.6663,
+            -0.5328,
+            0.5217
+          ],
+          "centroid_gltf": [
+            -2.3003,
+            3.5822,
+            -0.2038
+          ]
+        },
+        {
+          "name": "SlabChunk_044",
+          "pivot": [
+            -1.2785,
+            2.9465,
+            -0.0377
+          ],
+          "break_order": 44,
+          "volume_m3": 5.4462,
+          "explode_dir_gltf": [
+            -0.3953,
+            -0.7455,
+            0.5366
+          ],
+          "centroid_gltf": [
+            -1.3022,
+            3.0106,
+            -0.0411
+          ]
+        },
+        {
+          "name": "SlabChunk_045",
+          "pivot": [
+            0.3893,
+            2.7109,
+            -0.042
+          ],
+          "break_order": 45,
+          "volume_m3": 5.6542,
+          "explode_dir_gltf": [
+            0.134,
+            -0.8293,
+            0.5425
+          ],
+          "centroid_gltf": [
+            0.3931,
+            2.8084,
+            -0.1501
+          ]
+        },
+        {
+          "name": "SlabChunk_046",
+          "pivot": [
+            2.5118,
+            4.0337,
+            0.4118
+          ],
+          "break_order": 46,
+          "volume_m3": 2.2255,
+          "explode_dir_gltf": [
+            0.7349,
+            -0.4409,
+            0.5154
+          ],
+          "centroid_gltf": [
+            2.219,
+            4.1057,
+            0.8388
+          ]
+        },
+        {
+          "name": "SlabChunk_047",
+          "pivot": [
+            2.0822,
+            4.4038,
+            -0.4792
+          ],
+          "break_order": 47,
+          "volume_m3": 1.0053,
+          "explode_dir_gltf": [
+            0.7788,
+            -0.3648,
+            0.5102
+          ],
+          "centroid_gltf": [
+            2.2614,
+            4.4021,
+            -0.8621
+          ]
+        },
+        {
+          "name": "SlabChunk_048",
+          "pivot": [
+            -2.3563,
+            4.4771,
+            0.3175
+          ],
+          "break_order": 48,
+          "volume_m3": 0.2998,
+          "explode_dir_gltf": [
+            -0.8005,
+            -0.3194,
+            0.5072
+          ],
+          "centroid_gltf": [
+            -2.3866,
+            4.5357,
+            0.6315
+          ]
+        }
+      ]
+    },
+    "BreakGroup_04_CentralGaps": {
+      "order": 4,
+      "count": 15,
+      "chunks": [
+        {
+          "name": "SlabChunk_049",
+          "pivot": [
+            -2.4375,
+            6.5856,
+            0.5498
+          ],
+          "break_order": 49,
+          "volume_m3": 1.7027,
+          "explode_dir_gltf": [
+            -0.8228,
+            0.3258,
+            0.4656
+          ],
+          "centroid_gltf": [
+            -2.4097,
+            6.4594,
+            0.7292
+          ]
+        },
+        {
+          "name": "SlabChunk_050",
+          "pivot": [
+            1.8701,
+            7.3009,
+            0.4918
+          ],
+          "break_order": 50,
+          "volume_m3": 0.761,
+          "explode_dir_gltf": [
+            0.6545,
+            0.6087,
+            0.4485
+          ],
+          "centroid_gltf": [
+            1.9304,
+            7.3397,
+            0.7813
+          ]
+        },
+        {
+          "name": "SlabChunk_051",
+          "pivot": [
+            -1.4871,
+            7.5657,
+            -0.0148
+          ],
+          "break_order": 51,
+          "volume_m3": 4.8882,
+          "explode_dir_gltf": [
+            -0.5047,
+            0.7424,
+            0.4406
+          ],
+          "centroid_gltf": [
+            -1.5332,
+            7.7388,
+            0.1733
+          ]
+        },
+        {
+          "name": "SlabChunk_052",
+          "pivot": [
+            1.0774,
+            7.9635,
+            -0.3058
+          ],
+          "break_order": 52,
+          "volume_m3": 3.8571,
+          "explode_dir_gltf": [
+            0.3751,
+            0.8179,
+            0.4363
+          ],
+          "centroid_gltf": [
+            1.0798,
+            7.9491,
+            -0.8953
+          ]
+        },
+        {
+          "name": "SlabChunk_053",
+          "pivot": [
+            1.75,
+            6.7494,
+            -0.4826
+          ],
+          "break_order": 53,
+          "volume_m3": 0.824,
+          "explode_dir_gltf": [
+            0.7109,
+            0.5383,
+            0.4527
+          ],
+          "centroid_gltf": [
+            1.8606,
+            6.9864,
+            -0.8905
+          ]
+        },
+        {
+          "name": "SlabChunk_054",
+          "pivot": [
+            -1.6871,
+            4.5819,
+            0.3882
+          ],
+          "break_order": 54,
+          "volume_m3": 0.9371,
+          "explode_dir_gltf": [
+            -0.7534,
+            -0.411,
+            0.5133
+          ],
+          "centroid_gltf": [
+            -1.7849,
+            4.5996,
+            0.5887
+          ]
+        },
+        {
+          "name": "SlabChunk_055",
+          "pivot": [
+            2.0868,
+            5.3081,
+            -0.0398
+          ],
+          "break_order": 55,
+          "volume_m3": 2.122,
+          "explode_dir_gltf": [
+            0.8671,
+            -0.0819,
+            0.4914
+          ],
+          "centroid_gltf": [
+            2.0282,
+            5.3719,
+            -0.1971
+          ]
+        },
+        {
+          "name": "SlabChunk_056",
+          "pivot": [
+            -0.4802,
+            4.1687,
+            -0.0379
+          ],
+          "break_order": 56,
+          "volume_m3": 4.5652,
+          "explode_dir_gltf": [
+            -0.1967,
+            -0.8173,
+            0.5417
+          ],
+          "centroid_gltf": [
+            -0.4112,
+            4.007,
+            -0.2028
+          ]
+        },
+        {
+          "name": "SlabChunk_057",
+          "pivot": [
+            -1.6303,
+            5.0592,
+            -0.6916
+          ],
+          "break_order": 57,
+          "volume_m3": 1.4173,
+          "explode_dir_gltf": [
+            -0.7761,
+            -0.3701,
+            0.5106
+          ],
+          "centroid_gltf": [
+            -1.6137,
+            4.8437,
+            -0.9172
+          ]
+        },
+        {
+          "name": "SlabChunk_058",
+          "pivot": [
+            -1.2209,
+            4.5084,
+            0.3683
+          ],
+          "break_order": 58,
+          "volume_m3": 1.4571,
+          "explode_dir_gltf": [
+            -0.6059,
+            -0.5967,
+            0.5261
+          ],
+          "centroid_gltf": [
+            -1.1456,
+            4.5194,
+            0.7447
+          ]
+        },
+        {
+          "name": "SlabChunk_059",
+          "pivot": [
+            1.2657,
+            4.6072,
+            -0.033
+          ],
+          "break_order": 59,
+          "volume_m3": 3.7613,
+          "explode_dir_gltf": [
+            0.6804,
+            -0.5159,
+            0.5205
+          ],
+          "centroid_gltf": [
+            1.2214,
+            4.6755,
+            -0.1139
+          ]
+        },
+        {
+          "name": "SlabChunk_060",
+          "pivot": [
+            -0.9741,
+            7.0891,
+            -0.3683
+          ],
+          "break_order": 60,
+          "volume_m3": 2.7236,
+          "explode_dir_gltf": [
+            -0.5221,
+            0.7298,
+            0.4414
+          ],
+          "centroid_gltf": [
+            -1.0229,
+            7.0447,
+            -0.8575
+          ]
+        },
+        {
+          "name": "SlabChunk_061",
+          "pivot": [
+            -0.159,
+            7.0874,
+            0.1377
+          ],
+          "break_order": 61,
+          "volume_m3": 2.7903,
+          "explode_dir_gltf": [
+            -0.1004,
+            0.8964,
+            0.4318
+          ],
+          "centroid_gltf": [
+            -0.1906,
+            7.1404,
+            0.5696
+          ]
+        },
+        {
+          "name": "SlabChunk_062",
+          "pivot": [
+            0.9181,
+            6.7248,
+            0.0401
+          ],
+          "break_order": 62,
+          "volume_m3": 1.2806,
+          "explode_dir_gltf": [
+            0.5607,
+            0.6995,
+            0.4431
+          ],
+          "centroid_gltf": [
+            0.8494,
+            6.7902,
+            0.2329
+          ]
+        },
+        {
+          "name": "SlabChunk_063",
+          "pivot": [
+            0.1676,
+            4.6587,
+            0.3897
+          ],
+          "break_order": 63,
+          "volume_m3": 1.5857,
+          "explode_dir_gltf": [
+            0.1021,
+            -0.8336,
+            0.5428
+          ],
+          "centroid_gltf": [
+            0.092,
+            4.7249,
+            0.7615
+          ]
+        }
+      ]
+    },
+    "BreakGroup_05_FinalClearance": {
+      "order": 5,
+      "count": 3,
+      "chunks": [
+        {
+          "name": "SlabChunk_064",
+          "pivot": [
+            0.4291,
+            5.3471,
+            -0.3152
+          ],
+          "break_order": 64,
+          "volume_m3": 1.1106,
+          "explode_dir_gltf": [
+            0.6413,
+            -0.5608,
+            0.5236
+          ],
+          "centroid_gltf": [
+            0.4821,
+            5.3237,
+            -0.5767
+          ]
+        },
+        {
+          "name": "SlabChunk_065",
+          "pivot": [
+            -0.7193,
+            5.8291,
+            0.2124
+          ],
+          "break_order": 65,
+          "volume_m3": 0.5891,
+          "explode_dir_gltf": [
+            -0.8592,
+            0.1931,
+            0.4738
+          ],
+          "centroid_gltf": [
+            -0.7616,
+            5.9385,
+            0.0919
+          ]
+        },
+        {
+          "name": "SlabChunk_066",
+          "pivot": [
+            -0.0459,
+            5.9064,
+            -0.5487
+          ],
+          "break_order": 66,
+          "volume_m3": 2.2368,
+          "explode_dir_gltf": [
+            -0.8594,
+            -0.1296,
+            0.4946
+          ],
+          "centroid_gltf": [
+            -0.0623,
+            5.8736,
+            -0.9317
+          ]
+        }
+      ]
+    }
+  },
+  "chunkCount": 66,
+  "chunkExtras": "each SlabChunk node carries extras: break_group, break_order (1 = first to go), volume_m3, explode_dir_gltf (unit vector, outward + toward camera), centroid_gltf. Pivot = bounding-box centre of the chunk.",
+  "energyCracks": {
+    "stages": {
+      "LogoCore": {
+        "count": 4,
+        "material": "EnergyCrack_LogoCore",
+        "objects": [
+          {
+            "name": "Cracks_LogoCore__LogoCore_Path1_TopLeft",
+            "host": "LogoCore_Path1_TopLeft"
+          },
+          {
+            "name": "Cracks_LogoCore__LogoCore_Path2_BottomRight",
+            "host": "LogoCore_Path2_BottomRight"
+          },
+          {
+            "name": "Cracks_LogoCore__LogoCore_Path3_LowerLeft",
+            "host": "LogoCore_Path3_LowerLeft"
+          },
+          {
+            "name": "Cracks_LogoCore__LogoCore_Path4_UpperRight",
+            "host": "LogoCore_Path4_UpperRight"
+          }
+        ]
+      },
+      "Outer": {
+        "count": 17,
+        "material": "EnergyCrack_Outer",
+        "objects": [
+          {
+            "name": "Cracks_Outer__SlabChunk_002",
+            "host": "SlabChunk_002"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_003",
+            "host": "SlabChunk_003"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_006",
+            "host": "SlabChunk_006"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_009",
+            "host": "SlabChunk_009"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_010",
+            "host": "SlabChunk_010"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_011",
+            "host": "SlabChunk_011"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_012",
+            "host": "SlabChunk_012"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_013",
+            "host": "SlabChunk_013"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_014",
+            "host": "SlabChunk_014"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_016",
+            "host": "SlabChunk_016"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_018",
+            "host": "SlabChunk_018"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_019",
+            "host": "SlabChunk_019"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_020",
+            "host": "SlabChunk_020"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_022",
+            "host": "SlabChunk_022"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_025",
+            "host": "SlabChunk_025"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_033",
+            "host": "SlabChunk_033"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_040",
+            "host": "SlabChunk_040"
+          }
+        ]
+      },
+      "Middle": {
+        "count": 19,
+        "material": "EnergyCrack_Middle",
+        "objects": [
+          {
+            "name": "Cracks_Middle__SlabChunk_010",
+            "host": "SlabChunk_010"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_016",
+            "host": "SlabChunk_016"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_018",
+            "host": "SlabChunk_018"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_019",
+            "host": "SlabChunk_019"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_020",
+            "host": "SlabChunk_020"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_022",
+            "host": "SlabChunk_022"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_025",
+            "host": "SlabChunk_025"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_029",
+            "host": "SlabChunk_029"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_032",
+            "host": "SlabChunk_032"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_033",
+            "host": "SlabChunk_033"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_034",
+            "host": "SlabChunk_034"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_035",
+            "host": "SlabChunk_035"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_036",
+            "host": "SlabChunk_036"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_039",
+            "host": "SlabChunk_039"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_042",
+            "host": "SlabChunk_042"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_043",
+            "host": "SlabChunk_043"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_046",
+            "host": "SlabChunk_046"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_049",
+            "host": "SlabChunk_049"
+          },
+          {
+            "name": "Cracks_Middle__SlabChunk_051",
+            "host": "SlabChunk_051"
+          }
+        ]
+      },
+      "Inner": {
+        "count": 16,
+        "material": "EnergyCrack_Inner",
+        "objects": [
+          {
+            "name": "Cracks_Inner__SlabChunk_035",
+            "host": "SlabChunk_035"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_036",
+            "host": "SlabChunk_036"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_039",
+            "host": "SlabChunk_039"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_042",
+            "host": "SlabChunk_042"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_043",
+            "host": "SlabChunk_043"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_044",
+            "host": "SlabChunk_044"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_046",
+            "host": "SlabChunk_046"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_048",
+            "host": "SlabChunk_048"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_049",
+            "host": "SlabChunk_049"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_050",
+            "host": "SlabChunk_050"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_051",
+            "host": "SlabChunk_051"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_058",
+            "host": "SlabChunk_058"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_059",
+            "host": "SlabChunk_059"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_061",
+            "host": "SlabChunk_061"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_062",
+            "host": "SlabChunk_062"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_063",
+            "host": "SlabChunk_063"
+          }
+        ]
+      },
+      "Core": {
+        "count": 5,
+        "material": "EnergyCrack_Core",
+        "objects": [
+          {
+            "name": "Cracks_Core__SlabChunk_058",
+            "host": "SlabChunk_058"
+          },
+          {
+            "name": "Cracks_Core__SlabChunk_059",
+            "host": "SlabChunk_059"
+          },
+          {
+            "name": "Cracks_Core__SlabChunk_061",
+            "host": "SlabChunk_061"
+          },
+          {
+            "name": "Cracks_Core__SlabChunk_062",
+            "host": "SlabChunk_062"
+          },
+          {
+            "name": "Cracks_Core__SlabChunk_063",
+            "host": "SlabChunk_063"
+          }
+        ]
+      }
+    },
+    "revealOrder": [
+      "Core",
+      "Inner",
+      "Middle",
+      "Outer",
+      "LogoCore"
+    ],
+    "uv": "uv.x = distance along the crack network from the core, normalised 0..1 (max path 7.10 m); uv.y = 0..1 across the strip. Grow cracks with a shader/alphaTest that keeps fragments where uv.x < progress.",
+    "materials": "one material per stage (EnergyCrack_Core \u2026 EnergyCrack_LogoCore), emissiveFactor orange. Set emissiveIntensity = 0 for the dormant slab and animate it per stage; add Bloom.",
+    "attachment": "cracks on excess rock are children of their chunk, so they fly away with it; Cracks_LogoCore_* stay with the logo and are trimmed 1 SVG unit inside each path outline."
+  },
+  "materials": {
+    "Basalt_LogoCore": "baked 2048 basecolor/roughness/normal (own atlas)",
+    "Basalt_SlabExcess": "baked 2048 basecolor/roughness/normal (own atlas)",
+    "sameSource": "both baked from one world-space procedural basalt, so the pattern is continuous across the core/excess seams",
+    "doubleSided": false
+  },
+  "states": {
+    "A_initial": "all chunks at rest, crack emissive 0, sphere dim",
+    "B_activated": "sphere + beam on, crack stages Core\u2192Middle lit",
+    "C_revealing": "BreakGroup_01..03 detached, 04/05 still in place",
+    "D_forged": "all SlabExcessChunks hidden/removed; LogoCore + Cracks_LogoCore + sphere remain"
+  },
+  "validation": {
+    "coreSilhouetteVsSvgArea": "22.724 m\u00b2 reimported vs 22.872 m\u00b2 exact (-0.65%, 2 cm ray grid)",
+    "assembledFrontCoverage": "10848/10848 rays hit stone; only the 1.0 m centre pocket is recessed",
+    "volumeCheck": "chunks 228.957 m\u00b3 vs excess 228.961 m\u00b3 (no gaps or overlaps between fragments)",
+    "coreChunkOverlap": "none by construction (chunks = slab minus exact path prisms)",
+    "reimport": "145 nodes, 66 chunks, 61 crack meshes, all anchors present"
+  }
+}

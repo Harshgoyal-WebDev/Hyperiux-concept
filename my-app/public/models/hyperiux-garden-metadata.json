@@ -1,0 +1,1253 @@
+{
+  "asset": "public/models/hyperiux-garden-environment.glb",
+  "assetLibrary": "public/models/hyperiux-garden-assets.glb",
+  "source": {
+    "blend": "blender/garden/hyperiux-garden-environment.blend",
+    "generatorScripts": [
+      "blender/garden/scripts/garden_lib.py",
+      "blender/garden/scripts/garden_assemble.py"
+    ],
+    "textures": "blender/garden/textures/",
+    "previews": [
+      "blender/garden/garden-wide-view.png",
+      "blender/garden/garden-pond-clearing.png",
+      "blender/garden/garden-tree-detail.png",
+      "blender/garden/garden-grass-bush-detail.png",
+      "blender/garden/garden-camera-entrance.png"
+    ]
+  },
+  "units": "metres",
+  "coordinateSystem": {
+    "up": "+Y",
+    "front": "+Z (the camera arrives at +Z and looks toward -Z, matching hyperiux-forging-metadata.json)",
+    "ground": "y ~ 0 around the clearing; terrain is a heightfield",
+    "blenderToGltf": "gltf(x, y, z) = blender(x, z, -y)",
+    "transforms": "Placed tree/bush/rock/grass/flower/plant root nodes carry rotation (about +Y) and uniform scale; all other nodes are translation-only relative to their parent."
+  },
+  "terrain": {
+    "node": "HyperiuxGarden/GardenTerrain/Terrain",
+    "extentX": [
+      -80.0,
+      80.0
+    ],
+    "extentZ": [
+      -95.0,
+      45.0
+    ],
+    "sizeXZ": [
+      160.0,
+      140.0
+    ],
+    "heightRangeY": [
+      -1.565,
+      9.435
+    ],
+    "vertices": 17732,
+    "triangles": 34932,
+    "gridSpacing": "0.5 m around the pond (|x|,|z| < ~10-15 m), 0.75-1 m mid-ground, 2-2.5 m at the edges",
+    "note": "Background hills rise to ~10 m at z = -95. The far edge is a hard cut; hide it with fog/backdrop in code."
+  },
+  "pond": {
+    "waterMeshIncluded": false,
+    "center": [
+      0.0,
+      -0.25,
+      0.0
+    ],
+    "waterLevelY": -0.25,
+    "footprint": {
+      "shape": "irregular rounded oval",
+      "semiAxisX": 9.5,
+      "semiAxisZ": 6.5,
+      "approxSizeXZ": [
+        20.22,
+        12.16
+      ],
+      "radiusFormula": "r(theta) = rs(theta) / sqrt((cos(theta)/9.5)^2 + (sin(theta)/6.5)^2), rs = 1 + 0.10 sin(2t+0.7) + 0.06 sin(3t+2.1) + 0.035 sin(5t+0.3) + 0.02 sin(7t+1.3); theta measured in Blender XY, i.e. gltf angle uses (x, -z)",
+      "shorelineAtWaterLevel_xyz": [
+        [
+          10.8854,
+          -0.25,
+          -0.0
+        ],
+        [
+          10.9268,
+          -0.25,
+          -1.0762
+        ],
+        [
+          10.5598,
+          -0.25,
+          -2.1005
+        ],
+        [
+          9.8608,
+          -0.25,
+          -2.9913
+        ],
+        [
+          8.961,
+          -0.25,
+          -3.7118
+        ],
+        [
+          7.992,
+          -0.25,
+          -4.2718
+        ],
+        [
+          7.0463,
+          -0.25,
+          -4.7082
+        ],
+        [
+          6.165,
+          -0.25,
+          -5.0595
+        ],
+        [
+          5.3502,
+          -0.25,
+          -5.3502
+        ],
+        [
+          4.5869,
+          -0.25,
+          -5.5891
+        ],
+        [
+          3.8612,
+          -0.25,
+          -5.7786
+        ],
+        [
+          3.1672,
+          -0.25,
+          -5.9254
+        ],
+        [
+          2.5038,
+          -0.25,
+          -6.0448
+        ],
+        [
+          1.8673,
+          -0.25,
+          -6.1556
+        ],
+        [
+          1.247,
+          -0.25,
+          -6.2693
+        ],
+        [
+          0.6283,
+          -0.25,
+          -6.3795
+        ],
+        [
+          0.0,
+          -0.25,
+          -6.4607
+        ],
+        [
+          -0.6379,
+          -0.25,
+          -6.4763
+        ],
+        [
+          -1.2722,
+          -0.25,
+          -6.3956
+        ],
+        [
+          -1.8837,
+          -0.25,
+          -6.2097
+        ],
+        [
+          -2.4603,
+          -0.25,
+          -5.9396
+        ],
+        [
+          -3.0092,
+          -0.25,
+          -5.6299
+        ],
+        [
+          -3.5617,
+          -0.25,
+          -5.3305
+        ],
+        [
+          -4.1635,
+          -0.25,
+          -5.0732
+        ],
+        [
+          -4.8548,
+          -0.25,
+          -4.8548
+        ],
+        [
+          -5.6468,
+          -0.25,
+          -4.6342
+        ],
+        [
+          -6.5065,
+          -0.25,
+          -4.3475
+        ],
+        [
+          -7.3596,
+          -0.25,
+          -3.9338
+        ],
+        [
+          -8.1135,
+          -0.25,
+          -3.3607
+        ],
+        [
+          -8.6922,
+          -0.25,
+          -2.6368
+        ],
+        [
+          -9.0667,
+          -0.25,
+          -1.8035
+        ],
+        [
+          -9.2625,
+          -0.25,
+          -0.9123
+        ],
+        [
+          -9.3386,
+          -0.25,
+          -0.0
+        ],
+        [
+          -9.3482,
+          -0.25,
+          0.9207
+        ],
+        [
+          -9.3047,
+          -0.25,
+          1.8508
+        ],
+        [
+          -9.1771,
+          -0.25,
+          2.7838
+        ],
+        [
+          -8.912,
+          -0.25,
+          3.6915
+        ],
+        [
+          -8.4688,
+          -0.25,
+          4.5267
+        ],
+        [
+          -7.8427,
+          -0.25,
+          5.2403
+        ],
+        [
+          -7.0674,
+          -0.25,
+          5.8
+        ],
+        [
+          -6.1994,
+          -0.25,
+          6.1994
+        ],
+        [
+          -5.2967,
+          -0.25,
+          6.454
+        ],
+        [
+          -4.4022,
+          -0.25,
+          6.5884
+        ],
+        [
+          -3.5401,
+          -0.25,
+          6.6231
+        ],
+        [
+          -2.7211,
+          -0.25,
+          6.5693
+        ],
+        [
+          -1.9512,
+          -0.25,
+          6.4321
+        ],
+        [
+          -1.2377,
+          -0.25,
+          6.2223
+        ],
+        [
+          -0.5875,
+          -0.25,
+          5.9651
+        ],
+        [
+          -0.0,
+          -0.25,
+          5.7018
+        ],
+        [
+          0.5398,
+          -0.25,
+          5.4812
+        ],
+        [
+          1.0626,
+          -0.25,
+          5.342
+        ],
+        [
+          1.6066,
+          -0.25,
+          5.2964
+        ],
+        [
+          2.2043,
+          -0.25,
+          5.3216
+        ],
+        [
+          2.8681,
+          -0.25,
+          5.3658
+        ],
+        [
+          3.5852,
+          -0.25,
+          5.3656
+        ],
+        [
+          4.3244,
+          -0.25,
+          5.2693
+        ],
+        [
+          5.0536,
+          -0.25,
+          5.0536
+        ],
+        [
+          5.7602,
+          -0.25,
+          4.7273
+        ],
+        [
+          6.4614,
+          -0.25,
+          4.3174
+        ],
+        [
+          7.1968,
+          -0.25,
+          3.8468
+        ],
+        [
+          8.0014,
+          -0.25,
+          3.3143
+        ],
+        [
+          8.8695,
+          -0.25,
+          2.6905
+        ],
+        [
+          9.7299,
+          -0.25,
+          1.9354
+        ],
+        [
+          10.4513,
+          -0.25,
+          1.0294
+        ]
+      ]
+    },
+    "bowlDepthBelowWater": 1.315,
+    "deepestTerrainY": -1.565,
+    "shoreProfile": "Terrain crosses y = -0.25 exactly on the shoreline with a gentle shallow shelf (no vertical edges). Inside it drops to ~1.2-1.3 m below water.",
+    "recommendedWaterSurface": "A flat plane/ellipse at y = -0.25 centred at (0, -0.25, 0), about 1.15-1.25x the footprint (e.g. 23 x 16 m). The terrain occludes the excess, so the waterline follows the irregular shore with no gaps."
+  },
+  "anchors": {
+    "GardenEntrance": {
+      "node": "GardenEntrance",
+      "path": "HyperiuxGarden/SceneAnchors/GardenEntrance",
+      "position": [
+        0.0,
+        2.6849,
+        24.0
+      ],
+      "quaternion_xyzw": [
+        0.7186,
+        0.0,
+        0.0,
+        0.6955
+      ],
+      "forward_-Z": [
+        0.0,
+        0.9995,
+        0.0327
+      ],
+      "note": "Camera arrival point after flying through the logo's cube opening; -Z forward looks across the pond toward PondLogoAnchor. Corridor |x| < ~3-4 m, z from +9 to +36 is clear of trunks, bushes, tall grass and large rocks."
+    },
+    "PondCenter": {
+      "node": "PondCenter",
+      "path": "HyperiuxGarden/SceneAnchors/PondCenter",
+      "position": [
+        0.0,
+        -0.25,
+        0.0
+      ],
+      "quaternion_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "forward_-Z": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "note": "Centre of the future pond footprint at water level."
+    },
+    "PondWaterLevel": {
+      "node": "PondWaterLevel",
+      "path": "HyperiuxGarden/SceneAnchors/PondWaterLevel",
+      "position": [
+        0.0,
+        -0.25,
+        0.0
+      ],
+      "quaternion_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "forward_-Z": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "note": "Intended water surface height (y = -0.25)."
+    },
+    "PondLogoAnchor": {
+      "node": "PondLogoAnchor",
+      "path": "HyperiuxGarden/SceneAnchors/PondLogoAnchor",
+      "position": [
+        0.0,
+        6.2,
+        -2.0
+      ],
+      "quaternion_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "forward_-Z": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "note": "Centre of the particle-built logo. Sized for the forging logo extent (~7.6 m wide x 8.5 m tall): bottom edge ~2 m above water, top ~10.5 m. Sky behind it is open; only distant low trees sit near the horizon line."
+    }
+  },
+  "hierarchy": "HyperiuxGarden > { GardenTerrain > Terrain, PondClearing, PlacedTrees > PTnn_Tree_X > PTnn_Tree_X_Trunk > PTnn_Tree_X_Branch_NN > PTnn_Tree_X_LeafCluster_NN, PlacedBushes > PBnn_Bush_X > PBnn_Bush_X_Stems > PBnn_Bush_X_LeafCluster_NN, GrassPatches > GrassPatch_NNN | GrassPatch_Foreground | GrassPatch_Shoreline > GPnnnn_<GrassVariant>, PlacedRocks > PRnnn_<RockVariant>, FlowerClusters > PFnn_<FlowerVariant>, PlacedPlants > PPnn_<PlantVariant>, SceneAnchors > {GardenEntrance, PondCenter, PondWaterLevel, PondLogoAnchor} }",
+  "instanceNaming": "Placed node name = <prefix>_<variant node name>. Strip the prefix (PTnn_, PBnn_, GPnnnn_, PRnnn_, PFnn_, PPnn_) to get the variant. All instances of a variant share one glTF mesh (one BufferGeometry in three.js).",
+  "counts": {
+    "placedTrees": 72,
+    "placedBushes": 26,
+    "grassClumps": 2580,
+    "grassPatches": 332,
+    "rocks": 76,
+    "flowerClusters": 39,
+    "plants": 45,
+    "leafClusterNodes": 1211,
+    "gltfNodes": 4884,
+    "uniqueMeshes": 208
+  },
+  "triangles": {
+    "byGroupRendered": {
+      "GardenTerrain": {
+        "meshNodes": 1,
+        "triangles": 34932
+      },
+      "PlacedTrees": {
+        "meshNodes": 1293,
+        "triangles": 261796
+      },
+      "PlacedBushes": {
+        "meshNodes": 406,
+        "triangles": 44736
+      },
+      "GrassPatches": {
+        "meshNodes": 2580,
+        "triangles": 791770
+      },
+      "PlacedRocks": {
+        "meshNodes": 76,
+        "triangles": 26570
+      },
+      "FlowerClusters": {
+        "meshNodes": 39,
+        "triangles": 30420
+      },
+      "PlacedPlants": {
+        "meshNodes": 45,
+        "triangles": 1756
+      }
+    },
+    "totalRendered": 1191980
+  },
+  "variants": {
+    "TreeVariants": {
+      "Tree_A": {
+        "triangles": 8668,
+        "meshes": [
+          "Tree_A_Trunk",
+          "Tree_A_Branch_01",
+          "Tree_A_LeafCluster_01",
+          "Tree_A_LeafCluster_02",
+          "Tree_A_LeafCluster_03",
+          "Tree_A_Branch_02",
+          "Tree_A_LeafCluster_04",
+          "Tree_A_LeafCluster_05",
+          "Tree_A_LeafCluster_06",
+          "Tree_A_Branch_03",
+          "Tree_A_LeafCluster_07",
+          "Tree_A_LeafCluster_08",
+          "Tree_A_LeafCluster_09",
+          "Tree_A_Branch_04",
+          "Tree_A_LeafCluster_10",
+          "Tree_A_LeafCluster_11",
+          "Tree_A_LeafCluster_12",
+          "Tree_A_LeafCluster_13",
+          "Tree_A_Branch_05",
+          "Tree_A_LeafCluster_14",
+          "Tree_A_LeafCluster_15",
+          "Tree_A_LeafCluster_16",
+          "Tree_A_Branch_06",
+          "Tree_A_LeafCluster_17",
+          "Tree_A_LeafCluster_18",
+          "Tree_A_LeafCluster_19",
+          "Tree_A_LeafCluster_20",
+          "Tree_A_LeafCluster_21"
+        ]
+      },
+      "Tree_B": {
+        "triangles": 12736,
+        "meshes": [
+          "Tree_B_Trunk",
+          "Tree_B_Branch_01",
+          "Tree_B_LeafCluster_01",
+          "Tree_B_LeafCluster_02",
+          "Tree_B_LeafCluster_03",
+          "Tree_B_LeafCluster_04",
+          "Tree_B_Branch_02",
+          "Tree_B_LeafCluster_05",
+          "Tree_B_LeafCluster_06",
+          "Tree_B_LeafCluster_07",
+          "Tree_B_LeafCluster_08",
+          "Tree_B_Branch_03",
+          "Tree_B_LeafCluster_09",
+          "Tree_B_LeafCluster_10",
+          "Tree_B_LeafCluster_11",
+          "Tree_B_Branch_04",
+          "Tree_B_LeafCluster_12",
+          "Tree_B_LeafCluster_13",
+          "Tree_B_LeafCluster_14",
+          "Tree_B_LeafCluster_15",
+          "Tree_B_Branch_05",
+          "Tree_B_LeafCluster_16",
+          "Tree_B_LeafCluster_17",
+          "Tree_B_LeafCluster_18",
+          "Tree_B_Branch_06",
+          "Tree_B_LeafCluster_19",
+          "Tree_B_LeafCluster_20",
+          "Tree_B_LeafCluster_21",
+          "Tree_B_Branch_07",
+          "Tree_B_LeafCluster_22",
+          "Tree_B_LeafCluster_23",
+          "Tree_B_LeafCluster_24",
+          "Tree_B_LeafCluster_25",
+          "Tree_B_LeafCluster_26"
+        ]
+      },
+      "Tree_C": {
+        "triangles": 5896,
+        "meshes": [
+          "Tree_C_Trunk",
+          "Tree_C_Branch_01",
+          "Tree_C_LeafCluster_01",
+          "Tree_C_LeafCluster_02",
+          "Tree_C_Branch_02",
+          "Tree_C_LeafCluster_03",
+          "Tree_C_LeafCluster_04",
+          "Tree_C_LeafCluster_05",
+          "Tree_C_Branch_03",
+          "Tree_C_LeafCluster_06",
+          "Tree_C_LeafCluster_07",
+          "Tree_C_LeafCluster_08",
+          "Tree_C_LeafCluster_09",
+          "Tree_C_Branch_04",
+          "Tree_C_LeafCluster_10",
+          "Tree_C_LeafCluster_11",
+          "Tree_C_Branch_05",
+          "Tree_C_LeafCluster_12",
+          "Tree_C_LeafCluster_13",
+          "Tree_C_Branch_06",
+          "Tree_C_LeafCluster_14",
+          "Tree_C_LeafCluster_15",
+          "Tree_C_LeafCluster_16",
+          "Tree_C_LeafCluster_17",
+          "Tree_C_Branch_07",
+          "Tree_C_LeafCluster_18",
+          "Tree_C_LeafCluster_19",
+          "Tree_C_Branch_08",
+          "Tree_C_LeafCluster_20",
+          "Tree_C_LeafCluster_21",
+          "Tree_C_LeafCluster_22"
+        ]
+      },
+      "Tree_D": {
+        "triangles": 1572,
+        "meshes": [
+          "Tree_D_Trunk",
+          "Tree_D_Branch_01",
+          "Tree_D_LeafCluster_01",
+          "Tree_D_LeafCluster_02",
+          "Tree_D_LeafCluster_03",
+          "Tree_D_Branch_02",
+          "Tree_D_LeafCluster_04",
+          "Tree_D_LeafCluster_05",
+          "Tree_D_Branch_03",
+          "Tree_D_LeafCluster_06",
+          "Tree_D_LeafCluster_07",
+          "Tree_D_LeafCluster_08",
+          "Tree_D_Branch_04",
+          "Tree_D_LeafCluster_09",
+          "Tree_D_LeafCluster_10",
+          "Tree_D_LeafCluster_11"
+        ]
+      },
+      "Tree_FarA": {
+        "triangles": 2600,
+        "meshes": [
+          "Tree_FarA_Trunk",
+          "Tree_FarA_Branch_01",
+          "Tree_FarA_LeafCluster_01",
+          "Tree_FarA_Branch_02",
+          "Tree_FarA_LeafCluster_02",
+          "Tree_FarA_Branch_03",
+          "Tree_FarA_LeafCluster_03",
+          "Tree_FarA_LeafCluster_04",
+          "Tree_FarA_Branch_04",
+          "Tree_FarA_LeafCluster_05",
+          "Tree_FarA_LeafCluster_06",
+          "Tree_FarA_Branch_05",
+          "Tree_FarA_LeafCluster_07",
+          "Tree_FarA_LeafCluster_08"
+        ]
+      },
+      "Tree_FarB": {
+        "triangles": 3564,
+        "meshes": [
+          "Tree_FarB_Trunk",
+          "Tree_FarB_Branch_01",
+          "Tree_FarB_LeafCluster_01",
+          "Tree_FarB_LeafCluster_02",
+          "Tree_FarB_Branch_02",
+          "Tree_FarB_LeafCluster_03",
+          "Tree_FarB_LeafCluster_04",
+          "Tree_FarB_Branch_03",
+          "Tree_FarB_LeafCluster_05",
+          "Tree_FarB_LeafCluster_06",
+          "Tree_FarB_Branch_04",
+          "Tree_FarB_LeafCluster_07",
+          "Tree_FarB_LeafCluster_08",
+          "Tree_FarB_Branch_05",
+          "Tree_FarB_LeafCluster_09",
+          "Tree_FarB_Branch_06",
+          "Tree_FarB_LeafCluster_10",
+          "Tree_FarB_LeafCluster_11",
+          "Tree_FarB_LeafCluster_12"
+        ]
+      }
+    },
+    "BushVariants": {
+      "Bush_A": {
+        "triangles": 2076,
+        "meshes": [
+          "Bush_A_Stems",
+          "Bush_A_LeafCluster_01",
+          "Bush_A_LeafCluster_02",
+          "Bush_A_LeafCluster_03",
+          "Bush_A_LeafCluster_04",
+          "Bush_A_LeafCluster_05",
+          "Bush_A_LeafCluster_06",
+          "Bush_A_LeafCluster_07",
+          "Bush_A_LeafCluster_08",
+          "Bush_A_LeafCluster_09",
+          "Bush_A_LeafCluster_10",
+          "Bush_A_LeafCluster_11",
+          "Bush_A_LeafCluster_12",
+          "Bush_A_LeafCluster_13",
+          "Bush_A_LeafCluster_14",
+          "Bush_A_LeafCluster_15"
+        ]
+      },
+      "Bush_B": {
+        "triangles": 1710,
+        "meshes": [
+          "Bush_B_Stems",
+          "Bush_B_LeafCluster_01",
+          "Bush_B_LeafCluster_02",
+          "Bush_B_LeafCluster_03",
+          "Bush_B_LeafCluster_04",
+          "Bush_B_LeafCluster_05",
+          "Bush_B_LeafCluster_06",
+          "Bush_B_LeafCluster_07",
+          "Bush_B_LeafCluster_08",
+          "Bush_B_LeafCluster_09",
+          "Bush_B_LeafCluster_10",
+          "Bush_B_LeafCluster_11",
+          "Bush_B_LeafCluster_12",
+          "Bush_B_LeafCluster_13",
+          "Bush_B_LeafCluster_14",
+          "Bush_B_LeafCluster_15",
+          "Bush_B_LeafCluster_16"
+        ]
+      },
+      "Bush_C": {
+        "triangles": 1518,
+        "meshes": [
+          "Bush_C_Stems",
+          "Bush_C_LeafCluster_01",
+          "Bush_C_LeafCluster_02",
+          "Bush_C_LeafCluster_03",
+          "Bush_C_LeafCluster_04",
+          "Bush_C_LeafCluster_05",
+          "Bush_C_LeafCluster_06",
+          "Bush_C_LeafCluster_07",
+          "Bush_C_LeafCluster_08",
+          "Bush_C_LeafCluster_09",
+          "Bush_C_LeafCluster_10",
+          "Bush_C_LeafCluster_11",
+          "Bush_C_LeafCluster_12",
+          "Bush_C_LeafCluster_13"
+        ]
+      }
+    },
+    "GrassVariants": {
+      "Grass_Clump_A": {
+        "triangles": 322,
+        "meshes": [
+          "Grass_Clump_A"
+        ]
+      },
+      "Grass_Clump_B": {
+        "triangles": 210,
+        "meshes": [
+          "Grass_Clump_B"
+        ]
+      },
+      "Grass_Clump_C": {
+        "triangles": 392,
+        "meshes": [
+          "Grass_Clump_C"
+        ]
+      },
+      "Grass_Clump_D": {
+        "triangles": 252,
+        "meshes": [
+          "Grass_Clump_D"
+        ]
+      },
+      "Grass_Shoreline_A": {
+        "triangles": 168,
+        "meshes": [
+          "Grass_Shoreline_A"
+        ]
+      }
+    },
+    "RockVariants": {
+      "Rock_Flat_A": {
+        "triangles": 500,
+        "meshes": [
+          "Rock_Flat_A"
+        ]
+      },
+      "Rock_PebbleCluster_A": {
+        "triangles": 540,
+        "meshes": [
+          "Rock_PebbleCluster_A"
+        ]
+      },
+      "Rock_Shore_A": {
+        "triangles": 700,
+        "meshes": [
+          "Rock_Shore_A"
+        ]
+      },
+      "Rock_Shore_B": {
+        "triangles": 650,
+        "meshes": [
+          "Rock_Shore_B"
+        ]
+      },
+      "Rock_Shore_C": {
+        "triangles": 800,
+        "meshes": [
+          "Rock_Shore_C"
+        ]
+      },
+      "Rock_Small_A": {
+        "triangles": 220,
+        "meshes": [
+          "Rock_Small_A"
+        ]
+      },
+      "Rock_Small_B": {
+        "triangles": 180,
+        "meshes": [
+          "Rock_Small_B"
+        ]
+      }
+    },
+    "FlowerVariants": {
+      "Flower_Daisy_A": {
+        "triangles": 876,
+        "meshes": [
+          "Flower_Daisy_A"
+        ]
+      },
+      "Flower_Pink_A": {
+        "triangles": 460,
+        "meshes": [
+          "Flower_Pink_A"
+        ]
+      },
+      "Flower_Violet_A": {
+        "triangles": 876,
+        "meshes": [
+          "Flower_Violet_A"
+        ]
+      }
+    },
+    "PlantVariants": {
+      "Plant_Broadleaf_A": {
+        "triangles": 36,
+        "meshes": [
+          "Plant_Broadleaf_A"
+        ]
+      },
+      "Plant_Leafy_A": {
+        "triangles": 32,
+        "meshes": [
+          "Plant_Leafy_A"
+        ]
+      },
+      "Plant_Shrublet_A": {
+        "triangles": 48,
+        "meshes": [
+          "Plant_Shrublet_A"
+        ]
+      }
+    }
+  },
+  "interactiveFoliage": {
+    "Tree_A": {
+      "trunk": "Tree_A_Trunk",
+      "branches": [
+        "Tree_A_Branch_01",
+        "Tree_A_Branch_02",
+        "Tree_A_Branch_03",
+        "Tree_A_Branch_04",
+        "Tree_A_Branch_05",
+        "Tree_A_Branch_06"
+      ],
+      "leafClusters": [
+        "Tree_A_LeafCluster_01",
+        "Tree_A_LeafCluster_02",
+        "Tree_A_LeafCluster_03",
+        "Tree_A_LeafCluster_04",
+        "Tree_A_LeafCluster_05",
+        "Tree_A_LeafCluster_06",
+        "Tree_A_LeafCluster_07",
+        "Tree_A_LeafCluster_08",
+        "Tree_A_LeafCluster_09",
+        "Tree_A_LeafCluster_10",
+        "Tree_A_LeafCluster_11",
+        "Tree_A_LeafCluster_12",
+        "Tree_A_LeafCluster_13",
+        "Tree_A_LeafCluster_14",
+        "Tree_A_LeafCluster_15",
+        "Tree_A_LeafCluster_16",
+        "Tree_A_LeafCluster_17",
+        "Tree_A_LeafCluster_18",
+        "Tree_A_LeafCluster_19",
+        "Tree_A_LeafCluster_20",
+        "Tree_A_LeafCluster_21"
+      ]
+    },
+    "Tree_B": {
+      "trunk": "Tree_B_Trunk",
+      "branches": [
+        "Tree_B_Branch_01",
+        "Tree_B_Branch_02",
+        "Tree_B_Branch_03",
+        "Tree_B_Branch_04",
+        "Tree_B_Branch_05",
+        "Tree_B_Branch_06",
+        "Tree_B_Branch_07"
+      ],
+      "leafClusters": [
+        "Tree_B_LeafCluster_01",
+        "Tree_B_LeafCluster_02",
+        "Tree_B_LeafCluster_03",
+        "Tree_B_LeafCluster_04",
+        "Tree_B_LeafCluster_05",
+        "Tree_B_LeafCluster_06",
+        "Tree_B_LeafCluster_07",
+        "Tree_B_LeafCluster_08",
+        "Tree_B_LeafCluster_09",
+        "Tree_B_LeafCluster_10",
+        "Tree_B_LeafCluster_11",
+        "Tree_B_LeafCluster_12",
+        "Tree_B_LeafCluster_13",
+        "Tree_B_LeafCluster_14",
+        "Tree_B_LeafCluster_15",
+        "Tree_B_LeafCluster_16",
+        "Tree_B_LeafCluster_17",
+        "Tree_B_LeafCluster_18",
+        "Tree_B_LeafCluster_19",
+        "Tree_B_LeafCluster_20",
+        "Tree_B_LeafCluster_21",
+        "Tree_B_LeafCluster_22",
+        "Tree_B_LeafCluster_23",
+        "Tree_B_LeafCluster_24",
+        "Tree_B_LeafCluster_25",
+        "Tree_B_LeafCluster_26"
+      ]
+    },
+    "Tree_C": {
+      "trunk": "Tree_C_Trunk",
+      "branches": [
+        "Tree_C_Branch_01",
+        "Tree_C_Branch_02",
+        "Tree_C_Branch_03",
+        "Tree_C_Branch_04",
+        "Tree_C_Branch_05",
+        "Tree_C_Branch_06",
+        "Tree_C_Branch_07",
+        "Tree_C_Branch_08"
+      ],
+      "leafClusters": [
+        "Tree_C_LeafCluster_01",
+        "Tree_C_LeafCluster_02",
+        "Tree_C_LeafCluster_03",
+        "Tree_C_LeafCluster_04",
+        "Tree_C_LeafCluster_05",
+        "Tree_C_LeafCluster_06",
+        "Tree_C_LeafCluster_07",
+        "Tree_C_LeafCluster_08",
+        "Tree_C_LeafCluster_09",
+        "Tree_C_LeafCluster_10",
+        "Tree_C_LeafCluster_11",
+        "Tree_C_LeafCluster_12",
+        "Tree_C_LeafCluster_13",
+        "Tree_C_LeafCluster_14",
+        "Tree_C_LeafCluster_15",
+        "Tree_C_LeafCluster_16",
+        "Tree_C_LeafCluster_17",
+        "Tree_C_LeafCluster_18",
+        "Tree_C_LeafCluster_19",
+        "Tree_C_LeafCluster_20",
+        "Tree_C_LeafCluster_21",
+        "Tree_C_LeafCluster_22"
+      ]
+    },
+    "Tree_FarA": {
+      "trunk": "Tree_FarA_Trunk",
+      "branches": [
+        "Tree_FarA_Branch_01",
+        "Tree_FarA_Branch_02",
+        "Tree_FarA_Branch_03",
+        "Tree_FarA_Branch_04",
+        "Tree_FarA_Branch_05"
+      ],
+      "leafClusters": [
+        "Tree_FarA_LeafCluster_01",
+        "Tree_FarA_LeafCluster_02",
+        "Tree_FarA_LeafCluster_03",
+        "Tree_FarA_LeafCluster_04",
+        "Tree_FarA_LeafCluster_05",
+        "Tree_FarA_LeafCluster_06",
+        "Tree_FarA_LeafCluster_07",
+        "Tree_FarA_LeafCluster_08"
+      ]
+    },
+    "Tree_FarB": {
+      "trunk": "Tree_FarB_Trunk",
+      "branches": [
+        "Tree_FarB_Branch_01",
+        "Tree_FarB_Branch_02",
+        "Tree_FarB_Branch_03",
+        "Tree_FarB_Branch_04",
+        "Tree_FarB_Branch_05",
+        "Tree_FarB_Branch_06"
+      ],
+      "leafClusters": [
+        "Tree_FarB_LeafCluster_01",
+        "Tree_FarB_LeafCluster_02",
+        "Tree_FarB_LeafCluster_03",
+        "Tree_FarB_LeafCluster_04",
+        "Tree_FarB_LeafCluster_05",
+        "Tree_FarB_LeafCluster_06",
+        "Tree_FarB_LeafCluster_07",
+        "Tree_FarB_LeafCluster_08",
+        "Tree_FarB_LeafCluster_09",
+        "Tree_FarB_LeafCluster_10",
+        "Tree_FarB_LeafCluster_11",
+        "Tree_FarB_LeafCluster_12"
+      ]
+    },
+    "Tree_D": {
+      "trunk": "Tree_D_Trunk",
+      "branches": [
+        "Tree_D_Branch_01",
+        "Tree_D_Branch_02",
+        "Tree_D_Branch_03",
+        "Tree_D_Branch_04"
+      ],
+      "leafClusters": [
+        "Tree_D_LeafCluster_01",
+        "Tree_D_LeafCluster_02",
+        "Tree_D_LeafCluster_03",
+        "Tree_D_LeafCluster_04",
+        "Tree_D_LeafCluster_05",
+        "Tree_D_LeafCluster_06",
+        "Tree_D_LeafCluster_07",
+        "Tree_D_LeafCluster_08",
+        "Tree_D_LeafCluster_09",
+        "Tree_D_LeafCluster_10",
+        "Tree_D_LeafCluster_11"
+      ]
+    },
+    "Bush_A": {
+      "stems": "Bush_A_Stems",
+      "leafClusters": [
+        "Bush_A_LeafCluster_01",
+        "Bush_A_LeafCluster_02",
+        "Bush_A_LeafCluster_03",
+        "Bush_A_LeafCluster_04",
+        "Bush_A_LeafCluster_05",
+        "Bush_A_LeafCluster_06",
+        "Bush_A_LeafCluster_07",
+        "Bush_A_LeafCluster_08",
+        "Bush_A_LeafCluster_09",
+        "Bush_A_LeafCluster_10",
+        "Bush_A_LeafCluster_11",
+        "Bush_A_LeafCluster_12",
+        "Bush_A_LeafCluster_13",
+        "Bush_A_LeafCluster_14",
+        "Bush_A_LeafCluster_15"
+      ]
+    },
+    "Bush_B": {
+      "stems": "Bush_B_Stems",
+      "leafClusters": [
+        "Bush_B_LeafCluster_01",
+        "Bush_B_LeafCluster_02",
+        "Bush_B_LeafCluster_03",
+        "Bush_B_LeafCluster_04",
+        "Bush_B_LeafCluster_05",
+        "Bush_B_LeafCluster_06",
+        "Bush_B_LeafCluster_07",
+        "Bush_B_LeafCluster_08",
+        "Bush_B_LeafCluster_09",
+        "Bush_B_LeafCluster_10",
+        "Bush_B_LeafCluster_11",
+        "Bush_B_LeafCluster_12",
+        "Bush_B_LeafCluster_13",
+        "Bush_B_LeafCluster_14",
+        "Bush_B_LeafCluster_15",
+        "Bush_B_LeafCluster_16"
+      ]
+    },
+    "Bush_C": {
+      "stems": "Bush_C_Stems",
+      "leafClusters": [
+        "Bush_C_LeafCluster_01",
+        "Bush_C_LeafCluster_02",
+        "Bush_C_LeafCluster_03",
+        "Bush_C_LeafCluster_04",
+        "Bush_C_LeafCluster_05",
+        "Bush_C_LeafCluster_06",
+        "Bush_C_LeafCluster_07",
+        "Bush_C_LeafCluster_08",
+        "Bush_C_LeafCluster_09",
+        "Bush_C_LeafCluster_10",
+        "Bush_C_LeafCluster_11",
+        "Bush_C_LeafCluster_12",
+        "Bush_C_LeafCluster_13"
+      ]
+    }
+  },
+  "interaction": {
+    "grass": {
+      "targets": "every GPnnnn_* node (variants Grass_Clump_A-D, Grass_Shoreline_A)",
+      "method": "vertex shader bend (onBeforeCompile) on InstancedMesh per variant",
+      "data": "Each blade is a separate strip: 4 segments (2 verts/row) + tip vertex, 7 tris. uv.y = 0 at the root and 1 at the tip; the root sits at local y = -0.02 (slightly sunk). Bend offset = cursorPushDir * strength * pow(uv.y, 1.5-2.0) so roots stay anchored; spring back with a damped spring on a per-instance strength uniform/attribute. uv.x is 0/1 across the blade.",
+      "vertexColor": "COLOR_0 = per-blade tint (dry blades yellower). three.js enables vertexColors automatically."
+    },
+    "bushes": {
+      "targets": "PBnn_Bush_X_LeafCluster_NN",
+      "method": "per-cluster rotation sway around the node origin (the attachment point on the stem), 2-6 degrees, plus optional low-amplitude vertex ripple driven by distance from the cluster centre",
+      "pivots": "Each cluster node origin = where it attaches to its stem; the leaf cards sit around a centre ~0.3 x clusterRadius beyond the pivot. Stems stay static."
+    },
+    "trees": {
+      "targets": "PTnn_Tree_X_LeafCluster_NN (and optionally PTnn_Tree_X_Branch_NN for a very subtle secondary sway)",
+      "method": "rotate nearby leaf clusters about their own origin (attachment point on the branch/twig tip) by a few degrees with a spring; or vertex-shader flutter weighted by distance from the node origin",
+      "rules": "Never move the Trunk node. Clusters are children of branches, so a branch sway carries its clusters.",
+      "raycastHint": "Raycast against leaf-cluster meshes (alpha cards) or use cluster bounding spheres for proximity tests; cards are double-sided alpha-mask quads (3x2 verts, 4 tris each)."
+    },
+    "leafCards": {
+      "normals": "Custom normals blended 70% toward the cluster centre's outward direction for soft canopy shading; keep geometry normals as exported (do not recompute).",
+      "vertexColor": "COLOR_0 = tint x baked ambient occlusion (darker toward cluster core and underside)."
+    }
+  },
+  "materials": {
+    "M_Terrain": "opaque, macro albedo + tiled detail normal, roughness 0.93, single-sided",
+    "M_Foliage": "alphaMode MASK (cutoff 0.5) -> use alphaTest 0.5, side DoubleSide, vertexColors",
+    "M_Grass": "opaque, double-sided, vertexColors",
+    "M_Bark": "opaque, albedo + normal",
+    "M_Rock": "opaque, albedo + normal, vertexColors (mossy tops / darker base)",
+    "M_Petal_*/M_Flower_Center/M_Plant_Stem": "flat colour PBR, petals double-sided; no emission"
+  },
+  "textures": [
+    {
+      "name": "bark_albedo",
+      "resolution": [
+        1024,
+        1024
+      ],
+      "colorSpace": "sRGB",
+      "source": "blender/garden/textures/bark_albedo.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Bark baseColor (tiling, UV-scaled in mesh)"
+    },
+    {
+      "name": "bark_normal",
+      "resolution": [
+        1024,
+        1024
+      ],
+      "colorSpace": "Non-Color",
+      "source": "blender/garden/textures/bark_normal.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Bark normal"
+    },
+    {
+      "name": "grass_blade_albedo",
+      "resolution": [
+        128,
+        512
+      ],
+      "colorSpace": "sRGB",
+      "source": "blender/garden/textures/grass_blade_albedo.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Grass baseColor; v=0 root (dark) -> v=1 tip (light)"
+    },
+    {
+      "name": "leaf_atlas",
+      "resolution": [
+        2048,
+        2048
+      ],
+      "colorSpace": "sRGB",
+      "source": "blender/garden/textures/leaf_atlas.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Foliage baseColor+alpha. 2x2 atlas: [0,0.5]x[0,0.5] tree sprig A, [0.5,1]x[0,0.5] tree sprig B, [0,0.5]x[0.5,1] bush sprig, [0.5,1]x[0.5,1] broad plant leaf"
+    },
+    {
+      "name": "rock_albedo",
+      "resolution": [
+        1024,
+        1024
+      ],
+      "colorSpace": "sRGB",
+      "source": "blender/garden/textures/rock_albedo.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Rock baseColor (box-projected UVs)"
+    },
+    {
+      "name": "rock_normal",
+      "resolution": [
+        1024,
+        1024
+      ],
+      "colorSpace": "Non-Color",
+      "source": "blender/garden/textures/rock_normal.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Rock normal"
+    },
+    {
+      "name": "terrain_albedo",
+      "resolution": [
+        2048,
+        2048
+      ],
+      "colorSpace": "sRGB",
+      "source": "blender/garden/textures/terrain_albedo.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Terrain baseColor (macro, whole terrain UV 0-1)"
+    },
+    {
+      "name": "terrain_detail_normal",
+      "resolution": [
+        1024,
+        1024
+      ],
+      "colorSpace": "Non-Color",
+      "source": "blender/garden/textures/terrain_detail_normal.png",
+      "glbEncoding": "WEBP (EXT_texture_webp, no PNG fallback)",
+      "usage": "M_Terrain normal, tiled 64x56 via KHR_texture_transform (~2.5 m tile)"
+    }
+  ],
+  "threeJsNotes": [
+    "Load with GLTFLoader; WebP textures need no extra loader (EXT_texture_webp). No Draco/meshopt compression is applied; run gltf-transform (dedup, meshopt, resize) in the build if you want a smaller download.",
+    "Convert repeated vegetation to InstancedMesh per variant at load: group meshes by geometry.uuid under GrassPatches, PlacedRocks, FlowerClusters, PlacedPlants (~2,600 nodes collapse to ~20 draw calls). Keep tree and bush leaf clusters as individual meshes, or instance per cluster mesh, if you need per-cluster sway.",
+    "The environment GLB renders ~1.19M triangles, of which ~770k are grass. For mobile, drop Grass_Clump_C/D instances beyond ~25 m from the camera or halve the grass instance count.",
+    "Set material.alphaTest = 0.5 on M_Foliage if the loader leaves it at default; avoid transparent: true on foliage.",
+    "Grass is placed only inside the camera's view wedge from GardenEntrance (about +/-45 degrees); the clearing's back and sides rely on the terrain albedo. Re-run garden_assemble.py with a wider wedge if the camera path changes.",
+    "Asset GLB: the variant root nodes are laid out in rows for inspection (group empties offset at x = 200 in Blender). Reset root.position to (0,0,0) before instancing.",
+    "No lights, cameras, water or sky are exported. Recommended look: warm sun from camera-right/behind (~35 degrees elevation), blue gradient sky, light distance fog to soften the far terrain edge."
+  ]
+}

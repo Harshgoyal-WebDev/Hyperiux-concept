@@ -6,7 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { Effect, ToneMappingMode } from "postprocessing";
-import { OPENING_NOMINAL, P, SUN_DIR } from "../config";
+import { GARDEN, GARDEN_ORIGIN, OPENING_NOMINAL, P, SUN_DIR } from "../config";
 import { gardenCamera } from "../world/gardenCamera";
 import { T } from "../tuning";
 import { attachPointer, pointer } from "../pointer";
@@ -41,7 +41,7 @@ export function CameraRig({ J, opening }) {
     v.t.set(J.tgtX, J.tgtY, J.tgtZ);
     let lens = J.fov;
     // in the garden: its own continuous path round the pond
-    if (J.progress >= P.through) lens = gardenCamera(J.gardenT, v.p, v.t);
+    if (J.progress >= P.through) lens = gardenCamera(J.progress, v.p, v.t);
     // shots through the mark are composed on the nominal opening: move them
     // onto the real one (the slab's height depends on the sand under it)
     if (opening && J.align > 0) {
@@ -340,14 +340,97 @@ class EdgeFxEffect extends Effect {
 }
 
 // ---------------------------------------------------------------------------
-// Post: restrained bloom for the core and the lit cracks, ACES, vignette.
+// The portal at the end of the garden: through the ring, a ring of light
+// with a ragged, breathing edge opens out from the ring's centre on screen;
+// inside it the frame goes to white, its colours split a little round the
+// edge, until it fills the screen and hands over to the site below.
+// ---------------------------------------------------------------------------
+const PORTAL_FX = /* glsl */ `
+uniform float uProgress;
+uniform vec2 uCenter;
+uniform float uAspect;
+uniform float uTime;
+uniform float uGlowAmt;
+uniform float uRagged;
+float ptHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float ptNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(ptHash(i), ptHash(i + vec2(1.0, 0.0)), u.x), mix(ptHash(i + vec2(0.0, 1.0)), ptHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  if (uProgress <= 0.0005) {
+    outputColor = inputColor;
+    return;
+  }
+  vec2 d = uv - uCenter;
+  d.x *= uAspect;
+  float r = length(d);
+  vec2 dir = d / max(r, 1e-4);
+  // a ragged edge (noise round the circle, no seam), breathing slowly
+  float n = ptNoise(dir * 3.0 + uTime * 0.35) * 0.6 + ptNoise(dir * 7.0 - uTime * 0.5) * 0.4;
+  float e = pow(uProgress, 1.5);
+  float R = mix(0.06, 1.9, e) * (1.0 + (n - 0.5) * uRagged);
+  float w = mix(0.03, 0.14, e);
+  float inside = 1.0 - smoothstep(R - w, R, r);
+  float x = (r - R) / w;
+  float ring = exp(-x * x);
+  // colours split round the edge
+  vec2 off = dir * ring * 0.012 / vec2(uAspect, 1.0);
+  vec3 col = vec3(texture2D(inputBuffer, uv + off).r, inputColor.g, texture2D(inputBuffer, uv - off).b);
+  vec3 white = vec3(1.0, 0.975, 0.945);
+  col = mix(col, white, inside * smoothstep(0.0, 0.2, uProgress));
+  col += vec3(1.0, 0.86, 0.68) * ring * uGlowAmt * (1.0 - smoothstep(0.8, 1.0, uProgress));
+  outputColor = vec4(min(col, vec3(1.0)), inputColor.a);
+}
+`;
+class PortalEffect extends Effect {
+  constructor() {
+    super("PortalEffect", PORTAL_FX, {
+      uniforms: new Map([
+        ["uProgress", new THREE.Uniform(0)],
+        ["uCenter", new THREE.Uniform(new THREE.Vector2(0.5, 0.5))],
+        ["uAspect", new THREE.Uniform(1.6)],
+        ["uTime", new THREE.Uniform(0)],
+        ["uGlowAmt", new THREE.Uniform(1)],
+        ["uRagged", new THREE.Uniform(0.25)],
+      ]),
+    });
+  }
+}
+const RING_WORLD = new THREE.Vector3().copy(GARDEN.shapes.ring).add(GARDEN_ORIGIN);
+
+// ---------------------------------------------------------------------------
+// Post: restrained bloom for the core and the lit cracks, ACES, vignette,
+// and the portal on top of it all.
 // ---------------------------------------------------------------------------
 export function Post({ J, tier }) {
   const bloom = useRef();
   const vignette = useRef();
+  const { camera, size } = useThree();
   const edgeFx = useMemo(() => new EdgeFxEffect(), []);
-  useEffect(() => () => edgeFx.dispose(), [edgeFx]);
-  useFrame(() => {
+  const portal = useMemo(() => new PortalEffect(), []);
+  const ring = useMemo(() => new THREE.Vector3(), []);
+  useEffect(
+    () => () => {
+      edgeFx.dispose();
+      portal.dispose();
+    },
+    [edgeFx, portal]
+  );
+  useFrame((state, delta) => {
+    const pu = portal.uniforms;
+    pu.get("uProgress").value = J.portal;
+    pu.get("uTime").value += Math.min(delta, 0.1);
+    pu.get("uAspect").value = size.width / Math.max(size.height, 1);
+    pu.get("uGlowAmt").value = T.portalGlow;
+    pu.get("uRagged").value = T.portalRagged;
+    // the ring's centre on screen (held once the camera is through it)
+    if (J.portal > 0) {
+      ring.copy(RING_WORLD).project(camera);
+      if (ring.z < 1) pu.get("uCenter").value.set(ring.x * 0.5 + 0.5, ring.y * 0.5 + 0.5);
+    }
     edgeFx.uniforms.get("uAmount").value = J.edgeFx * T.edgeBlur;
     edgeFx.uniforms.get("uChroma").value = T.edgeChroma;
     if (bloom.current) {
@@ -363,6 +446,7 @@ export function Post({ J, tier }) {
       <Bloom ref={bloom} mipmapBlur intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette ref={vignette} offset={0.32} darkness={0.6} />
+      <primitive object={portal} dispose={null} />
     </EffectComposer>
   );
 }

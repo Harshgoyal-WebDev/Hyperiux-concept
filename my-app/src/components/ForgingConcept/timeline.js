@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import { T } from "./tuning";
-import { OPENING_NOMINAL as O, P, afterAt, assembleAt, eventAt } from "./config";
+import { OPENING_NOMINAL as O, P, afterAt, eventAt, sectionAt } from "./config";
 
 // Plain mutable state the master timeline writes and the 3D scene reads in
 // useFrame. Values here are the State 01 (monolith) pose.
@@ -38,11 +38,10 @@ export function createJourneyState() {
     flash: 0, // that light filling the frame (1 = all light: the worlds switch there)
     inGarden: false, // set by WorldSwitch: the garden is the world on screen
     gardenReady: false, // set by Garden once it is built (and compiled)
-    gardenT: 0, // the garden's camera path (0 through the light → 1 the final view)
-    pAppear: 0, // particle logo: motes rise out of the garden and drift over the pond
-    pGather: 0, // ...gather into a turning sphere above it
-    pForm: 0, // ...morph into the 3D mark
-    pSettle: 0, // ...and settle, crisp, turned to face the camera
+    pAppear: 0, // the particle body streams in over the pond
+    shapeT: 0, // ...and what it is: 0 the swirl, 1 the mark, 2 the cube, 3 the cloud, 4 the ring
+    formT: 0, // set by ParticleLogo: the form as shown (past the mark it morphs on its own clock, not the scroll's)
+    portal: 0, // through the ring into the light (1 = all light, onto the site)
     shock: 0, // shockwave across the dunes as the beam merges into the core (0 → spent)
     jolt: 0, // the camera's jolt at that impact
     edgeFx: 0, // motion blur + chromatic aberration at the frame's edges, through the event
@@ -95,8 +94,8 @@ const SHOTS = [
   // 09–13: from the still shot, one straight run at the cube outline's
   // opening — no swing, no stop — gathering pace into it and on through
   [P.through, [O.x, O.y, 0.3], [O.x, O.y - 0.6, -40], 44, "sine.in"],
-  // 14–20 the garden: one continuous path round the pond, from J.gardenT
-  // (world/gardenCamera.js), taken over by the CameraRig from here
+  // 14–20 the garden: one continuous path of composed shots round the pond
+  // (world/gardenCamera.js, from the scroll), taken over by the CameraRig
 ];
 
 // The breakup, from the event's clock and the breakup controls (T.breakStart
@@ -145,7 +144,9 @@ export function buildMasterTimeline(J, dom) {
     [P.held + (P.pass - P.held) * 0.6, 0.15],
     [P.pass, 0],
     [P.out, 0],
-    [P.revealed, 0.35],
+    [P.formed, 0.45],
+    [sectionAt("portal", 0.2), 0.45],
+    [sectionAt("portal", 0.6), 0],
   ]);
   // (back off under the light: the garden's shots are its own)
   track(tl, J, "align", [
@@ -263,11 +264,22 @@ export function buildMasterTimeline(J, dom) {
     [P.out, 0, "sine.out"],
   ]);
   // the particle logo gathers over the pond, forms, and settles
-  seg(tl, J, "gardenT", 0, 1, P.through, 1, "none");
-  seg(tl, J, "pAppear", 0, 1, P.through + (P.out - P.through) * 0.5, P.revealed, "sine.inOut");
-  seg(tl, J, "pGather", 0, 1, P.revealed, P.settled, "power1.inOut");
-  seg(tl, J, "pForm", 0, 1, P.settled, assembleAt(0.75), "power1.inOut");
-  seg(tl, J, "pSettle", 0, 1, assembleAt(0.5), P.assembled, "sine.out");
+  // the particle body: it streams in as the light lets go and forms the
+  // mark; each section then holds its form while its copy is up, and it
+  // flows into the next form across the change of section
+  seg(tl, J, "pAppear", 0, 1, P.through + (P.out - P.through) * 0.4, P.out + (P.formed - P.out) * 0.5, "sine.inOut");
+  track(tl, J, "shapeT", [
+    [P.out, 0],
+    [P.formed, 1, "sine.inOut"],
+    [sectionAt("mark", 0.72), 1],
+    [sectionAt("cube", 0.28), 2, "sine.inOut"],
+    [sectionAt("cube", 0.72), 2],
+    [sectionAt("cloud", 0.28), 3, "sine.inOut"],
+    [sectionAt("cloud", 0.72), 3],
+    [sectionAt("ring", 0.28), 4, "sine.inOut"],
+  ]);
+  // through the ring: its light opens up and fills the frame, onto the site
+  seg(tl, J, "portal", 0, 1, sectionAt("portal", 0.25), 1, "sine.in");
 
   track(tl, J, "dust", [
     [0, 1],

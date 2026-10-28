@@ -101,35 +101,13 @@ function alongSegments(segs, total, rng, out) {
   return { tx: (s.b.x - s.a.x) / s.len, ty: (s.b.y - s.a.y) / s.len };
 }
 
-// The cube outline is an isometric drawing of a cube seen corner-on: the
-// centre of its Y is the nearest corner, the Y's three outer ends its three
-// neighbours, the hexagon's other three corners the next ring back. Given
-// those depths, the drawing becomes a real cube whose nine visible edges line
-// up exactly with the SVG when seen head-on (SVG units; z towards the viewer).
-const CUBE_CENTRE = [246.651, 249.33];
-const CUBE_RING1 = [[201.373, 226.5], [295.242, 228], [246.651, 306.756]]; // Y ends
-const CUBE_RING2 = [[253.2, 209.4], [295.242, 285.774], [201.373, 285.774]]; // top, lower right, lower left
-function cubeEdges3D() {
-  // an isometric edge of length L projects to L·√(2/3); each ring of corners
-  // is L/√3 further back than the last
-  const spoke = Math.hypot(CUBE_RING1[0][0] - CUBE_CENTRE[0], CUBE_RING1[0][1] - CUBE_CENTRE[1]);
-  const step = spoke / Math.sqrt(2 / 3) / Math.sqrt(3);
-  const v = (p, z) => new THREE.Vector3(p[0], p[1], z);
-  const c = v(CUBE_CENTRE, step * 1.5);
-  const r1 = CUBE_RING1.map((p) => v(p, step * 0.5));
-  const r2 = CUBE_RING2.map((p) => v(p, -step * 0.5));
-  // the hexagon alternates ring 1 / ring 2: UL–T–UR–LR–B–LL
-  const hex = [r1[0], r2[0], r1[1], r2[1], r1[2], r2[2]];
-  const edges = r1.map((p) => [c, p]);
-  for (let i = 0; i < 6; i++) edges.push([hex[i], hex[(i + 1) % 6]]);
-  return edges;
-}
-
-// The mark as a 3D object, for the particle logo: the four filled shapes as
-// solid slabs `thickness` deep (particles on their faces, round their sides
-// and a few inside), and the cube outline as a real cube of round tubes the
-// stroke's width across. Returns positions (logo-local metres, centred, y up,
-// z towards the viewer) and per particle its kind (0 slab, 1 cube).
+// The mark as a solid, for the particle body: the flat logo extruded
+// `thickness` deep — the four filled shapes as slabs (particles on their
+// faces, round their sides and a few inside), and the cube outline as the
+// flat stroke it is in the logo (the SVG's own path, its 7-unit width,
+// through the same depth), so its faces stay empty. Returns positions
+// (logo-local metres, centred, y up, z towards the viewer) and per particle
+// its kind (0 slab, 1 cube outline).
 export function sampleLogo3D(count, { height, thickness = 0.9, seed = 17 }) {
   const rng = mulberry32(seed);
   const fills = LOGO_SVG.fills.map((d) => parsePath(d)[0]);
@@ -180,37 +158,22 @@ export function sampleLogo3D(count, { height, thickness = 0.9, seed = 17 }) {
     return [t.A.x + (t.B.x - t.A.x) * u + (t.C.x - t.A.x) * v, t.A.y + (t.B.y - t.A.y) * u + (t.C.y - t.A.y) * v];
   };
 
-  // the cube's tubes
-  const edges = cubeEdges3D();
-  const lengths = edges.map(([a, b]) => a.distanceTo(b));
-  const edgeTotal = lengths.reduce((s, l) => s + l, 0);
-  const tubeR = (LOGO_SVG.strokeWidth / 2) * 1.1;
-  const dir = new THREE.Vector3();
-  const n1 = new THREE.Vector3();
-  const n2 = new THREE.Vector3();
+  // the cube outline: along the stroke's centre line, across its width
+  const stroke = parsePath(LOGO_SVG.stroke);
+  const strokeSegs = stroke.flatMap((p) => segments(p));
+  const strokeTotal = strokeSegs.reduce((acc, g) => acc + g.len, 0);
   const pt = new THREE.Vector2();
 
-  // shares: the cube's tubes are thin, so they get more than their volume
-  const cubeCount = Math.round(count * 0.3);
+  // shares: the outline is thin, so it gets more than its area
+  const cubeCount = Math.round(count * 0.22);
   for (let i = 0; i < count; i++) {
     if (i < cubeCount) {
-      let r = rng() * edgeTotal;
-      let e = 0;
-      while (e < edges.length - 1 && (r -= lengths[e]) > 0) e++;
-      const [a, b] = edges[e];
-      dir.subVectors(b, a).normalize();
-      n1.set(0, 0, 1).cross(dir);
-      if (n1.lengthSq() < 1e-6) n1.set(1, 0, 0);
-      n1.normalize();
-      n2.crossVectors(dir, n1);
-      const t = rng();
-      const ang = rng() * Math.PI * 2;
-      // most on the tube's surface, some inside it
-      const rad = tubeR * (rng() < 0.8 ? 1 : Math.sqrt(rng()));
-      const x = a.x + (b.x - a.x) * t + (n1.x * Math.cos(ang) + n2.x * Math.sin(ang)) * rad;
-      const y = a.y + (b.y - a.y) * t + (n1.y * Math.cos(ang) + n2.y * Math.sin(ang)) * rad;
-      const z = a.z + (b.z - a.z) * t + (n1.z * Math.cos(ang) + n2.z * Math.sin(ang)) * rad;
-      put(i, x, y, z * k, 1);
+      const { tx, ty } = alongSegments(strokeSegs, strokeTotal, rng, pt);
+      const across = (rng() - 0.5) * LOGO_SVG.strokeWidth;
+      // most on its faces and edges, some through it
+      const r = rng();
+      const z = r < 0.4 ? (rng() < 0.5 ? -0.5 : 0.5) * thickness : (rng() - 0.5) * thickness;
+      put(i, pt.x - ty * across, pt.y + tx * across, z, 1);
       continue;
     }
     const r = rng();
@@ -229,4 +192,58 @@ export function sampleLogo3D(count, { height, thickness = 0.9, seed = 17 }) {
     }
   }
   return { positions, kinds, count, metresPerUnit: k };
+}
+
+// ---------------------------------------------------------------------------
+// The other forms the particle body takes in the garden. Each is a volume:
+// most particles on or near its surface (so the silhouette reads crisply),
+// the rest filling it. Positions in metres, centred on the origin.
+// ---------------------------------------------------------------------------
+
+// a cube turned corner-on to the viewer, like the one in the mark
+export function sampleCube(count, { size = 6, seed = 31 } = {}) {
+  const rng = mulberry32(seed);
+  const out = new Float32Array(count * 3);
+  const h = size / 2;
+  const turn = new THREE.Matrix4().makeRotationX(Math.atan(1 / Math.SQRT2)).multiply(new THREE.Matrix4().makeRotationY(Math.PI / 4));
+  const p = new THREE.Vector3();
+  for (let i = 0; i < count; i++) {
+    p.set((rng() * 2 - 1) * h, (rng() * 2 - 1) * h, (rng() * 2 - 1) * h);
+    if (rng() < 0.75) {
+      // onto a face (pushed in a little: a skin, not a sheet)
+      const axis = Math.floor(rng() * 3);
+      p.setComponent(axis, Math.sign(p.getComponent(axis) || 1) * h * (1 - rng() * 0.08));
+    }
+    p.applyMatrix4(turn);
+    out.set([p.x, p.y, p.z], i * 3);
+  }
+  return out;
+}
+
+// a cloud: a ball, densest towards its skin, ragged at the edge
+export function sampleSphere(count, { radius = 5.5, seed = 41 } = {}) {
+  const rng = mulberry32(seed);
+  const out = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const u = rng() * 2 - 1;
+    const a = rng() * Math.PI * 2;
+    const s = Math.sqrt(1 - u * u);
+    const r = radius * (rng() < 0.7 ? 0.86 + rng() * 0.16 : Math.cbrt(rng()));
+    out.set([s * Math.cos(a) * r, u * r, s * Math.sin(a) * r], i * 3);
+  }
+  return out;
+}
+
+// a ring facing the viewer (+z): the way through
+export function sampleTorus(count, { radius = 4.6, tube = 1.25, seed = 53 } = {}) {
+  const rng = mulberry32(seed);
+  const out = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const a = rng() * Math.PI * 2;
+    const b = rng() * Math.PI * 2;
+    const r = tube * (rng() < 0.7 ? 0.85 + rng() * 0.15 : Math.sqrt(rng()));
+    const ring = radius + Math.cos(b) * r;
+    out.set([Math.cos(a) * ring, Math.sin(a) * ring, Math.sin(b) * r], i * 3);
+  }
+  return out;
 }

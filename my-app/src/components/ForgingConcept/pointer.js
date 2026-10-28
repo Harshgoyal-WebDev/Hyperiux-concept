@@ -10,6 +10,7 @@ export const pointer = {
   // NDC + time, for anything that traces its exact path (the sand trail);
   // the reader empties it
   path: [],
+  clicks: 0, // presses so far (the garden sends a ripple through the grass on each)
 };
 const PATH_MAX = 512;
 
@@ -28,6 +29,11 @@ function onMove(e) {
   pointer.active = true;
   pointer.movedAt = performance.now();
 }
+function onDown(e) {
+  if (e.pointerType === "touch") return;
+  onMove(e);
+  pointer.clicks++;
+}
 function onLeave() {
   pointer.active = false;
 }
@@ -36,9 +42,11 @@ export function attachPointer() {
   if (users++ === 0) {
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
+    window.addEventListener("pointerdown", onDown, { passive: true });
   }
   return () => {
     if (--users === 0) {
+      window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
     }

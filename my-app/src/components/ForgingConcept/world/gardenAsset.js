@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GARDEN } from "../config";
 import { mulberry32 } from "./layout";
-import { buildHeightGrid } from "./gardenTerrain";
+import { buildHeightGrid, createRidges, reshapeTerrain, widenPond } from "./gardenTerrain";
 
 // The garden from hyperiux-garden-environment.glb (its own metres: pond
 // centred on the origin at water level, the camera arriving from +z; see
@@ -12,26 +12,38 @@ import { buildHeightGrid } from "./gardenTerrain";
 // (mesh, material) pair becomes one InstancedMesh carrying all its placements,
 // so the whole garden draws in a couple of hundred calls. More bushes and
 // flower clusters are planted from the GLB's own variants (on the terrain,
-// clear of the water and the trunks). The terrain stays a single mesh.
+// clear of the water and the trunks). The terrain stays a single mesh,
+// reshaped (a wider pond, low ridges beyond the clearing; gardenTerrain.js),
+// and everything placed on it moves with it.
 //
-// Grass, leaves and flowers sway in the wind and part around the pointer's
-// recent path (a short trail of its lines of sight, fading as they age);
-// bushes, plants and flowers also glow where it passes (see swayGlsl).
+// Grass, leaves and flowers sway in the wind, and the pointer makes wind of
+// its own: as it moves over the garden it releases puffs of air along its
+// path, carrying its speed. Each puff drifts on and spreads, reaches the
+// plants a moment later the further they are (so the response runs out as a
+// wave), bends them and lets them swing back once as it dies. A click sends a
+// ring of air out across the meadow. Bushes, plants and flowers also glow
+// where the pointer's line of sight passes (a short trail of it, fading).
 
 const GROUPS = ["GardenTerrain", "GrassPatches", "PlacedTrees", "PlacedBushes", "PlacedRocks", "FlowerClusters", "PlacedPlants"];
-export const TRAIL = 8; // lines of sight remembered
+export const TRAIL = 8; // lines of sight remembered (the glow)
+export const GUSTS = 10; // puffs of air in flight
+export const RIPPLES = 4; // rings of air from clicks
 // Small, dense things (grass, flowers) live on this layer, which the pond's
 // reflection leaves out: they would cost a second lawn and barely show.
 export const GRASS_LAYER = 1;
 
-// Shared by every swaying material (and the dense grass): wind, and the
-// pointer's trail (Garden.jsx keeps it up to date).
+// Shared by every swaying material (and the lawn and the flowers). All
+// positions are in world space; Garden.jsx keeps them up to date.
 export function createSwayUniforms(time) {
   return {
     uTime: time,
     uTrailO: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(0, -1000, 0, 0)) }, // origin, strength
     uTrailD: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(0, 0, -1, 0)) }, // direction
-    uPushRadius: { value: 2.2 },
+    uGustA: { value: Array.from({ length: GUSTS }, () => new THREE.Vector4()) }, // where (x, z), its wind (x, z)
+    uGustB: { value: Array.from({ length: GUSTS }, () => new THREE.Vector4()) }, // age (s), radius (m), drift (m/s)
+    uGustCount: { value: 0 },
+    uRipple: { value: Array.from({ length: RIPPLES }, () => new THREE.Vector4()) }, // where (x, z), age (s), strength
+    uRippleCount: { value: 0 },
     uPushAmount: { value: 1 },
     uWindAmount: { value: 1 },
     uGlowRadius: { value: 1.6 },
@@ -40,9 +52,89 @@ export function createSwayUniforms(time) {
   };
 }
 
+export const SWAY_DECLS = /* glsl */ `
+uniform float uTime;
+uniform vec4 uTrailO[${TRAIL}];
+uniform vec4 uTrailD[${TRAIL}];
+uniform vec4 uGustA[${GUSTS}];
+uniform vec4 uGustB[${GUSTS}];
+uniform float uGustCount;
+uniform vec4 uRipple[${RIPPLES}];
+uniform float uRippleCount;
+uniform float uPushAmount;
+uniform float uWindAmount;
+uniform float uGlowRadius;
+varying float vSwGlow;
+`;
+
+// GLSL: the wind a plant at world xz feels from the pointer (gusts + click
+// ripples), as a horizontal offset (m) for its tip; and how lit it is by the
+// pointer's passing (0..1).
+export const POINTER_WIND_GLSL = /* glsl */ `
+float pwHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 15731.743); }
+float pwNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(pwHash(i), pwHash(i + vec2(1.0, 0.0)), u.x), mix(pwHash(i + vec2(0.0, 1.0)), pwHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+vec2 pointerWind(vec2 xz, float seed) {
+  // (most of the time there is no pointer wind at all: skip it)
+  if (uGustCount < 0.5 && uRippleCount < 0.5) return vec2(0.0);
+  vec2 acc = vec2(0.0);
+  for (int i = 0; i < ${GUSTS}; i++) {
+    if (float(i) >= uGustCount) break;
+    vec4 a = uGustA[i];
+    vec4 b = uGustB[i];
+    float strength = length(a.zw);
+    if (strength < 1e-4) continue;
+    vec2 dir = a.zw / strength;
+    // the puff drifts on along its way and spreads as it goes
+    vec2 rel = xz - a.xy - dir * b.z * b.x;
+    float R = b.y * (1.0 + b.x * 0.8);
+    float d2 = dot(rel, rel);
+    if (d2 > 12.0 * R * R) continue;
+    float along = dot(rel, dir);
+    float across = dot(rel, vec2(-dir.y, dir.x));
+    float reach = exp(-(along * along) / (2.2 * R * R) - (across * across) / (0.9 * R * R));
+    // it arrives later the further away; bends, then swings back once
+    float t = max(b.x - sqrt(d2) / 2.4, 0.0);
+    float response = (1.0 - exp(-t * 9.0)) * exp(-t * 2.1) * cos(t * 4.0);
+    acc += a.zw * reach * response;
+  }
+  for (int i = 0; i < ${RIPPLES}; i++) {
+    if (float(i) >= uRippleCount) break;
+    vec4 r = uRipple[i];
+    vec2 rel = xz - r.xy;
+    float d = length(rel);
+    float x = (d - r.z * 2.6) / (0.35 + r.z * 0.4);
+    if (abs(x) > 3.0) continue;
+    acc += rel / max(d, 1e-3) * exp(-x * x) * cos(x * 2.0 + 0.5) * r.w * exp(-r.z * 1.2) * smoothstep(0.0, 0.3, d);
+  }
+  if (dot(acc, acc) < 1e-8) return vec2(0.0);
+  // broken up, never uniform, with a flutter across the wind
+  acc *= 0.6 + 0.8 * pwNoise(xz * 1.9 + uTime * 0.45 + seed * 3.0);
+  acc += vec2(-acc.y, acc.x) * sin(uTime * 7.5 + seed * 19.0) * 0.16;
+  return acc * uPushAmount;
+}
+float pointerGlow(vec3 world) {
+  float g = 0.0;
+  for (int i = 0; i < ${TRAIL}; i++) {
+    vec4 o = uTrailO[i];
+    if (o.w <= 0.001) continue;
+    vec3 rel = world - o.xyz;
+    vec3 aw = rel - uTrailD[i].xyz * max(dot(rel, uTrailD[i].xyz), 0.0);
+    g = max(g, o.w * exp(-dot(aw, aw) / (uGlowRadius * uGlowRadius)));
+  }
+  return g;
+}
+`;
+
 // kinds: 0 grass (bends from the root, uv.y = 0 there), 1 tree leaves,
 // 2 bush / plant leaves (+ glow), 3 flowers (bend from the ground, + glow)
 const GLOWS = (kind) => kind >= 2;
+// (the trees' leaves take none of it: only the breeze — it saves the most)
+const POINTER_SHARE = [1, 0, 0.4, 0.45];
 const swayGlsl = (kind) => /* glsl */ `
 #ifdef USE_INSTANCING
 {
@@ -56,49 +148,26 @@ const swayGlsl = (kind) => /* glsl */ `
         ? "float swW = clamp((swWorld.y - swPivot.y) / 0.5, 0.0, 1.0);"
         : "float swW = clamp(length(swWorld - swPivot) / 1.6, 0.0, 1.0);"
   }
-  // wind: slow gusts rolling across the garden, a quicker flutter on top
+  float swSeed = fract(sin(dot(swPivot.xz, vec2(12.9898, 78.233))) * 43758.5453);
+  // the breeze: slow gusts rolling across the garden, a quicker flutter
   float swGust = 0.6 + 0.4 * sin(uTime * 0.9 + swPivot.x * 0.21 + swPivot.z * 0.17);
-  float swFlutter = sin(uTime * ${kind === 1 ? "3.1" : "2.3"} + swPivot.x * 1.7 + swPivot.z * 1.3 + swWorld.y * 0.6);
+  float swFlutter = sin(uTime * ${kind === 1 ? "3.1" : "2.3"} + swSeed * 6.2831 + swWorld.y * 0.6);
   vec3 swDisp = vec3(0.8, 0.0, 0.6) * (swGust * ${kind === 1 ? "0.05" : "0.08"} + swFlutter * 0.033) * uWindAmount;
-  // the pointer's recent path: everything near it leans away (the newest,
-  // strongest line of sight wins), and springs back as the trail fades
-  float swF = 0.0;
-  vec3 swDir = vec3(0.0);
-  float swGlowF = 0.0;
-  for (int i = 0; i < ${TRAIL}; i++) {
-    vec4 o = uTrailO[i];
-    if (o.w <= 0.001) continue;
-    vec3 d = uTrailD[i].xyz;
-    vec3 rel = swWorld - o.xyz;
-    vec3 aw = rel - d * max(dot(rel, d), 0.0);
-    ${kind === 0 || kind === 3 ? "aw.y = 0.0;" : ""}
-    float dd = length(aw);
-    float f = o.w * exp(-dd * dd / (uPushRadius * uPushRadius));
-    if (f > swF) {
-      swF = f;
-      swDir = aw / max(dd, 1e-3);
-    }
-    ${GLOWS(kind) ? "swGlowF = max(swGlowF, o.w * exp(-dd * dd / (uGlowRadius * uGlowRadius)));" : ""}
+  ${
+    POINTER_SHARE[kind] > 0
+      ? `// the pointer's own wind (only where the plant can bend)
+  if (swW > 0.01) {
+    vec2 swPw = pointerWind(swPivot.xz, swSeed) * ${POINTER_SHARE[kind].toFixed(2)};
+    swDisp += vec3(swPw.x, ${kind === 0 ? "-length(swPw) * 0.25" : "0.0"}, swPw.y);
+  }`
+      : ""
   }
-  swDisp += swDir * swF * uPushAmount * ${kind === 1 ? "0.3" : "0.42"};
-  ${kind === 0 ? "swDisp.y -= swF * uPushAmount * 0.12; // pressed down a little as well" : ""}
-  ${GLOWS(kind) ? "vSwGlow = swGlowF;" : ""}
+  ${GLOWS(kind) ? "vSwGlow = pointerGlow(swWorld);" : ""}
   // world offset → this instance's own space (rotation about y + uniform scale)
   mat3 swR = mat3(swM);
   transformed += (transpose(swR) * swDisp) / dot(swR[0], swR[0]) * swW;
 }
 #endif
-`;
-
-export const SWAY_DECLS = /* glsl */ `
-uniform float uTime;
-uniform vec4 uTrailO[${TRAIL}];
-uniform vec4 uTrailD[${TRAIL}];
-uniform float uPushRadius;
-uniform float uPushAmount;
-uniform float uWindAmount;
-uniform float uGlowRadius;
-varying float vSwGlow;
 `;
 
 // Patches a material to sway (kind as above); grass blades pass extra
@@ -107,7 +176,7 @@ export function patchSway(material, uniforms, kind, { before = "", fragment = nu
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n${SWAY_DECLS}`)
+      .replace("#include <common>", `#include <common>\n${SWAY_DECLS}\n${POINTER_WIND_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${before}\nvSwGlow = 0.0;\n${swayGlsl(kind)}`);
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <common>",
@@ -137,7 +206,11 @@ const kindOf = (group, materialName) => {
 };
 
 // gltf scene → { root, terrain, height, materials, anchors, textures }
-export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extraFlowers = 0, sway }) {
+// lawnRadius: inside it the lawn's own blades cover the ground, so the GLB's
+// grass clumps there are left out; its flower clusters give way to the
+// garden's own flowers (GardenFlowers) when dropFlowers is set. pondScale
+// widens the pond; ridges is the height of the ridges' crests (m).
+export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extraFlowers = 0, lawnRadius = 0, dropFlowers = false, pondScale = 1, ridges = 0, sway }) {
   const scene = gltfScene;
   const top = scene.getObjectByName("HyperiuxGarden");
   const missing = top ? GROUPS.filter((n) => !top.getObjectByName(n)) : ["HyperiuxGarden"];
@@ -171,10 +244,12 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
     return m;
   };
 
-  // the terrain, and its height grid for planting
+  // the terrain, reshaped, and its height grid for planting
   const terrainSrc = top.getObjectByName("GardenTerrain").getObjectByProperty("isMesh", true);
   const terrain = new THREE.Mesh(terrainSrc.geometry, material(terrainSrc.material, -1));
   terrain.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toLocal, terrainSrc.matrixWorld));
+  const ridgeAt = createRidges(ridges, pondScale);
+  reshapeTerrain(terrain, pondScale, ridgeAt);
   terrain.receiveShadow = true;
   terrain.name = "Terrain";
   const height = buildHeightGrid(terrain);
@@ -190,25 +265,34 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
   };
   const m4 = new THREE.Matrix4();
   const pos = new THREE.Vector3();
+  const stood = new THREE.Vector3();
+  const moved = { x: 0, z: 0 };
+  const shift = new THREE.Matrix4();
   const trunks = [];
   const templates = { PlacedBushes: [], FlowerClusters: [] };
   for (const groupName of GROUPS) {
     if (groupName === "GardenTerrain") continue;
     const group = top.getObjectByName(groupName);
     for (const placed of group.children) {
-      if (groupName === "PlacedTrees") trunks.push(new THREE.Vector3().setFromMatrixPosition(placed.matrixWorld).applyMatrix4(toLocal));
+      // where it stood on the GLB's ground → where that ground is now
+      stood.setFromMatrixPosition(placed.matrixWorld).applyMatrix4(toLocal);
+      widenPond(stood.x, stood.z, pondScale, moved);
+      const lift = ridgeAt(moved.x, moved.z);
+      shift.makeTranslation(moved.x - stood.x, lift, moved.z - stood.z);
+      if (groupName === "PlacedTrees") trunks.push(new THREE.Vector3(moved.x, stood.y + lift, moved.z));
       // each placed variant's parts relative to it (to plant more of them)
       const parts = templates[groupName] ? [] : null;
       const rootInv = parts ? new THREE.Matrix4().copy(placed.matrixWorld).invert() : null;
       placed.traverse((o) => {
         if (!o.isMesh) return;
-        m4.multiplyMatrices(toLocal, o.matrixWorld);
+        m4.multiplyMatrices(toLocal, o.matrixWorld).premultiply(shift);
         if (parts) parts.push({ mesh: o, rel: new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld) });
-        // grass thins out with distance first on smaller tiers
-        if (groupName === "GrassPatches" && grassShare < 1) {
+        if (groupName === "FlowerClusters" && dropFlowers) return;
+        if (groupName === "GrassPatches") {
           pos.setFromMatrixPosition(m4);
-          const near = pos.distanceTo(GARDEN.entrance) < 14 || pos.length() < 14;
-          if (!near && rng() > grassShare) return;
+          // the lawn covers the clearing; the GLB's clumps only beyond it
+          if (Math.hypot(pos.x, pos.z - 2) < lawnRadius) return;
+          if (grassShare < 1 && rng() > grassShare) return;
         }
         add(groupName, o, m4.clone());
       });
@@ -235,7 +319,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
   };
   for (let n = 0, tries = 0; n < extraBushes && tries < extraBushes * 20; tries++) {
     const a = rng() * Math.PI * 2;
-    const r = 11 + rng() * 26;
+    const r = 11 * pondScale + rng() * 26;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r * 0.85 - 2;
     // keep the camera's way in (the corridor from the entrance) open

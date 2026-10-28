@@ -74,3 +74,13 @@ export const CTA = {
   phone: "+91 8178026136",
   address: "Grandslam I-Thum, A-40, Sector 62, Noida, Uttar Pradesh 201309",
 };
+
+// The garden's four sections, one per pillar of the positioning statement
+// (the JOURNEY markers above), each with the form the particle body takes.
+// Titles are the site's own lines where it has them.
+export const GARDEN_SECTIONS = [
+  { id: "mark", n: "01", tag: "Human behaviour", title: ["We start", "with people"], body: JOURNEY[0].body, layout: "bottom" }, // editable
+  { id: "cube", n: "02", tag: "Design", title: ["We don't just offer", "solutions, we", "craft impact"], body: JOURNEY[1].body, layout: "left" }, // site
+  { id: "cloud", n: "03", tag: "Technology", title: ["From concept", "to conversion"], body: JOURNEY[2].body, layout: "bottom" }, // site
+  { id: "ring", n: "04", tag: "Organic growth", title: ["Let's bring your", "ideas to life"], body: JOURNEY[3].body, layout: "center" }, // site
+];

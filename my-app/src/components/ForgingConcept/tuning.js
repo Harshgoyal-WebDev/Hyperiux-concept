@@ -153,22 +153,51 @@ export const T = {
   // The garden
   innerGlow: 1.81, // the cube outline's inner light the camera flies into
   gardenSun: 2.76,
-  // the camera's way round the pond
-  gardenCamRadius: 12.5, // metres from the logo (wider at the front)
-  gardenCamHeight: 4.0, // eye height (m)
-  gardenCamSweep: 330, // degrees it revolves round the pond
-  gardenCamFov: 50,
+  // the garden camera's lens, relative to its composed shots (degrees)
+  gardenFovOffset: 0,
+  gardenOrbitRadius: 1.0, // the revolution round the pond: its radius (× the composed one)
+  gardenOrbitHeight: 0, // ...and the camera's height on it (m, added)
   // the lawn
   grassDensity: 1.0, // share of the blades drawn
   grassHeight: 2.19,
   grassWidth: 3.0,
   grassRoot: "#1f3a12",
+  grassMid: "#3f6b22",
   grassTip: "#7fae3c",
   grassDry: "#b5a35a",
+  grassTranslucency: 1.0, // the sun glowing through the blades when looking towards it
+  // flowers through the lawn: tulips, daisies, spires
+  flowerDensity: 1.0, // share of them drawn
+  flowerHeight: 2.0, // stem length (scaled with the grass's height too)
+  flowerSize: 1.6, // bloom size
+  tulipRed: "#d8242f",
+  tulipPink: "#f06aa0",
+  tulipYellow: "#f5cf3a",
+  tulipOrange: "#f2782a",
+  tulipWhite: "#f4efe6",
+  tulipPurple: "#7d3fa8",
+  daisyColor: "#f7f3ec",
+  spireLavender: "#8f6fd6",
+  spireRose: "#e06aa8",
+  // blossom on the trees (and its petals on the air)
+  treeBlossomShare: 0.8, // share of the trees in flower
+  treeBlossomDensity: 1.0, // share of each tree's blossoms drawn
+  treeBlossomSize: 1.0,
+  treeBlossomPink: "#f5a9c4",
+  treeBlossomWhite: "#f6ecec",
+  treeBlossomRose: "#e2638f",
+  treeBlossomLilac: "#b596e2",
+  // the landscape: the pond's size (× the GLB's) and the ridges beyond the
+  // clearing (their crests' height, m) are built into the garden, so the
+  // garden is rebuilt when they change; the small mountains ringing it
+  // (their height)
+  pondSize: 1.9,
+  gardenRidges: 5,
+  gardenMountains: 1.0,
   // the pointer in the garden: grass and leaves part along its path,
   // bushes, plants and flowers glow where it passes
-  gardenHoverRadius: 2.2, // metres round its line of sight
-  gardenHoverStrength: 1.0,
+  gardenHoverRadius: 2.2, // metres: how wide a puff of the pointer's wind is
+  gardenHoverStrength: 1.0, // how hard the pointer's wind blows (and a click's ripple)
   gardenHoverLinger: 0.9, // seconds its path takes to close up / fade
   gardenWind: 1.0, // sway of grass, leaves and flowers
   gardenGlow: 1.0,
@@ -195,14 +224,29 @@ export const T = {
   logoColorB: "#ff8a1f",
   logoColorC: "#ffb347",
   logoColorD: "#d9400a",
+  logoMorphSpeed: 3.2, // forms per second once a section sets off a morph (higher = faster)
+  logoMorphStagger: 0.2, // how spread out the bubbles' starts are (0 = all at once)
+  logoMorphPull: 5, // how hard a bubble far from its place is pulled there (higher = lands sooner)
   logoSpring: 9.5, // how firmly they hold their place (elasticity)
   logoDamping: 0.85, // how quickly their wobble dies (lower = more fluid drag)
   logoFlow: 0.67, // how much the flow churns them
   logoSwirlSpeed: 0.03, // the vortex's pace
-  logoHoverRadius: 1.39, // metres round the pointer's line of sight they part from
-  logoHoverForce: 3.52, // ...how hard they are pushed
-  logoDrag: 4.0, // ...and how much they are dragged along with its movement
-  logoYaw: -180, // degrees the finished mark is turned (towards the final view)
+  logoHoverRadius: 0.1, // share of the screen's height round the pointer that it stirs
+  logoHoverForce: 1.0, // ...how hard it parts them
+  logoDrag: 0.9, // ...and how much they are carried along with its movement
+  logoYaw: 0, // degrees the mark is turned (0 = square to the camera in its section)
+  logoViscosity: 0.25, // how much each bubble takes on its neighbours' motion (fluid feel)
+  logoRepulsion: 0.02, // how much they keep their distance
+  logoScatterTime: 1.6, // seconds a stirred bubble drifts loose before finding its way home
+  logoCoreGlow: 0.6, // the warm glow at the body's centre
+  logoWhiteout: 0.85, // how white-hot stirred and fast bubbles burn
+  // the portal through the ring
+  portalGlow: 1.0, // its ring of light
+  portalRagged: 0.25, // how ragged its edge is
+  // the air: drifting leaves and warm motes
+  gardenAir: 1.0,
+  gardenLeafSize: 1.0,
+  gardenMoteSize: 1.0,
   gardenEnvIntensity: 0.33, // sky light on the garden
 
   // Post

@@ -8,20 +8,27 @@ import { createNoise2D } from "simplex-noise";
 import { GARDEN } from "../../config";
 import { mulberry32 } from "../../world/layout";
 import { GRASS_LAYER, patchSway } from "../../world/gardenAsset";
+import { GARDEN_SUN } from "./sky";
 import { T } from "../../tuning";
 
 // A lawn of real grass over the whole clearing: individual blades (one
 // instanced draw), planted on the terrain's height grid everywhere but the
 // water — thick round the pond and the camera's path, thinning towards the
-// trees. Each blade is a tapered, curved strip, coloured from a dark root to
-// a sunlit tip in drifting patches of greens with a few dry ones; it sways
-// in the wind and bends away along the pointer's path (the garden's shared
-// sway, see gardenAsset.js). The blades live on GRASS_LAYER, which the
+// trees. Each blade is a tapered, curved strip: dark at the root, through a
+// mid green to a sunlit tip, warmer and drier in drifting patches, each its
+// own shade, with a faint vein, a little gloss, the sun glowing through it
+// when the camera looks towards the light, and the odd dew glint. It sways in
+// the breeze and in the pointer's own wind (the garden's shared sway, see
+// gardenAsset.js). The blades live on GRASS_LAYER, which the
 // pond's reflection skips.
 
-// one blade: 5 rows up a tapered strip, 1 m tall, 1 unit wide at the root
+// The lawn reaches this far from the pond (m); the GLB's own grass clumps
+// take over beyond it.
+export const LAWN_RADIUS = 50;
+
+// one blade: 4 rows up a tapered strip, 1 m tall, 1 unit wide at the root
 function bladeGeometry() {
-  const rows = 5;
+  const rows = 4;
   const pos = [];
   const uv = [];
   const normal = [];
@@ -56,6 +63,8 @@ transformed.y *= uGrassHeight;
 transformed.z += pow(uv.y, 2.0) * aBlade.z * 0.35 * uGrassHeight;
 vGrassTint = aBlade.w;
 vGrassT = uv.y;
+vGrassAcross = uv.x * 2.0 - 1.0;
+vGrassSeed = aBlade.x;
 `;
 
 export default function GardenGrass({ tier, garden, sway }) {
@@ -74,9 +83,10 @@ export default function GardenGrass({ tier, garden, sway }) {
     const s = new THREE.Vector3();
     let n = 0;
     for (let tries = 0; n < count && tries < count * 4; tries++) {
-      // densest round the pond, thinning out to ~60 m
+      // densest round the pond, thinning out to the lawn's edge (where the
+      // blades grow broader, so it stays a sward from afar)
       const a = rng() * Math.PI * 2;
-      const r = 5 + Math.pow(rng(), 1.35) * 58;
+      const r = 8 + Math.pow(rng(), 1.05) * (LAWN_RADIUS - 8);
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r * 0.9 + 2;
       const h = garden.height.sample(x, z);
@@ -90,7 +100,7 @@ export default function GardenGrass({ tier, garden, sway }) {
       mesh.setMatrixAt(n, m);
       // seed, width, lean, tint (0 lush → 1 dry)
       const dry = THREE.MathUtils.clamp(noise(x * 0.05 + 40, z * 0.05) * 0.6 + 0.15 + (rng() < 0.08 ? 0.5 : 0), 0, 1);
-      blade.set([rng(), 0.05 + rng() * 0.05, (rng() - 0.3) * 1.2, dry], n * 4);
+      blade.set([rng(), (0.05 + rng() * 0.05) * (1 + Math.max(r - 25, 0) / 30), (rng() - 0.3) * 1.2, dry], n * 4);
       n++;
     }
     mesh.count = n;
@@ -99,10 +109,16 @@ export default function GardenGrass({ tier, garden, sway }) {
       uGrassHeight: { value: 1 },
       uGrassWidth: { value: 1 },
       uGrassRoot: { value: new THREE.Color("#1f3a12") },
+      uGrassMid: { value: new THREE.Color("#3f6b22") },
       uGrassTip: { value: new THREE.Color("#7fae3c") },
       uGrassDry: { value: new THREE.Color("#b5a35a") },
+      uGrassSun: { value: GARDEN_SUN.clone() },
+      uGrassGlow: { value: 1 },
     };
-    const material = new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0, side: THREE.DoubleSide });
+    // Lambert: a fraction of the cost of the standard material over this
+    // many overlapping blades (the sun through them and the dew glints are
+    // added by hand below)
+    const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
     patchSway(material, { ...sway, ...uniforms }, 0, {
       key: "-blade",
       before: BLADE_VERTEX,
@@ -112,18 +128,41 @@ export default function GardenGrass({ tier, garden, sway }) {
             "#include <common>",
             `#include <common>
             uniform vec3 uGrassRoot;
+            uniform vec3 uGrassMid;
             uniform vec3 uGrassTip;
             uniform vec3 uGrassDry;
+            uniform vec3 uGrassSun;
+            uniform float uGrassGlow;
             varying float vGrassTint;
-            varying float vGrassT;`
+            varying float vGrassT;
+            varying float vGrassAcross;
+            varying float vGrassSeed;`
           )
           .replace(
             "#include <color_fragment>",
             `#include <color_fragment>
-            vec3 grassTip = mix(uGrassTip, uGrassDry, vGrassTint);
-            // (clamped: interpolation can dip a hair below 0 at the root, and pow() of
-            // a negative is NaN — which the bloom spreads over the whole frame)
-            diffuseColor.rgb = mix(uGrassRoot, grassTip, pow(clamp(vGrassT, 0.0, 1.0), 0.8));`
+            // root → middle → tip, warmer and drier in patches, each blade its
+            // own shade, a faint vein down the middle, shaded at the root
+            // (clamped: interpolation can dip a hair below 0 at the root)
+            float gT = clamp(vGrassT, 0.0, 1.0);
+            vec3 gAlb = mix(uGrassRoot, uGrassMid, smoothstep(0.0, 0.55, gT));
+            gAlb = mix(gAlb, uGrassTip, smoothstep(0.4, 1.0, gT) * 0.85);
+            gAlb = mix(gAlb, uGrassDry, vGrassTint * 0.75);
+            gAlb *= mix(0.68, 1.12, fract(vGrassSeed * 7.31));
+            gAlb *= 1.0 + 0.12 * (1.0 - smoothstep(0.0, 0.35, abs(vGrassAcross)));
+            gAlb *= mix(0.25, 1.0, smoothstep(0.0, 0.7, gT));
+            diffuseColor.rgb = gAlb;`
+          )
+          .replace(
+            "#include <emissivemap_fragment>",
+            `#include <emissivemap_fragment>
+            // the sun through the blades when looking towards it, brightest at
+            // the tips; and now and then a dew glint
+            vec3 gSun = normalize((viewMatrix * vec4(uGrassSun, 0.0)).xyz);
+            vec3 gLook = normalize(-vViewPosition);
+            totalEmissiveRadiance += gAlb * pow(max(dot(gLook, gSun), 0.0), 3.0) * smoothstep(0.1, 0.9, gT) * 1.3 * uGrassGlow;
+            float gDew = step(0.985, fract(vGrassSeed * 97.13)) * smoothstep(0.55, 0.9, gT);
+            totalEmissiveRadiance += vec3(1.0, 0.97, 0.9) * gDew * pow(max(dot(normal, normalize(gSun - gLook)), 0.0), 120.0) * 2.5;`
           ),
     });
     // the vertex stage needs the blade attribute and the varyings
@@ -137,12 +176,14 @@ export default function GardenGrass({ tier, garden, sway }) {
         uniform float uGrassHeight;
         uniform float uGrassWidth;
         varying float vGrassTint;
-        varying float vGrassT;`
+        varying float vGrassT;
+        varying float vGrassAcross;
+        varying float vGrassSeed;`
       );
     };
     mesh.material = material;
     mesh.frustumCulled = false;
-    mesh.receiveShadow = true;
+    // (no shadow lookups per blade: the roots are shaded by hand instead)
     mesh.layers.set(GRASS_LAYER);
     return { mesh, geometry, material, uniforms, planted: n };
   }, [tier, garden, sway]);
@@ -161,6 +202,8 @@ export default function GardenGrass({ tier, garden, sway }) {
     u.uGrassHeight.value = T.grassHeight;
     u.uGrassWidth.value = T.grassWidth;
     u.uGrassRoot.value.set(T.grassRoot);
+    u.uGrassMid.value.set(T.grassMid);
+    u.uGrassGlow.value = T.grassTranslucency;
     u.uGrassTip.value.set(T.grassTip);
     u.uGrassDry.value.set(T.grassDry);
     built.mesh.count = Math.min(Math.round(built.planted * T.grassDensity), built.planted);

@@ -9,14 +9,15 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import Scene from "./scene/Scene";
-import { AssetBadge, HeroOverlay, ProgressRail } from "./Overlays";
+import { AssetBadge, GardenCopy, HeroOverlay, ProgressRail } from "./Overlays";
 import WhiteWebsite from "./WhiteWebsite";
 import StaticJourney from "./StaticJourney";
 import TuningPanel from "./TuningPanel";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import { buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
-import { ASSETS, JOURNEY_VH, P, RAIL, SCROLL_VH, STATES, detectTier, detectWebGL } from "./config";
+import { ASSETS, JOURNEY_VH, P, RAIL, SCROLL_VH, STATES, detectTier, detectWebGL, sectionAt } from "./config";
+import { GARDEN_SECTIONS } from "./content";
 import { CTA } from "./content";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
@@ -243,6 +244,8 @@ function Journey({ env }) {
   const railItemRefs = useRef([]);
   const hudRef = useRef(null);
   const glowRef = useRef(null);
+  const portalRef = useRef(null);
+  const copyRefs = useRef([]);
 
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
@@ -432,16 +435,36 @@ function Journey({ env }) {
         // past the light before the garden has loaded (a deep link, a very
         // fast scroll): stay in the light until it is ready
         if (glowRef.current) glowRef.current.style.opacity = String(J.progress >= P.through && !J.gardenReady ? 1 : J.flash);
+        // the garden's section copy: up while its section holds, lifted away
+        // across the change of section
+        GARDEN_SECTIONS.forEach((sec, i) => {
+          const el = copyRefs.current[i];
+          if (!el) return;
+          const a = sectionAt(sec.id, 0);
+          const e = (J.progress - a) / (sectionAt(sec.id, 1) - a);
+          const ss = (x, e0, e1) => Math.min(Math.max((x - e0) / (e1 - e0), 0), 1);
+          const show = ss(e, 0.1, 0.28) * (1 - ss(e, 0.7, 0.86)) * (J.gardenReady ? 1 : 0);
+          const y = (1 - show) * (e < 0.5 ? 40 : -40);
+          el.style.opacity = String(show);
+          el.style.visibility = show > 0.001 ? "visible" : "hidden";
+          el.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0)`;
+        });
+        // the portal's light, white to the site below (also where there is
+        // no post-processing to draw it)
+        if (portalRef.current) {
+          const w = Math.min(Math.max((J.portal - 0.55) / 0.45, 0), 1);
+          portalRef.current.style.opacity = String(w * w * (3 - 2 * w));
+        }
       };
       gsap.ticker.add(follow);
 
-      // Skip intro: straight to the end of the journey — the particle logo
-      // holding over the pond in the garden.
+      // Skip intro: straight into the garden — the particle mark formed over
+      // the pond, its first section up.
       const onSkip = (e) => {
         e.preventDefault();
         D.auto = null;
         D.guard = false;
-        const y = pToY(STATES.find((s) => s.id === "g-final").start);
+        const y = pToY(sectionAt("mark", 0.4));
         const l = lenisRef.current;
         if (l) l.scrollTo(y, { immediate: true, force: true });
         else window.scrollTo(0, y);
@@ -551,7 +574,11 @@ function Journey({ env }) {
           style={{ background: "radial-gradient(circle at 50% 50%, #fff6e8 0%, #ffe2b8 38%, #ffb46a 78%, #ff8a2e 100%)" }}
         />
 
+        {/* the portal at the end of the garden: white, onto the site */}
+        <div ref={portalRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-[#fff9f1] opacity-0" />
+
         <HeroOverlay ref={heroRef} />
+        <GardenCopy blockRefs={copyRefs} />
         <ProgressRail ref={railRef} fillRef={railFillRef} itemRefs={railItemRefs} onJump={jump} />
         <AssetBadge problem={asset?.problem} />
         {env && <TuningPanel onScrub={jump} />}

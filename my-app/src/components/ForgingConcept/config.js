@@ -33,9 +33,12 @@ export const FORGE = {
 //   event   – core → cracks → breakup → forged logo. Always auto-scrolled
 //             (input locked) in either direction; the camera holds still
 //   after   – the swirl around the forged hero
-//   then the garden: the camera approaches the cube outline's opening,
-//   passes through it into daylight, the garden is revealed and settles,
-//   the particle logo assembles over the pond, and the final scene holds.
+//   then the garden: the camera approaches the cube outline's opening and
+//   passes through it into daylight, where a swirl of particles streams in
+//   over the pond and forms the Hyperiux mark. Four sections follow, one
+//   per pillar (the mark, a cube, a cloud, a ring), the particle body
+//   morphing between them while the camera moves on round the pond; then it
+//   flies through the ring into a portal of light that opens onto the site.
 export const SCROLL_VH = {
   hero: 90,
   ground: 140,
@@ -44,10 +47,12 @@ export const SCROLL_VH = {
   after: 140,
   approach: 170,
   pass: 90,
-  reveal: 170,
-  settle: 80,
-  assemble: 230,
-  final: 120,
+  reveal: 150, // out of the light, the swirl streams in and forms the mark
+  mark: 200, // section 1: the mark
+  cube: 210, // section 2: the cube
+  cloud: 210, // section 3: the cloud
+  ring: 210, // section 4: the ring
+  portal: 170, // through the ring, into the light, onto the site
 };
 const TOTAL_VH = Object.values(SCROLL_VH).reduce((a, b) => a + b, 0);
 // + one screen: the pinned viewport itself
@@ -66,16 +71,20 @@ export const P = {
   pass: ends.approach, // at the opening
   through: ends.approach + (ends.pass - ends.approach) * 0.5, // at the window behind the ring
   out: ends.pass, // clear of the mark, in daylight
-  revealed: ends.reveal,
-  settled: ends.settle,
-  assembled: ends.assemble,
+  formed: ends.reveal, // the particle mark has formed
+  mark: ends.mark, // the ends of the four sections
+  cube: ends.cube,
+  cloud: ends.cloud,
+  ring: ends.ring,
 };
 // p of a point (0..1) inside the event
 export const eventAt = (e) => P.core + e * (P.forged - P.core);
 // p of a point (0..1) inside the orbit / hold stretch
 export const afterAt = (e) => P.forged + e * (P.held - P.forged);
-// p of a point (0..1) inside the particle assembly
-export const assembleAt = (e) => P.settled + e * (P.assembled - P.settled);
+// p of a point (0..1) inside one of the garden's sections
+const SECTION_START = { mark: P.formed, cube: P.mark, cloud: P.cube, ring: P.cloud, portal: P.ring };
+const SECTION_END = { mark: P.mark, cube: P.cube, cloud: P.cloud, ring: P.ring, portal: 1 };
+export const sectionAt = (name, e) => SECTION_START[name] + e * (SECTION_END[name] - SECTION_START[name]);
 
 // Where the camera goes through the forged mark, as composed in the
 // timeline (world metres). The camera rig corrects the shots by the real
@@ -94,7 +103,17 @@ export const GARDEN = {
   pond: new THREE.Vector3(0, -0.25, 0),
   water: -0.25,
   logo: new THREE.Vector3(0, 6.2, -2), // the particle logo's centre (~7.6 × 8.5 m)
-  pondAxes: [9.5, 6.5], // the pond's semi-axes (x, z)
+  // the GLB's pond's semi-axes (x, z); the garden widens it by T.pondSize as
+  // it loads (world/gardenTerrain.js)
+  pondGlbAxes: [9.5, 6.5],
+  // where the particle body hangs in each section (garden metres): all over
+  // the pond's middle, the centre the camera revolves round
+  shapes: {
+    mark: new THREE.Vector3(0, 6.2, -2),
+    cube: new THREE.Vector3(0, 6.2, -2),
+    cloud: new THREE.Vector3(0, 7.0, -2),
+    ring: new THREE.Vector3(0, 6.4, -2), // the way through
+  },
 };
 // garden metres → world: the entrance lands 6 m beyond the opening
 export const GARDEN_ORIGIN = new THREE.Vector3(OPENING_NOMINAL.x, OPENING_NOMINAL.y - GARDEN.entrance.y, 0.3 - (GARDEN.entrance.z + 6));
@@ -117,12 +136,12 @@ export const STATES = [
   { id: "g-approach", n: "12", label: "Approach", start: P.held + (P.pass - P.held) * 0.35, end: P.pass },
   { id: "g-pass", n: "13", label: "Pass through", start: P.pass, end: P.through },
   { id: "g-daylight", n: "14", label: "Daylight", start: P.through, end: P.out },
-  { id: "g-landscape", n: "15", label: "Landscape", start: P.out, end: P.revealed },
-  { id: "g-settle", n: "16", label: "Settle", start: P.revealed, end: P.settled },
-  { id: "g-particles", n: "17", label: "Particles", start: P.settled, end: assembleAt(0.3) },
-  { id: "g-forms", n: "18", label: "Logo forms", start: assembleAt(0.3), end: assembleAt(0.75) },
-  { id: "g-refine", n: "19", label: "Refine", start: assembleAt(0.75), end: P.assembled },
-  { id: "g-final", n: "20", label: "Final", start: P.assembled, end: 1 },
+  { id: "g-swirl", n: "15", label: "Swirl", start: P.out, end: P.formed },
+  { id: "g-mark", n: "16", label: "Human behaviour", start: P.formed, end: P.mark },
+  { id: "g-cube", n: "17", label: "Design", start: P.mark, end: P.cube },
+  { id: "g-cloud", n: "18", label: "Technology", start: P.cube, end: P.cloud },
+  { id: "g-final", n: "19", label: "Organic growth", start: P.cloud, end: P.ring },
+  { id: "g-portal", n: "20", label: "Portal", start: P.ring, end: 1 },
 ];
 
 // Labels on the bottom progress rail, at their p.
@@ -135,7 +154,10 @@ export const RAIL = [
   { label: "Orbits", at: P.forged },
   { label: "Through", at: P.held },
   { label: "Garden", at: P.out },
-  { label: "Logo", at: P.settled },
+  { label: "Behaviour", at: sectionAt("mark", 0.3) },
+  { label: "Design", at: sectionAt("cube", 0.3) },
+  { label: "Technology", at: sectionAt("cloud", 0.3) },
+  { label: "Growth", at: sectionAt("ring", 0.3) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -160,7 +182,7 @@ export const WIND_DIR = new THREE.Vector2(-0.8, -0.6).normalize();
 export const TIERS = {
   high: {
     name: "high",
-    dpr: [1, 1.5],
+    dpr: [1, 1.25],
     terrainSegments: 300,
     dust: 700,
     // soil swirl: most grains / dust it can draw (Leva picks how many)
@@ -169,10 +191,13 @@ export const TIERS = {
     maxGravel: 4000, // ...and gravel
     sandGrains: 16000,
     gardenGrass: 1, // share of the garden's grass clumps drawn
-    gardenBlades: 140000, // the lawn's blades
+    gardenBlades: 150000, // the lawn's blades
     gardenBushes: 40, // bushes planted beyond the GLB's own
-    gardenFlowers: 260, // ...and flower clusters
-    pondReflection: 0.5, // the pond's mirror, at this share of the canvas (0: sky only)
+    gardenTulips: 4200, // flowers through the lawn: tulips,
+    gardenDaisies: 4800, // ...daisies
+    gardenSpikes: 2100, // ...and spires of tiny florets
+    gardenBlossoms: 36000, // blossoms on the trees
+    pondReflection: 0.35, // the pond's mirror, at this share of the canvas (0: sky only)
     logoPoints: 32400, // the bubble logo
     shadowMap: 2048,
     post: true,
@@ -180,7 +205,7 @@ export const TIERS = {
   },
   medium: {
     name: "medium",
-    dpr: [1, 1.4],
+    dpr: [1, 1.2],
     terrainSegments: 220,
     dust: 450,
     maxGrains: 6000,
@@ -188,10 +213,13 @@ export const TIERS = {
     maxGravel: 2000,
     sandGrains: 10000,
     gardenGrass: 0.6,
-    gardenBlades: 70000,
+    gardenBlades: 85000,
     gardenBushes: 28,
-    gardenFlowers: 160,
-    pondReflection: 0.35,
+    gardenTulips: 2400,
+    gardenDaisies: 2700,
+    gardenSpikes: 1100,
+    gardenBlossoms: 20000,
+    pondReflection: 0.25,
     logoPoints: 16384,
     shadowMap: 1024,
     post: true,
@@ -207,9 +235,12 @@ export const TIERS = {
     maxGravel: 600,
     sandGrains: 0, // no hover on touch
     gardenGrass: 0.3,
-    gardenBlades: 30000,
+    gardenBlades: 36000,
     gardenBushes: 12,
-    gardenFlowers: 60,
+    gardenTulips: 950,
+    gardenDaisies: 1100,
+    gardenSpikes: 480,
+    gardenBlossoms: 9000,
     pondReflection: 0,
     logoPoints: 8100,
     shadowMap: 0,

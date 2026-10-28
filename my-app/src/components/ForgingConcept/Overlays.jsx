@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
-import { HERO } from "./content";
+import { GARDEN_SECTIONS, HERO } from "./content";
 import { ASSETS, RAIL } from "./config";
 
 // HTML layers above the canvas. Nothing here captures the pointer except
@@ -34,6 +34,47 @@ export const HeroOverlay = forwardRef(function HeroOverlay(_, ref) {
     </div>
   );
 });
+
+// The garden's section copy: one block per section, faded and lifted in and
+// out by the journey (ForgingConcept sets each block's opacity / transform
+// from the scroll), laid out round the composed shot — under the mark, to
+// the left of the cube, under the cloud, centred under the ring.
+const LAYOUT = {
+  bottom: "items-end justify-start pb-[16vh]",
+  left: "items-center justify-start",
+  center: "items-end justify-center pb-[14vh] text-center",
+};
+export function GardenCopy({ blockRefs }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20">
+      {GARDEN_SECTIONS.map((s, i) => (
+        <div
+          key={s.id}
+          ref={(el) => (blockRefs.current[i] = el)}
+          className={`absolute inset-0 flex px-[5vw] opacity-0 max-[33.875rem]:items-end max-[33.875rem]:pb-[16vh] ${LAYOUT[s.layout]}`}
+          style={{ visibility: "hidden" }}
+        >
+          <div className={`flex max-w-[44vw] flex-col gap-[1.4vw] max-[64rem]:max-w-[80vw] max-[33.875rem]:max-w-full max-[33.875rem]:gap-4 ${s.layout === "center" ? "items-center" : ""}`}>
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[#FF5F00] px-3 py-1 font-[family-name:var(--font-aeonikpro)] text-[0.7vw] uppercase tracking-[0.2em] text-white max-[64rem]:text-[1.5vw] max-[33.875rem]:text-[2.8vw]">
+              <span className="opacity-70">{s.n}</span>
+              {s.tag}
+            </span>
+            <h2 className="font-[family-name:var(--font-aeonikpro)] text-[4.6vw] font-normal uppercase leading-[0.95] tracking-[-0.02em] text-white [text-shadow:0_2px_30px_rgba(0,0,0,0.25)] max-[64rem]:text-[7vw] max-[33.875rem]:text-[10vw]">
+              {s.title.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </h2>
+            <p className="max-w-[26vw] font-[family-name:var(--font-aeonikpro)] text-[0.85vw] uppercase leading-[1.5] tracking-[0.08em] text-white/85 max-[64rem]:max-w-[60vw] max-[64rem]:text-[1.8vw] max-[33.875rem]:max-w-full max-[33.875rem]:text-[3.2vw]">
+              {s.body}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export const ProgressRail = forwardRef(function ProgressRail({ fillRef, itemRefs, onJump }, ref) {
   return (

@@ -26,7 +26,8 @@ import { P } from "./config";
 //   light  – the cube's inner light the camera flies into: a rising, glassy
 //            chord and shimmer; an airy swell as it passes through.
 //   garden – water lapping, leaves, and birds now and then.
-//   logo   – glints as the particle logo gathers, a soft chord as it settles.
+//   logo   – glints as the particle body flows from form to form, a soft
+//            chord as each form comes together; an airy swell into the portal.
 //   vanish – as the world dissolves into white, the music sinks, darkens
 //            and washes out into the reverb until nothing is left.
 
@@ -125,7 +126,7 @@ class AudioEngine {
     this.buildGarden();
     this.logoBus = this.bus(1.1);
 
-    this.prev = { crackSpread: 0, fracture: 0, beam: 0, pulse: 0, progress: 0, pForm: 0, pSettle: 0 };
+    this.prev = { crackSpread: 0, fracture: 0, beam: 0, pulse: 0, progress: 0, formT: 0, portal: 0 };
     this.breakLevel = 0;
     this.nextChip = 0;
     this.swirlPhase = 0;
@@ -796,20 +797,22 @@ class AudioEngine {
     }
 
     // ---- the particle logo: glints as it gathers, a chord as it settles
-    const formRate = Math.abs(J.pForm - this.prev.pForm) / dt + Math.abs(J.pSettle - this.prev.pSettle) / dt * 0.5;
+    const formRate = Math.abs(J.formT - this.prev.formT) / dt;
     this.glints += Math.min(formRate * 40, 14) * dt;
     while (this.glints >= 1) {
       this.glints -= 1;
       this.glint(t + Math.random() * 0.08);
     }
-    if (forward && this.prev.pSettle < 0.85 && J.pSettle >= 0.85) this.resolve();
+    // a chord as each form comes together; an airy swell into the portal
+    if (Math.floor(this.prev.formT + 0.05) < Math.floor(J.formT + 0.05) && J.formT >= 0.95) this.resolve();
+    if (forward && this.prev.portal < 0.3 && J.portal >= 0.3) this.passThrough();
 
     this.prev.crackSpread = J.crackSpread;
     this.prev.fracture = fr;
     this.prev.beam = J.beam;
     this.prev.pulse = J.pulse;
     this.prev.progress = J.progress;
-    this.prev.pForm = J.pForm;
-    this.prev.pSettle = J.pSettle;
+    this.prev.formT = J.formT;
+    this.prev.portal = J.portal;
   }
 }

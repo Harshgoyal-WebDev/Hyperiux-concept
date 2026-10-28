@@ -16,14 +16,16 @@ import { GARDEN_SUN, SKY_GLSL } from "./sky";
 //   currents – a slow circulation round the pond, its surface ripples
 //              flowing along it (two phases of a flow map, so they never
 //              smear), and
-//   ripples  – a wave simulation on a grid over the pond: the pointer drops
-//              rings into it as it moves over the water, which spread,
-//              cross, bounce off nothing and die away.
+//   ripples  – a wave simulation on a fine grid over the pond (slow enough
+//              for the rings to be seen spreading): the pointer drops rings
+//              into it all along its path over the water, stronger the
+//              faster it moves, which spread, cross and die away; their
+//              slopes are taken in metres, so they tilt the surface (and
+//              break up its mirror) as real ripples would.
 // Fresnel decides how much is mirror and how much is water: deep green-blue
 // in the middle, the shallows clearer towards the banks.
 
-const SIM = 256; // ripple grid
-const HALF = [GARDEN.pondAxes[0] * 1.3, GARDEN.pondAxes[1] * 1.3]; // the grid's half extent (m)
+const SIM = 512; // ripple grid
 
 const QUAD_VERTEX = /* glsl */ `
 varying vec2 vUv;
@@ -73,6 +75,7 @@ uniform sampler2D tDiffuse;
 uniform vec3 color;
 uniform sampler2D uRipples;
 uniform vec2 uHalf;
+uniform float uTexel; // the ripple grid's cell (m)
 uniform vec2 uAxes;
 uniform float uTime;
 uniform vec3 uSunDir;
@@ -125,7 +128,7 @@ void main() {
   vec2 rt = vec2(1.0 / ${SIM}.0);
   float hx = texture2D(uRipples, ruv + vec2(rt.x, 0.0)).r - texture2D(uRipples, ruv - vec2(rt.x, 0.0)).r;
   float hz = texture2D(uRipples, ruv + vec2(0.0, rt.y)).r - texture2D(uRipples, ruv - vec2(0.0, rt.y)).r;
-  g += vec2(hx, hz) * uRippleStrength;
+  g += vec2(hx, hz) / (2.0 * uTexel) * uRippleStrength * 1.5;
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
   vec3 v = normalize(cameraPosition - vWorld);
   float fresnel = 0.04 + 0.96 * pow(1.0 - max(dot(n, v), 0.0), 4.0);
@@ -145,13 +148,14 @@ void main() {
 }
 `;
 
-const WATER_UNIFORMS = () => ({
+const WATER_UNIFORMS = (axes, half) => ({
   tDiffuse: { value: null },
   color: { value: new THREE.Color() },
   textureMatrix: { value: new THREE.Matrix4() },
   uRipples: { value: null },
-  uHalf: { value: new THREE.Vector2(...HALF) },
-  uAxes: { value: new THREE.Vector2(...GARDEN.pondAxes) },
+  uHalf: { value: new THREE.Vector2(...half) },
+  uTexel: { value: (2 * half[0]) / SIM },
+  uAxes: { value: new THREE.Vector2(...axes) },
   uTime: { value: 0 },
   uSunDir: { value: GARDEN_SUN.clone() },
   uReflect: { value: 1 },
@@ -165,13 +169,16 @@ const WATER_UNIFORMS = () => ({
   uHasReflection: { value: 1 },
 });
 
-export default function GardenPond({ tier, time }) {
+// axes: the pond's semi-axes (x, z), as widened
+export default function GardenPond({ tier, time, axes }) {
   const { gl, camera, size } = useThree();
   const built = useMemo(() => {
+    // the ripple grid's half extent (m)
+    const half = [axes[0] * 1.3, axes[1] * 1.3];
     // the water: an ellipse a little larger than the pond (the banks hide
     // the excess), lying flat at water level
-    const geometry = new THREE.CircleGeometry(1, 128).scale(GARDEN.pondAxes[0] * 1.22, GARDEN.pondAxes[1] * 1.22, 1);
-    const shader = { name: "GardenPond", uniforms: WATER_UNIFORMS(), vertexShader: WATER_VERTEX, fragmentShader: WATER_FRAGMENT };
+    const geometry = new THREE.CircleGeometry(1, 128).scale(axes[0] * 1.22, axes[1] * 1.22, 1);
+    const shader = { name: "GardenPond", uniforms: WATER_UNIFORMS(axes, half), vertexShader: WATER_VERTEX, fragmentShader: WATER_FRAGMENT };
     let water;
     const reflect = tier.pondReflection > 0;
     if (reflect) {
@@ -203,7 +210,7 @@ export default function GardenPond({ tier, time }) {
         uDrop: { value: new THREE.Vector3(0, 0, 0) },
         uDropRadius: { value: 0.02 },
         uDamping: { value: 0.985 },
-        uSpeed: { value: 1.6 },
+        uSpeed: { value: 0.6 },
       },
       vertexShader: QUAD_VERTEX,
       fragmentShader: SIM_FRAGMENT,
@@ -215,8 +222,8 @@ export default function GardenPond({ tier, time }) {
     quad.frustumCulled = false;
     simScene.add(quad);
     const simCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    return { water, geometry, targets, simMaterial, simScene, simCamera, quad, read: 0, cleared: false, reflect };
-  }, [tier]);
+    return { water, geometry, targets, simMaterial, simScene, simCamera, quad, read: 0, cleared: false, reflect, axes, half };
+  }, [tier, axes]);
 
   useEffect(
     () => () => {
@@ -238,11 +245,11 @@ export default function GardenPond({ tier, time }) {
   }, [built, gl, size, tier]);
 
   const s = useMemo(
-    () => ({ ray: new THREE.Raycaster(), ndc: new THREE.Vector2(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit: new THREE.Vector3(), last: new THREE.Vector3(1e9, 0, 0) }),
+    () => ({ ray: new THREE.Raycaster(), ndc: new THREE.Vector2(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit: new THREE.Vector3(), last: new THREE.Vector3(1e9, 0, 0), drops: [] }),
     []
   );
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const u = built.water.material.uniforms;
     u.uTime.value = time.value;
     u.uReflect.value = T.pondReflect;
@@ -254,11 +261,14 @@ export default function GardenPond({ tier, time }) {
     u.uShallow.value.set(T.pondShallow);
     u.uClarity.value = T.pondClarity;
 
-    // the pointer over the water drops rings, more the faster it moves
+    // the pointer over the water drops rings all along its way, stronger
+    // the faster it moves (one where it is now, one halfway from where it
+    // was, so a quick stroke leaves an unbroken wake)
     const sim = built.simMaterial.uniforms;
-    sim.uDrop.value.z = 0;
+    const { axes: ax, half } = built;
     sim.uDamping.value = T.pondRippleDamping;
-    sim.uDropRadius.value = T.pondRippleRadius / (2 * HALF[0]);
+    sim.uDropRadius.value = T.pondRippleRadius / (2 * half[0]);
+    s.drops.length = 0;
     if (pointer.active && performance.now() - pointer.movedAt < 150) {
       s.ndc.set(pointer.x, pointer.y);
       s.ray.setFromCamera(s.ndc, camera);
@@ -266,17 +276,26 @@ export default function GardenPond({ tier, time }) {
       if (s.ray.ray.intersectPlane(s.plane, s.hit)) {
         const x = s.hit.x - GARDEN_ORIGIN.x - GARDEN.pond.x;
         const z = s.hit.z - GARDEN_ORIGIN.z - GARDEN.pond.z;
-        const inside = Math.hypot(x / GARDEN.pondAxes[0], z / GARDEN.pondAxes[1]) < 1.05;
+        const inside = Math.hypot(x / ax[0], z / ax[1]) < 1.05;
         const moved = s.hit.distanceTo(s.last);
+        const lx = s.last.x - GARDEN_ORIGIN.x - GARDEN.pond.x;
+        const lz = s.last.z - GARDEN_ORIGIN.z - GARDEN.pond.z;
         s.last.copy(s.hit);
-        // (the sim's grid: uv x along +x, uv y along +z)
-        if (inside && moved < 3) sim.uDrop.value.set(x / (2 * HALF[0]) + 0.5, z / (2 * HALF[1]) + 0.5, Math.min(moved * 0.06, 0.05) * T.pondRippleForce);
+        if (inside && moved < 6) {
+          const speed = moved / Math.max(Math.min(delta, 0.1), 1 / 240);
+          const strength = Math.min(0.02 + speed * 0.01, 0.08) * T.pondRippleForce;
+          // (the sim's grid: uv x along +x, uv y along +z)
+          const uvOf = (px, pz) => [px / (2 * half[0]) + 0.5, pz / (2 * half[1]) + 0.5];
+          if (moved > T.pondRippleRadius * 0.5) s.drops.push([...uvOf((x + lx) / 2, (z + lz) / 2), strength]);
+          s.drops.push([...uvOf(x, z), strength]);
+        }
       }
-    }
+    } else s.last.set(1e9, 0, 0);
 
-    // two sim steps a frame
+    // a step for each drop (at least one a frame)
     const prevTarget = gl.getRenderTarget();
-    for (let k = 0; k < 2; k++) {
+    const steps = Math.max(s.drops.length, 1);
+    for (let k = 0; k < steps; k++) {
       const src = built.targets[built.read];
       const dst = built.targets[1 - built.read];
       if (!built.cleared) {
@@ -284,11 +303,13 @@ export default function GardenPond({ tier, time }) {
         gl.clear();
         built.cleared = true;
       }
+      const drop = s.drops[k];
+      if (drop) sim.uDrop.value.set(drop[0], drop[1], drop[2]);
+      else sim.uDrop.value.z = 0;
       sim.uPrev.value = src.texture;
       gl.setRenderTarget(dst);
       gl.render(built.simScene, built.simCamera);
       built.read = 1 - built.read;
-      if (k === 0) sim.uDrop.value.z = 0;
     }
     gl.setRenderTarget(prevTarget);
     u.uRipples.value = built.targets[built.read].texture;

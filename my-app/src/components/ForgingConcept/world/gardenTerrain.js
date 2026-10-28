@@ -1,4 +1,88 @@
 import * as THREE from "three";
+import { createNoise2D } from "simplex-noise";
+import { GARDEN } from "../config";
+import { mulberry32 } from "./layout";
+
+// The garden's ground, reshaped from the GLB's as it loads:
+//   the pond – widened by a scale (T.pondSize). Everything within the banks'
+//              top (BANK pond radii) is scaled out as a whole, so the
+//              basin, its shelf and its shore keep their shape; beyond, the
+//              push eases off to nothing by FADE pond radii, the meadow
+//              taking up the difference. The terrain's vertices (with their
+//              uvs, so its painted mud and grass go with them) and every
+//              placed tree, bush, rock and plant move by the same map.
+//   ridges – grassy ridges and knolls rolling up from just past the pond's
+//              banks (ridged noise, from nothing at 1.2 pond radii to full
+//              height by 1.9, on out to the terrain's edge; their crests'
+//              height is T.gardenRidges), leaving a shallow valley open on
+//              the way in; the lawn grows over them, and the trees on them
+//              are lifted with them.
+const BANK = 1.45;
+const FADE = 3.8;
+const smooth = (a, b, x) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+// a point of the GLB's ground → where it lies on the pond widened by scale
+export function widenPond(x, z, scale, out) {
+  const dx = x - GARDEN.pond.x;
+  const dz = z - GARDEN.pond.z;
+  const rho = Math.hypot(dx / GARDEN.pondGlbAxes[0], dz / GARDEN.pondGlbAxes[1]);
+  const push = (scale - 1) * Math.min(rho, BANK) * (1 - smooth(BANK, FADE, rho));
+  const k = rho > 1e-6 ? (rho + push) / rho : scale;
+  out.x = GARDEN.pond.x + dx * k;
+  out.z = GARDEN.pond.z + dz * k;
+  return out;
+}
+
+// the ridges' height at (x, z) (garden metres), their crests up to height,
+// round the pond widened by pondScale
+export function createRidges(height, pondScale, seed = 2024) {
+  const noise = createNoise2D(mulberry32(seed));
+  const ridge = (x, z, f, o) => {
+    const v = 1 - Math.abs(noise(x * f + o, z * f - o));
+    return v * v;
+  };
+  const ax = GARDEN.pondGlbAxes[0] * pondScale;
+  const az = GARDEN.pondGlbAxes[1] * pondScale;
+  return (x, z) => {
+    const dx = x - GARDEN.pond.x;
+    const dz = z - GARDEN.pond.z;
+    let m = smooth(1.2, 1.9, Math.hypot(dx / ax, dz / az));
+    if (m <= 0) return 0;
+    // the way in (from +z) stays a shallow valley
+    m *= 1 - 0.8 * smooth(0.9, 1.4, dz / az) * (1 - smooth(4, 12, Math.abs(dx)));
+    // crests along the lines where the noise crosses zero, a smaller set
+    // across them, and broad swells and saddles along their length
+    const crest = ridge(x, z, 1 / 24, 0) * 0.65 + ridge(x, z, 1 / 10, 17) * 0.25 + (noise(x / 6, z / 6) * 0.5 + 0.5) * 0.1;
+    const swell = 0.6 + 0.4 * noise(x * 0.02 + 7, z * 0.02);
+    return height * m * swell * crest;
+  };
+}
+
+// The terrain mesh, reshaped in place: its transform is baked into a copy
+// of its geometry (the GLB's own is cached and shared), then each vertex is
+// moved out with the pond and raised onto the ridges.
+export function reshapeTerrain(mesh, pondScale, ridgeAt) {
+  mesh.updateMatrix();
+  const g = mesh.geometry.clone().applyMatrix4(mesh.matrix);
+  mesh.position.set(0, 0, 0);
+  mesh.quaternion.identity();
+  mesh.scale.set(1, 1, 1);
+  mesh.updateMatrix();
+  const p = g.attributes.position;
+  const v = { x: 0, z: 0 };
+  for (let i = 0; i < p.count; i++) {
+    widenPond(p.getX(i), p.getZ(i), pondScale, v);
+    p.setXYZ(i, v.x, p.getY(i) + ridgeAt(v.x, v.z), v.z);
+  }
+  g.computeVertexNormals();
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
+  mesh.geometry = g;
+  return mesh;
+}
 
 // The garden terrain as a height grid (garden metres): its triangles are
 // rasterised once onto a regular grid, so the grass, flowers and bushes can

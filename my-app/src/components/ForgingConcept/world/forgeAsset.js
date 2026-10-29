@@ -25,18 +25,18 @@ export const CRACK_STAGES = ["Core", "Inner", "Middle", "Outer", "LogoCore"];
 
 export const FRONT_Z = 1.2; // engraved face, asset space
 
-// When each break group comes loose, as a share of the breakup (0..1):
-// perimeter first, then above and below the mark, then the negative spaces
-// inside it, then the last pieces around the core.
+// When each break group comes loose, as a share of the breakup (0..1): one
+// blast, a beat apart — perimeter first, then above and below the mark, then
+// the negative spaces inside it, then the last pieces around the core.
 const GROUP_WINDOWS = [
-  [/BreakGroup_01/, 0.0, 0.3],
-  [/BreakGroup_02/, 0.18, 0.36],
-  [/BreakGroup_03/, 0.24, 0.42],
-  [/BreakGroup_04/, 0.36, 0.5],
-  [/BreakGroup_05/, 0.48, 0.52],
+  [/BreakGroup_01/, 0.0, 0.02],
+  [/BreakGroup_02/, 0.01, 0.03],
+  [/BreakGroup_03/, 0.015, 0.035],
+  [/BreakGroup_04/, 0.02, 0.04],
+  [/BreakGroup_05/, 0.03, 0.045],
 ];
 // Share of the breakup each chunk spends in flight (last start + span = 1).
-export const CHUNK_SPAN = 0.48;
+export const CHUNK_SPAN = 0.955;
 
 // ---------------------------------------------------------------------------
 // The Hyperiux mark, verbatim from public/hyperiux-icon-black.svg (500×501).
@@ -377,6 +377,7 @@ export function prepareForge(gltfScene, groundY) {
     list.forEach((c, i) => {
       if (win) c.start = win[1] + (list.length > 1 ? i / (list.length - 1) : 0) * (win[2] - win[1]);
       else c.start = Math.min((c.order - 1) / Math.max(chunks.length - 1, 1), 1) * (1 - CHUNK_SPAN);
+      c.seed = rng();
     });
   }
 
@@ -410,6 +411,9 @@ export function prepareForge(gltfScene, groundY) {
     swirlSource: chunks.map(() => new THREE.Vector4()),
     pieceQuat: chunks.map(() => new THREE.Vector4(0, 0, 0, 1)),
     pieceProgress: new Float32Array(Math.ceil(chunks.length / 4) * 4), // four to a vec4 uniform
+    // each piece's sand stream once broken off: which stream, how far back
+    // along it, its size
+    pieceStream: chunks.map(() => new THREE.Vector4(0, 0, 1, 0)),
     cracks,
     sphere,
     scale: S,
@@ -429,44 +433,11 @@ export function prepareForge(gltfScene, groundY) {
 // ---------------------------------------------------------------------------
 // Chunk breakup
 // ---------------------------------------------------------------------------
-// Every piece keeps its size and never falls. In its turn (the groups go
-// from the centre out, in the order the glow filled them) it comes loose
-// with a shudder, slides straight out of the face just far enough to clear
-// the slab, drifting gently on the wind and turning slowly, and wears away
-// into sand from its edges in — a fixed pattern (sandNoise), so the sand and
-// gravel it releases come off exactly where the stone goes. They are carried
-// on into the swirl round the mark. A function of the breakup progress, so
+// The breakup is a blast: all the excess rock is thrown off at once (the
+// groups only a beat apart, from the centre out), then carried round the
+// mark in streams of sand that it grinds away into. Each piece's flight is
+// world/breakup.js (pieceFlight); a function of the breakup progress, so
 // scrolling back reassembles the slab.
-export const ERODE = [0.03, 0.55]; // a piece's own progress over which it wears away (linear)
-export const FLOW = 0.38; // ...and how long its sand takes to reach the swirl
-const PULL = 2.6; // asset m straight out of the face (clears the 2.4 m slab)
-const PULL_PERIMETER = 0.9;
-
-const smooth = (x, e0, e1) => THREE.MathUtils.smoothstep(x, e0, e1);
 
 // A piece's own progress (0 → 1) at breakup progress f.
 export const pieceProgress = (c, f) => THREE.MathUtils.clamp((f - c.start) / CHUNK_SPAN, 0, 1);
-
-// Pose of one chunk at its own progress u (0..1), into out.position /
-// quaternion (asset space; scale stays 1). Returns how far it has eroded
-// into sand (0..1).
-export function chunkPose(c, u, out) {
-  out.scale.setScalar(1);
-  if (u <= 0) {
-    out.position.copy(c.rest);
-    out.quaternion.identity();
-    return 0;
-  }
-  // a brief shudder as it comes loose
-  const loose = Math.sin(u * 260) * 0.02 * (1 - smooth(u, 0, 0.08));
-  const out_ = (c.perimeter ? PULL_PERIMETER : PULL) * smooth(u, 0.01, 0.3);
-  // then floats off gently, the way the wind will carry its sand
-  const drift = c.drift * 1.6 * smooth(u, 0.12, 0.7) * u;
-  out.position.set(
-    c.rest.x + c.dir.x * drift + loose,
-    c.rest.y + c.dir.y * drift * 0.4 + 0.5 * smooth(u, 0.1, 0.6) + loose * 0.6,
-    c.rest.z + out_ + Math.max(c.dir.z, 0.2) * drift * 0.5
-  );
-  out.quaternion.setFromAxisAngle(c.axis, c.spin * 0.9 * smooth(u, 0.05, 1) * u);
-  return THREE.MathUtils.clamp((u - ERODE[0]) / (ERODE[1] - ERODE[0]), 0, 1);
-}

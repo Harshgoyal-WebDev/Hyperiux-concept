@@ -24,3 +24,20 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* forging-sand-dune-concept: the pins' ring breathing, glowing like the beam
+   — a hot pale line with an orange falloff, inside and out (it is also
+   centred by the transform, so the keyframes carry the translate) */
+@keyframes fsd-pin-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.86);
+    opacity: 0.7;
+    box-shadow: 0 0 2px #ffc890, 0 0 7px 1px rgba(255, 95, 0, 0.65), 0 0 16px 3px rgba(255, 95, 0, 0.3), inset 0 0 2px #ffc890, inset 0 0 6px rgba(255, 95, 0, 0.5);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 3px 1px #ffc890, 0 0 12px 3px rgba(255, 95, 0, 0.9), 0 0 28px 8px rgba(255, 95, 0, 0.45), inset 0 0 3px #ffc890, inset 0 0 9px rgba(255, 95, 0, 0.75);
+  }
+}

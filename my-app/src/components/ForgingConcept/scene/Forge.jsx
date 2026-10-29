@@ -7,8 +7,9 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ASSETS } from "../config";
 import { T } from "../tuning";
-import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, chunkPose, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
+import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
+import { pieceFlight, syncFlow } from "../world/breakup";
 
 // The forging monolith: the authored slab (logo core + excess chunks), its
 // crack network and the core sphere, all from the GLB. The logo core keeps
@@ -285,6 +286,41 @@ export default function Forge({ J, shared, groundY, onReady }) {
     const halo = sprite("#ff6a14");
     const point = sprite("#ffe2b8");
 
+    // The breakup's impact: a shell of energy bursting out from the core
+    // (bright at its rim, clear in the middle) and dissipating as it goes.
+    const shell = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 48, 24),
+      new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color("#ff8a3c") }, uLevel: { value: 0 } },
+        vertexShader: /* glsl */ `
+          varying vec3 vN;
+          varying vec3 vV;
+          void main() {
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            vN = normalize(normalMatrix * normal);
+            vV = normalize(-mv.xyz);
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: /* glsl */ `
+          uniform vec3 uColor;
+          uniform float uLevel;
+          varying vec3 vN;
+          varying vec3 vV;
+          void main() {
+            float rim = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+            float a = (pow(rim, 3.0) * 1.6 + 0.04) * uLevel;
+            gl_FragColor = vec4(uColor * a * 2.2, a);
+          }`,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      })
+    );
+    shell.position.copy(forge.world.core);
+    shell.renderOrder = 6;
+    shell.visible = false;
+
     // The cube outline's openings filled with light (not its walls): a
     // sheet cut to the outline's hexagon, inside the mark at the core's
     // depth — the outline's own strokes hide it everywhere but the gaps.
@@ -301,7 +337,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
     fill.visible = false;
     const fillColor = new THREE.Color("#ffc890");
 
-    return { U, coreLevel, excessLevel, assign, fill, fillColor, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point };
+    return { U, coreLevel, excessLevel, assign, fill, fillColor, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point, shell };
   }, [forge, shared]);
 
   useEffect(() => {
@@ -336,6 +372,8 @@ export default function Forge({ J, shared, groundY, onReady }) {
       built.glowMap.dispose();
       built.halo.material.dispose();
       built.point.material.dispose();
+      built.shell.geometry.dispose();
+      built.shell.material.dispose();
       built.fill.geometry.dispose();
       built.fill.material.dispose();
     },
@@ -350,7 +388,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
     lastFracture.current = -1;
   }, [forge]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!built) return;
     const { U, stages, halo, point } = built;
     U.uCrackSpread.value = J.crackSpread * T.crackSpread;
@@ -374,12 +412,16 @@ export default function Forge({ J, shared, groundY, onReady }) {
       s.uStageGlow.value = (name === "LogoCore" ? J.logoCrackGlow : J.crackGlow) * T.crackGlow;
     }
 
-    // Excess rock: piece by piece (from the centre out) it comes loose,
-    // floats off and wears away into sand and gravel. Each reports where it
-    // is, how it is turned, its own progress and how far it has eroded: the
-    // stone shader, the sand and gravel it turns into and the swirl follow.
+    // Excess rock: blasted off round the mark, revolving faster and faster
+    // in the swirl's orbits and grinding away into sand and gravel as it
+    // spins (world/breakup.js). Each reports where it is, how it is turned,
+    // its own progress and how far it has ground away: the stone shader,
+    // the sand and gravel it turns into and the swirl follow.
     const f = J.fracture;
-    if (f !== lastFracture.current) {
+    // the streams the broken rock is carried round in: their clock (picking
+    // up speed after the blast) and the panel's values
+    syncFlow(Math.min(delta, 0.1), f);
+    if (f !== lastFracture.current || f > 0) {
       lastFracture.current = f;
       const src = forge.swirlSource;
       const quat = forge.pieceQuat;
@@ -388,9 +430,10 @@ export default function Forge({ J, shared, groundY, onReady }) {
       forge.chunks.forEach((c, i) => {
         const u = pieceProgress(c, f);
         forge.pieceProgress[i] = u;
-        const erode = chunkPose(c, u, pose);
+        const erode = pieceFlight(forge, c, u, pose);
         const m = c.mesh;
-        m.position.copy(pose.position);
+        // (world → the asset space the mesh lives in)
+        m.position.copy(pose.position).sub(o).divideScalar(S);
         m.quaternion.copy(pose.quaternion);
         m.scale.copy(pose.scale);
         m.visible = erode < 0.999;
@@ -398,7 +441,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
         m.castShadow = erode < 0.45;
         // its crack strips go with the stone they were on
         for (const child of m.children) child.visible = erode < 0.25;
-        src[i].set(pose.position.x * S + o.x, pose.position.y * S + o.y, pose.position.z * S + o.z, erode);
+        src[i].set(pose.position.x, pose.position.y, pose.position.z, erode);
         quat[i].set(pose.quaternion.x, pose.quaternion.y, pose.quaternion.z, pose.quaternion.w);
       });
     }
@@ -414,8 +457,19 @@ export default function Forge({ J, shared, groundY, onReady }) {
     halo.material.opacity = Math.min(0.2 + glow * 0.45 + J.pulse * 0.8, 1);
     halo.material.color.set(T.crackColor);
 
+    // the impact: the shell bursts out and fades, the core flares
+    const burst = J.breakBurst;
+    built.shell.visible = burst > 0.002;
+    if (built.shell.visible) {
+      const x = THREE.MathUtils.clamp(f / Math.max(T.breakBurstEnd, 0.01), 0, 1);
+      built.shell.scale.setScalar(4 + (1 - Math.pow(1 - x, 3)) * T.streamRadius * T.breakSpread);
+      built.shell.material.uniforms.uLevel.value = burst * T.breakImpact;
+      built.shell.material.uniforms.uColor.value.set(T.crackColor);
+      halo.scale.multiplyScalar(1 + burst * 5 * T.breakImpact);
+      point.material.opacity = Math.min(point.material.opacity + burst, 1);
+    }
     if (coreLight.current) {
-      coreLight.current.intensity = (40 + glow * glow * 520 + J.pulse * 1800 + J.innerGlow * 90) * T.coreLight;
+      coreLight.current.intensity = (40 + glow * glow * 520 + J.pulse * 1800 + J.innerGlow * 90 + burst * 4000 * T.breakImpact) * T.coreLight;
       coreLight.current.color.set(T.crackColor);
     }
   });
@@ -427,6 +481,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
       <primitive object={forge.object} />
       <primitive object={built.halo} />
       <primitive object={built.point} />
+      <primitive object={built.shell} />
       <primitive object={built.fill} />
       <pointLight ref={coreLight} distance={70} decay={2} position={[w.core.x, w.core.y, w.core.z + 1.6]} />
     </>

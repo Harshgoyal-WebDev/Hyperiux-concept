@@ -1,5 +1,6 @@
 import { T } from "./tuning";
 import { P } from "./config";
+import { pointer } from "./pointer";
 
 // Generative score and sound effects, synthesised live with Web Audio (no
 // files). Browsers only allow audio after a user gesture, so the engine is
@@ -25,7 +26,17 @@ import { P } from "./config";
 //            past, left to right and back, with each turn.
 //   light  – the cube's inner light the camera flies into: a rising, glassy
 //            chord and shimmer; an airy swell as it passes through.
-//   garden – water lapping, leaves, and birds now and then.
+//   garden – water lapping, leaves, and birds now and then; and its own
+//            score, crossfaded in from the abyss as the camera comes out of
+//            the light: light, airy and unhurried, in D major, in a bright
+//            hall of its own — a high pad of sines, a music-box figure with
+//            sparkles and now and then a few notes of melody over it, a
+//            light bass on the bar — moving through Dmaj9 – Gmaj9 – Bm9 –
+//            Asus2 (bliss, hope, growth).
+//   pond   – a soft swish and a few droplet plips as the pointer stirs the
+//            water (subtle).
+//   swoosh – an airy rush as the pointer stirs the particle body, swelling
+//            and brightening with how hard it stirs, panned with it.
 //   logo   – glints as the particle body flows from form to form, a soft
 //            chord as each form comes together; an airy swell into the portal.
 //   vanish – as the world dissolves into white, the music sinks, darkens
@@ -86,6 +97,19 @@ const BASS = [38, 34, 31, 33]; // chord roots, an octave or two down
 const ARP = [0, 1, 2, 3, 2, 1, 3, 2]; // chord-tone order over a bar of 8ths
 const BELLS = [74, 77, 79, 81, 84, 86]; // D minor pentatonic, high
 
+// The garden: D major, open and high, a chord every two bars:
+// Dmaj9 – Gmaj9(♯11) – Bm9 – A(sus2)
+const G_CHORDS = [
+  [50, 57, 61, 64, 66], // Dmaj9
+  [43, 57, 59, 62, 66], // Gmaj9
+  [47, 54, 57, 61, 62], // Bm9
+  [45, 52, 57, 59, 64], // Asus2
+];
+const G_BASS = [38, 31, 35, 33];
+// the felt-piano figure over a bar of 8ths (chord-tone index, or -1 to rest)
+const G_ARP = [1, 3, 2, 4, -1, 3, 2, -1];
+const G_MELODY = [74, 76, 78, 81, 83, 86]; // D major pentatonic, above it
+
 class AudioEngine {
   constructor(ctx) {
     this.ctx = ctx;
@@ -124,6 +148,9 @@ class AudioEngine {
     this.buildSwirl();
     this.buildLight();
     this.buildGarden();
+    this.buildGardenMusic(t);
+    this.buildSwoosh();
+    this.buildPond();
     this.logoBus = this.bus(1.1);
 
     this.prev = { crackSpread: 0, fracture: 0, beam: 0, pulse: 0, progress: 0, formT: 0, portal: 0 };
@@ -149,7 +176,8 @@ class AudioEngine {
     return g;
   }
 
-  impulse(seconds, decay) {
+  // (bright: how much of each sample is fresh noise; low = darker)
+  impulse(seconds, decay, bright = 0.65) {
     const { ctx } = this;
     const len = Math.floor(ctx.sampleRate * seconds);
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -158,7 +186,7 @@ class AudioEngine {
       for (let i = 0; i < len; i++) {
         // darker as it decays: average a little of the previous sample in
         const n = Math.random() * 2 - 1;
-        d[i] = (i > 0 ? d[i - 1] * 0.35 + n * 0.65 : n) * Math.pow(1 - i / len, decay);
+        d[i] = (i > 0 ? d[i - 1] * (1 - bright) + n * bright : n) * Math.pow(1 - i / len, decay);
       }
     }
     return buf;
@@ -614,6 +642,124 @@ class AudioEngine {
     this.loop(this.noise, 4.4).connect(this.filter("bandpass", 3200, 0.6)).connect(leaves).connect(this.gardenGain);
   }
 
+  // the garden's score, light and airy, in a bright hall of its own (not
+  // the abyss's dark one): a high, soft pad of sines and triangles, a
+  // music-box / felt-piano figure up high, sparkles above it, a light bass
+  buildGardenMusic(t) {
+    const { ctx } = this;
+    this.gMusic = this.gain(0);
+    this.gMusic.connect(this.master);
+    this.gHall = ctx.createConvolver();
+    this.gHall.buffer = this.impulse(4.5, 3, 0.85);
+    const hallOut = this.gain(0.9);
+    this.gHall.connect(hallOut).connect(this.gMusic);
+    this.gSend = this.gain(1.1);
+    this.gSend.connect(this.gHall);
+    this.gDry = this.gain(0.75);
+    this.gDry.connect(this.gMusic);
+    this.gDry.connect(this.gSend);
+    // pad: sines and triangles, open and high, breathing slowly
+    const padFilter = this.filter("lowpass", 2400, 0.4);
+    const pad = this.gain(0.038);
+    this.lfo(0.07, 0.012, pad.gain);
+    padFilter.connect(pad).connect(this.gDry);
+    this.gVoices = G_CHORDS[0].slice(1, 5).map((n, i) =>
+      [
+        ["sine", -5],
+        ["triangle", 5],
+      ].map(([type, cents]) => {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.value = midi(n + 12);
+        o.detune.value = cents;
+        const g = this.gain(type === "triangle" ? 0.5 : 1);
+        // each voice shimmers a little on its own
+        this.lfo(0.13 + i * 0.04, 0.25, g.gain);
+        o.connect(g).connect(padFilter);
+        o.start(t);
+        return o;
+      })
+    );
+    this.gChord = 0;
+    this.gStep = 0;
+    this.gNextStep = t + 0.5;
+  }
+
+  // a music-box / felt-piano note: a sine, a little of its octave, a soft
+  // bell-like overtone, a long gentle fall
+  pianoNote(t, n, peak, out = this.gDry) {
+    const f = midi(n);
+    this.tone(t, out, { f0: f, peak, attack: 0.008, decay: 3.2 });
+    this.tone(t, out, { f0: f * 2, peak: peak * 0.22, attack: 0.005, decay: 1.4 });
+    this.tone(t, out, { f0: f * 4.02, peak: peak * 0.05, attack: 0.003, decay: 0.6 });
+  }
+
+  // one 8th-note step of the garden's score
+  scheduleGardenStep(t, step) {
+    const { ctx } = this;
+    const beatLen = 60 / T.gardenTempo;
+    const stepsPerChord = 16;
+    const inBar = step % 8;
+    if (step % stepsPerChord === 0) {
+      this.gChord = (step / stepsPerChord) % G_CHORDS.length;
+      G_CHORDS[this.gChord].slice(1, 5).forEach((n, i) => {
+        for (const o of this.gVoices[i]) o.frequency.setTargetAtTime(midi(n + 12), t, 1.2);
+      });
+    }
+    const tones = G_CHORDS[this.gChord];
+    // a light, round bass once a bar
+    if (inBar === 0) {
+      const o = ctx.createOscillator();
+      o.frequency.value = midi(G_BASS[this.gChord] + 12);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.045 * T.bassVolume, t + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + beatLen * 4);
+      o.connect(g).connect(this.gDry);
+      o.start(t);
+      o.stop(t + beatLen * 4.1);
+    }
+    // the music-box figure, high and unhurried, a touch uneven like a hand
+    const k = G_ARP[inBar];
+    if (k >= 0 && Math.random() > 0.15) this.pianoNote(t + Math.random() * 0.02, tones[k] + 24, 0.024 * T.arpVolume * (inBar === 0 ? 1.15 : 0.85));
+    // sparkles: a high note now and then, like light on water
+    if (Math.random() < 0.12) this.pianoNote(t + beatLen * 0.25, G_MELODY[Math.floor(Math.random() * G_MELODY.length)] + 12, 0.012 * T.arpVolume);
+    // and a few notes of melody, rising
+    if (inBar === 0 && step % 32 === 16 && Math.random() < 0.8) {
+      let i = Math.floor(Math.random() * 3);
+      for (let j = 0; j < 3; j++, i += 1 + Math.floor(Math.random() * 2)) this.pianoNote(t + j * beatLen, G_MELODY[Math.min(i, G_MELODY.length - 1)], 0.024 * T.arpVolume);
+    }
+  }
+
+  // the particle body stirred: an airy rush, followed by gain, pitch, pan
+  buildSwoosh() {
+    this.swooshGain = this.gain(0);
+    this.swooshFilter = this.filter("bandpass", 700, 0.9);
+    this.swooshPan = this.panner(0);
+    this.loop(this.noise, 1.7).connect(this.swooshFilter).connect(this.swooshGain).connect(this.swooshPan).connect(this.sfx);
+    this.swooshPan.connect(this.gain(0.5)).connect(this.reverb);
+    this.swooshLevel = 0;
+  }
+
+  // the pond stirred: a soft swish of water (plips are one-shots)
+  buildPond() {
+    this.pondGain = this.gain(0);
+    this.pondFilter = this.filter("bandpass", 800, 1.1);
+    this.pondPan = this.panner(0);
+    this.loop(this.noise, 2.6).connect(this.filter("lowpass", 1400, 0.5)).connect(this.pondFilter).connect(this.pondGain).connect(this.pondPan).connect(this.sfx);
+    this.pondPan.connect(this.gain(0.4)).connect(this.reverb);
+    this.pondLevel = 0;
+    this.nextPlip = 0;
+  }
+
+  // a droplet: a tiny tone springing upwards
+  plip(t, pan) {
+    const out = this.panner(pan);
+    out.connect(this.sfx);
+    const f0 = 420 + Math.random() * 520;
+    this.tone(t, out, { f0, f1: f0 * (1.6 + Math.random() * 0.6), glide: 0.05, peak: 0.018 * T.pondVolume, attack: 0.003, decay: 0.11 });
+  }
+
   // a bird: two to four quick chirps
   chirp(t) {
     const out = this.panner((Math.random() - 0.5) * 1.6);
@@ -628,7 +774,8 @@ class AudioEngine {
 
   // the particle logo: one glint, and the chord it settles on
   glint(t) {
-    const n = BELLS[Math.floor(Math.random() * BELLS.length)] + 12 * (Math.random() < 0.4 ? 1 : 0);
+    // (the garden's glints are in its D major)
+    const n = G_MELODY[Math.floor(Math.random() * G_MELODY.length)] + 12 * (Math.random() < 0.4 ? 1 : 0);
     const out = this.panner((Math.random() - 0.5) * 1.2);
     out.connect(this.logoBus);
     this.tone(t, out, { f0: midi(n), peak: 0.022 * T.logoVolume, attack: 0.004, decay: 0.7 + Math.random() * 0.6 });
@@ -636,7 +783,7 @@ class AudioEngine {
 
   resolve() {
     const t = this.ctx.currentTime;
-    for (const n of [62, 69, 74, 77]) this.tone(t, this.logoBus, { f0: midi(n), peak: 0.035 * T.logoVolume, attack: 1.2, decay: 5 });
+    for (const n of [62, 69, 74, 78]) this.tone(t, this.logoBus, { f0: midi(n), peak: 0.035 * T.logoVolume, attack: 1.2, decay: 5 });
   }
 
   // the beam merging into the core
@@ -708,15 +855,25 @@ class AudioEngine {
 
     // the pulse, scheduled a little ahead; it thins out as it vanishes
     // (after a background tab, skip ahead instead of catching up in a burst)
+    // the abyss gives way to the garden's score as the camera comes out of
+    // the light (crossfading through the white)
+    const g = smoothstep(J.progress, P.through - 0.012, P.out);
     if (this.nextStep < t - 0.5) this.nextStep = t + 0.05;
     while (this.nextStep < t + 0.25) {
-      if (v < 0.85) this.scheduleStep(this.nextStep, this.step);
+      if (v < 0.85 && g < 0.95) this.scheduleStep(this.nextStep, this.step);
       this.step++;
       this.nextStep += 60 / T.musicTempo / 2;
     }
+    if (this.gNextStep < t - 0.5) this.gNextStep = t + 0.05;
+    while (this.gNextStep < t + 0.25) {
+      if (g > 0.02 && v < 0.85) this.scheduleGardenStep(this.gNextStep, this.gStep);
+      this.gStep++;
+      this.gNextStep += 60 / T.gardenTempo / 2;
+    }
+    smooth(this.gMusic.gain, g * T.gardenMusicVolume * left, 0.8);
     this.echo.delayTime.setTargetAtTime((60 / T.musicTempo) * 0.75, t, 0.5);
     if (t >= this.nextBell) {
-      if (v < 0.5) this.bell(t + 0.05);
+      if (v < 0.5 && g < 0.5) this.bell(t + 0.05);
       this.nextBell = t + 8 + Math.random() * 10;
     }
 
@@ -731,7 +888,7 @@ class AudioEngine {
     smooth(this.warpTremLfo.frequency, 3.2 - 2.6 * Math.min(fr * 1.3, 1), 0.3);
 
     // music level: steps back while the cube breaks, and vanishes
-    smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * left, 0.4);
+    smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * left * (1 - g), 0.6);
     smooth(this.musicTone.frequency, 18000 * Math.pow(1 - v, 3) + 220, 0.4);
     smooth(this.musicWet.gain, 0.55 + 1.4 * Math.sin(Math.PI * Math.min(v * 1.2, 1)), 0.5);
     this.sink = -v * 160; // cents: the held voices sink, new notes start there
@@ -794,6 +951,24 @@ class AudioEngine {
     if (garden > 0.2 && t >= this.nextChirp) {
       this.chirp(t + 0.05);
       this.nextChirp = t + 1.2 + Math.random() * 3.6;
+    }
+
+    // ---- the swoosh of the particle body stirred
+    const stir = J.inGarden ? J.logoStir : 0;
+    this.swooshLevel += (stir - this.swooshLevel) * (1 - Math.exp(-dt / (stir > this.swooshLevel ? 0.05 : 0.35)));
+    smooth(this.swooshGain.gain, this.swooshLevel * T.swooshVolume * 0.5, 0.05);
+    smooth(this.swooshFilter.frequency, 500 + this.swooshLevel * 2600, 0.08);
+    if (this.swooshPan.pan) smooth(this.swooshPan.pan, Math.max(-0.8, Math.min(0.8, pointer.x)), 0.15);
+
+    // ---- the pond stirred: a soft swish, a plip now and then (subtle)
+    const pond = J.inGarden ? J.pondStir : 0;
+    this.pondLevel += (pond - this.pondLevel) * (1 - Math.exp(-dt / (pond > this.pondLevel ? 0.08 : 0.5)));
+    smooth(this.pondGain.gain, this.pondLevel * T.pondVolume * 0.07, 0.08);
+    smooth(this.pondFilter.frequency, 600 + this.pondLevel * 900, 0.1);
+    if (this.pondPan.pan) smooth(this.pondPan.pan, Math.max(-0.8, Math.min(0.8, pointer.x)), 0.15);
+    if (this.pondLevel > 0.08 && t >= this.nextPlip) {
+      this.plip(t + 0.02, Math.max(-0.8, Math.min(0.8, pointer.x)));
+      this.nextPlip = t + (0.12 + Math.random() * 0.35) / this.pondLevel;
     }
 
     // ---- the particle logo: glints as it gathers, a chord as it settles

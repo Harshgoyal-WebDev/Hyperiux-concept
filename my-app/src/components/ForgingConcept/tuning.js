@@ -20,6 +20,10 @@ export const T = {
   swirlVolume: 0.6, // the sand and gravel sweeping round the mark
   lightVolume: 0.6, // the cube's inner light, and passing through it
   gardenVolume: 0.6, // water, leaves and birds
+  gardenMusicVolume: 0.8, // the garden's own score (hopeful, unhurried, D major)
+  gardenTempo: 70, // its BPM
+  pondVolume: 0.7, // the water stirred by the pointer (subtle)
+  swooshVolume: 0.8, // the rush of air as the pointer stirs the particle body
   logoVolume: 0.7, // the particle logo gathering and settling
   vanishVolume: 0.6, // the score washing out at the end of the hero
   vanishStart: 0.97, // story time where the music starts to vanish
@@ -82,10 +86,10 @@ export const T = {
   // the quality tier.
   swirlSpeed: 0.99, // overall pace of the swirl
   crumbleSand: 6000, // grains of sand the broken rock turns into (capped by the quality tier)
-  crumbleSize: 0.85,
+  crumbleSize: 0.83,
   crumbleOpacity: 1.0,
   gravelCount: 4000, // gravel it turns into (capped by the quality tier)
-  gravelSize: 0.98,
+  gravelSize: 1.47,
   sandCount: 1200, // fine soil shed into the swirl (capped by the quality tier)
   sandSize: 0.75,
   sandSpeed: 0.94,
@@ -240,9 +244,6 @@ export const T = {
   logoScatterTime: 1.6, // seconds a stirred bubble drifts loose before finding its way home
   logoCoreGlow: 0.6, // the warm glow at the body's centre
   logoWhiteout: 0.85, // how white-hot stirred and fast bubbles burn
-  // the portal through the ring
-  portalGlow: 1.0, // its ring of light
-  portalRagged: 0.25, // how ragged its edge is
   // the air: drifting leaves and warm motes
   gardenAir: 1.0,
   gardenLeafSize: 1.0,
@@ -277,7 +278,33 @@ export const T = {
   // (0 = the beam reaches the core, 1 = the forged logo); the crack glow
   // fills in over roughly the first 0.15
   breakStart: 0.1,
-  breakEnd: 0.9,
+  breakEnd: 1.0,
+  soilSwirl: false, // the swirl's own sand and gravel on the orbits (hidden for now)
+  breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
+  breakSpread: 1.3, // how far the blast scatters the rock (× the streams' radius)
+  breakShrink: 0.43, // the pieces' size once broken off
+  breakSpin: 0.6, // how fast the streams carry it round
+  breakTumble: 0, // how fast the pieces tumble as they go
+  // when each stage runs, as shares of the breakup (a piece's own progress)
+  breakBurstEnd: 0.12, // the impact's energy has dissipated
+  breakBlastEnd: 0.1, // the blast has thrown the pieces out
+  breakGatherStart: 0.2, // they start to be drawn in towards the streams...
+  breakGatherEnd: 0.62, // ...and are riding them
+  breakGather: 0.44, // how far the rocks themselves are drawn in (0 = they stay out where the blast threw them and grind away there; 1 = they ride the streams)
+  breakSpinStart: 0, // the streams start to pick up speed...
+  breakSpinEnd: 0.63, // ...and are up to full speed
+  breakGrindStart: 0, // the pieces start to grind away into sand and gravel...
+  breakGrindEnd: 0.49, // ...and are gone
+  breakSandFlow: 0.6, // how long a grain takes to find its place in the stream
+  // the streams of sand the broken rock is carried round the mark in
+  streams: 2, // how many
+  streamRadius: 41.4, // metres: how far round the mark they loop
+  streamTilt: 35, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
+  streamWobble: 11.5, // degrees their loops keep tilting and turning by as they go
+  streamHeight: 4.8, // metres they rise and fall on the way round
+  streamTail: 0.67, // how long each stream's tail is (share of a turn)
+  streamWidth: 8.9, // metres: how wide a stream spreads (wider towards its tail)
+  streamLoose: 0.16, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
   forgeDuration: 4.5,

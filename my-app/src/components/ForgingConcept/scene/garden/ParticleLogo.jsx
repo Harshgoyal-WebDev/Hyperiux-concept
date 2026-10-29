@@ -18,9 +18,10 @@ import { GARDEN_SUN } from "./sky";
 // shapes as slabs, the cube outline as a real cube), a cube, a great cloud,
 // and a ring the camera flies through into the light — all over the pond's
 // middle, the mark and the ring turned to the camera as it revolves round
-// them. The swirl gathers into the mark with the scroll; after that, each
-// change of section sets off the next morph, which then plays out on its
-// own clock (T.logoMorphSpeed), however slowly the visitor scrolls.
+// them. Arriving sets off the swirl's gathering into the mark, and each
+// change of section the next morph; each then plays out on its own clock
+// (T.logoMorphSpeed), however slowly the visitor scrolls. How hard the
+// pointer is stirring the body goes to J.logoStir (its swoosh).
 //
 // Every bubble is simulated on the GPU (position + glow, velocity + scatter):
 //   spring   – pulled towards its place in the current form (the forms blend
@@ -504,6 +505,7 @@ export default function ParticleLogo({ J, tier, time }) {
       tilt: 0,
       form: 0,
       cam: new THREE.Vector3(),
+      ndc: new THREE.Vector3(),
       core: new THREE.Vector3(),
     }),
     []
@@ -518,11 +520,9 @@ export default function ParticleLogo({ J, tier, time }) {
     u.uClock.value += dt * T.logoSwirlSpeed;
     // the form: the scroll gathers the swirl into the mark; past it, the
     // section sets the form and the morph runs at its own pace
-    if (J.shapeT < 1) s.form = J.shapeT;
-    else {
-      const step = T.logoMorphSpeed * dt;
-      s.form = THREE.MathUtils.clamp(Math.round(J.shapeT) - Math.max(s.form, 1), -step, step) + Math.max(s.form, 1);
-    }
+    const goal = J.shapeT < 0.12 ? 0 : Math.max(1, Math.round(J.shapeT));
+    const step = T.logoMorphSpeed * dt;
+    s.form += THREE.MathUtils.clamp(goal - s.form, -step, step);
     J.formT = s.form;
     u.uShapeT.value = s.form;
     u.uStagger.value = T.logoMorphStagger;
@@ -556,6 +556,15 @@ export default function ParticleLogo({ J, tier, time }) {
     u.uMouseVel.value.copy(s.vel);
     s.hover += ((pointer.active ? 1 : 0) - s.hover) * (1 - Math.exp(-dt / 0.2));
     u.uHover.value = s.hover * J.pAppear * (1 - J.portal);
+
+    // the stir (for its swoosh): the pointer moving over the body on screen
+    s.ndc.copy(s.core).add(GARDEN_ORIGIN);
+    const depth = s.ndc.distanceTo(camera.position);
+    s.ndc.project(camera);
+    const reach = 5.2 / Math.max(depth * u.uTanHalf.value, 1e-3); // the body's radius, in NDC heights
+    const off = Math.hypot((pointer.x - s.ndc.x) * u.uAspect.value, pointer.y - s.ndc.y);
+    const over = s.ndc.z < 1 ? 1 - THREE.MathUtils.smoothstep(off, reach * 0.6, reach * 1.05) : 0;
+    J.logoStir = over * Math.min(s.vel.length() * 1.6, 1) * u.uHover.value;
 
     // each form turned to its view: the mark faces the camera as it revolves,
     // leaning a little to the pointer; the cube turns slowly; the cloud

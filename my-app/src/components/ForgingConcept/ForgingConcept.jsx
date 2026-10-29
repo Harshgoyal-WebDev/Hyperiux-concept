@@ -12,7 +12,7 @@ import Scene from "./scene/Scene";
 import { AssetBadge, GardenCopy, HeroOverlay, ProgressRail } from "./Overlays";
 import WhiteWebsite from "./WhiteWebsite";
 import StaticJourney from "./StaticJourney";
-import TuningPanel from "./TuningPanel";
+import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import { buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
@@ -67,6 +67,9 @@ class SceneBoundary extends Component {
 }
 
 // Client capabilities, read once. null on the server so hydration matches.
+// the Leva tuning panels: loaded (and shown) only with ?stats
+const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
+
 let clientEnv = null;
 const noopSubscribe = () => () => {};
 function getClientEnv() {
@@ -76,6 +79,11 @@ function getClientEnv() {
       reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
       tier: detectTier(),
       debug: new URLSearchParams(window.location.search).has("debug"),
+      // the tuning panels only with ?stats (or ?=stats) in the address
+      stats: (() => {
+        const q = new URLSearchParams(window.location.search);
+        return q.has("stats") || [...q.values()].includes("stats");
+      })(),
     };
   }
   return clientEnv;
@@ -449,10 +457,9 @@ function Journey({ env }) {
           el.style.visibility = show > 0.001 ? "visible" : "hidden";
           el.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0)`;
         });
-        // the portal's light, white to the site below (also where there is
-        // no post-processing to draw it)
+        // the portal: the screen fades smoothly to white, onto the site below
         if (portalRef.current) {
-          const w = Math.min(Math.max((J.portal - 0.55) / 0.45, 0), 1);
+          const w = Math.min(Math.max(J.portal, 0), 1);
           portalRef.current.style.opacity = String(w * w * (3 - 2 * w));
         }
       };
@@ -581,7 +588,7 @@ function Journey({ env }) {
         <GardenCopy blockRefs={copyRefs} />
         <ProgressRail ref={railRef} fillRef={railFillRef} itemRefs={railItemRefs} onJump={jump} />
         <AssetBadge problem={asset?.problem} />
-        {env && <TuningPanel onScrub={jump} />}
+        {env?.stats && <TuningPanel onScrub={jump} />}
         {env?.debug && (
           <div ref={hudRef} className="pointer-events-none absolute right-3 top-24 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">
             p 0

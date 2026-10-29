@@ -8,7 +8,8 @@ import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
 import { ASSETS, GARDEN, GARDEN_ORIGIN } from "../../config";
 import { mulberry32 } from "../../world/layout";
-import { GRASS_LAYER, GUSTS, RIPPLES, TRAIL, createSwayUniforms, prepareGarden } from "../../world/gardenAsset";
+import { GRASS_LAYER, RIPPLES, createSwayUniforms, prepareGarden } from "../../world/gardenAsset";
+import { createWindField } from "../../world/windField";
 import { setGardenGround } from "../../world/gardenCamera";
 import { pointer } from "../../pointer";
 import { T } from "../../tuning";
@@ -29,8 +30,8 @@ import GardenAir from "./GardenAir";
 // pond (a mirror with currents and ripples), two rings of small mountains
 // past the terrain's far edge, the particle body over the water, and the
 // air. Grass, leaves and flowers sway in the wind and in the pointer's own
-// wind (gusts along its path, a ripple from a click); bushes, plants and
-// flowers glow where it passes.
+// wind (a wind field brushed along its path, a ripple from a click); bushes,
+// plants and flowers glow where it has just passed, only while it moves.
 
 // Small mountains ringing the garden past the terrain's hard far edge: a
 // nearer ring of low wooded ridges and a far, hazier one of taller peaks.
@@ -197,23 +198,27 @@ export default function Garden({ J, tier, worlds }) {
     if (sun.current) sun.current.target = extras.sunTarget;
   }, [extras]);
 
-  // the pointer: its recent lines of sight (the glow, fading as they age),
-  // and the puffs of air it releases where it crosses the ground (the wind)
+  // the pointer's wind over the meadow (a field brushed along its path),
+  // and the rings of air from its clicks
+  const wind = useMemo(() => {
+    // over the lawn and a little past it (world)
+    const half = LAWN_RADIUS + 4;
+    return createWindField(new THREE.Vector4(GARDEN_ORIGIN.x - half, GARDEN_ORIGIN.z + 2 - half, half * 2, half * 2));
+  }, []);
+  useEffect(() => () => wind.dispose(), [wind]);
   const s = useMemo(
     () => ({
       ray: new THREE.Raycaster(),
       ndc: new THREE.Vector2(),
-      live: 0,
-      trail: Array.from({ length: TRAIL - 1 }, () => ({ o: new THREE.Vector3(0, -1000, 0), d: new THREE.Vector3(0, 0, -1), at: -1e9 })),
-      next: 0,
-      lastPush: 0,
       lastMoved: 0,
-      gusts: [], // { x, z, wx, wz, age, radius, drift } (world)
       ripples: [], // { x, z, age, strength } (world)
       hit: new THREE.Vector3(),
       lastHit: new THREE.Vector3(),
       hasHit: false,
-      lastGustAt: 0,
+      vel: new THREE.Vector2(),
+      want: new THREE.Vector2(),
+      moving: 0,
+      activeUntil: 0,
       clicks: pointer.clicks,
       ground: "",
       groundAt: 0,
@@ -255,47 +260,42 @@ export default function Garden({ J, tier, worlds }) {
     const now = performance.now();
     s.ndc.set(pointer.x, pointer.y);
     s.ray.setFromCamera(s.ndc, camera);
-    const o = sway.uTrailO.value;
-    const d = sway.uTrailD.value;
-    // the live line of sight (world)
-    s.live += ((pointer.active ? 1 : 0) - s.live) * (1 - Math.exp(-dt / 0.15));
-    o[0].set(s.ray.ray.origin.x, s.ray.ray.origin.y, s.ray.ray.origin.z, s.live);
-    d[0].set(s.ray.ray.direction.x, s.ray.ray.direction.y, s.ray.ray.direction.z, 0);
-    const moved = pointer.active && pointer.movedAt !== s.lastMoved;
-    // drop a copy along the way while it moves
-    if (moved && now - s.lastPush > 60) {
-      const e = s.trail[s.next];
-      e.o.copy(s.ray.ray.origin);
-      e.d.copy(s.ray.ray.direction);
-      e.at = now;
-      s.next = (s.next + 1) % s.trail.length;
-      s.lastPush = now;
-    }
-    const linger = Math.max(T.gardenHoverLinger, 0.05) * 1000;
-    s.trail.forEach((e, i) => {
-      const f = Math.max(1 - (now - e.at) / linger, 0);
-      o[i + 1].set(e.o.x, e.o.y, e.o.z, f * f);
-      d[i + 1].set(e.d.x, e.d.y, e.d.z, 0);
-    });
 
-    // the pointer's wind: a puff of air every so often along its path over
-    // the ground, carrying its speed there
+    // the pointer's wind: brushed into the field along its path over the
+    // ground since the last frame, carrying its speed; lit only while it
+    // moves (a still pointer leaves the meadow be)
     const hit = pointer.active && groundHit(s.ray.ray, s.hit);
-    if (hit && moved) {
-      if (!s.hasHit) s.lastHit.copy(s.hit);
-      const dist = Math.hypot(s.hit.x - s.lastHit.x, s.hit.z - s.lastHit.z);
-      const since = (now - s.lastGustAt) / 1000;
-      if (dist > 0.4 && since > 0.05) {
-        const speed = Math.min(dist / Math.max(since, 0.016), 14);
-        const k = Math.min(speed * 0.05, 0.7) / Math.max(dist, 1e-3);
-        s.gusts.push({ x: s.hit.x, z: s.hit.z, wx: (s.hit.x - s.lastHit.x) * k, wz: (s.hit.z - s.lastHit.z) * k, age: 0, radius: T.gardenHoverRadius * 0.55, drift: 0.7 });
-        if (s.gusts.length > GUSTS) s.gusts.shift();
-        s.lastHit.copy(s.hit);
-        s.lastGustAt = now;
-      }
-    }
-    s.hasHit = hit;
+    const moved = pointer.active && pointer.movedAt !== s.lastMoved;
     s.lastMoved = pointer.movedAt;
+    if (hit && !s.hasHit) s.lastHit.copy(s.hit);
+    const step = hit ? Math.hypot(s.hit.x - s.lastHit.x, s.hit.z - s.lastHit.z) : 0;
+    // its speed over the ground, smoothed (and none at all when it jumps)
+    if (hit && moved && step < 8) s.vel.lerp(s.want.set((s.hit.x - s.lastHit.x) / dt, (s.hit.z - s.lastHit.z) / dt), 1 - Math.exp(-dt / 0.05));
+    else s.vel.multiplyScalar(Math.exp(-dt / 0.08));
+    const speed = Math.min(s.vel.length(), 30);
+    s.moving += ((moved && hit ? Math.min(speed / 4, 1) : 0) - s.moving) * (1 - Math.exp(-dt / (moved ? 0.06 : 0.12)));
+    const linger = Math.max(T.gardenHoverLinger, 0.05);
+    const brushing = hit && step < 8 && speed > 0.05;
+    if (brushing || s.moving > 0.01) s.activeUntil = now + linger * 4000;
+    const fieldOn = now < s.activeUntil || s.ripples.length > 0;
+    if (fieldOn) {
+      sway.uWindField.value = wind.step(gl, {
+        from: brushing ? s.lastHit : null,
+        to: brushing ? s.hit : null,
+        vel: s.vel,
+        push: 0.8,
+        radius: T.gardenHoverRadius * 0.6,
+        glowRadius: T.gardenGlowRadius,
+        glow: s.moving,
+        relax: Math.exp(-dt / (linger * 0.6)),
+        fade: Math.exp(-dt / (linger * 0.5)),
+      });
+      sway.uFieldRect.value.copy(wind.rect);
+    }
+    sway.uFieldOn.value = fieldOn ? 1 : 0;
+    if (hit) s.lastHit.copy(s.hit);
+    s.hasHit = hit;
+
     // a click: a ring of air across the meadow
     if (pointer.clicks !== s.clicks) {
       s.clicks = pointer.clicks;
@@ -304,20 +304,12 @@ export default function Garden({ J, tier, worlds }) {
         if (s.ripples.length > RIPPLES) s.ripples.shift();
       }
     }
-    for (const g of s.gusts) g.age += dt;
     for (const r of s.ripples) r.age += dt;
-    s.gusts = s.gusts.filter((g) => g.age < 2.6);
     s.ripples = s.ripples.filter((r) => r.age < 3.2);
-    s.gusts.forEach((g, i) => {
-      sway.uGustA.value[i].set(g.x, g.z, g.wx, g.wz);
-      sway.uGustB.value[i].set(g.age, g.radius, g.drift, 0);
-    });
-    sway.uGustCount.value = s.gusts.length;
     s.ripples.forEach((r, i) => sway.uRipple.value[i].set(r.x, r.z, r.age, r.strength));
     sway.uRippleCount.value = s.ripples.length;
     sway.uPushAmount.value = T.gardenHoverStrength;
     sway.uWindAmount.value = T.gardenWind;
-    sway.uGlowRadius.value = T.gardenGlowRadius;
     sway.uGlowStrength.value = T.gardenGlow;
     sway.uGlowColor.value.set(T.gardenGlowColor);
     if (sun.current) sun.current.intensity = T.gardenSun;
@@ -347,7 +339,7 @@ export default function Garden({ J, tier, worlds }) {
         <GardenGrass tier={tier} garden={garden} sway={sway} />
         <GardenFlowers tier={tier} garden={garden} sway={sway} />
         <GardenBlossoms tier={tier} garden={garden} sway={sway} />
-        <GardenPond tier={tier} time={time} axes={pondAxes} />
+        <GardenPond J={J} tier={tier} time={time} axes={pondAxes} />
         <primitive object={extras.mountains} />
         <primitive object={extras.sunTarget} />
         <directionalLight

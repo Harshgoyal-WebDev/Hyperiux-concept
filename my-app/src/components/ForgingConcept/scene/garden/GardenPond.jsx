@@ -170,7 +170,7 @@ const WATER_UNIFORMS = (axes, half) => ({
 });
 
 // axes: the pond's semi-axes (x, z), as widened
-export default function GardenPond({ tier, time, axes }) {
+export default function GardenPond({ J, tier, time, axes }) {
   const { gl, camera, size } = useThree();
   const built = useMemo(() => {
     // the ripple grid's half extent (m)
@@ -269,6 +269,7 @@ export default function GardenPond({ tier, time, axes }) {
     sim.uDamping.value = T.pondRippleDamping;
     sim.uDropRadius.value = T.pondRippleRadius / (2 * half[0]);
     s.drops.length = 0;
+    let stir = 0;
     if (pointer.active && performance.now() - pointer.movedAt < 150) {
       s.ndc.set(pointer.x, pointer.y);
       s.ray.setFromCamera(s.ndc, camera);
@@ -284,6 +285,7 @@ export default function GardenPond({ tier, time, axes }) {
         if (inside && moved < 6) {
           const speed = moved / Math.max(Math.min(delta, 0.1), 1 / 240);
           const strength = Math.min(0.02 + speed * 0.01, 0.08) * T.pondRippleForce;
+          stir = Math.min(speed / 8, 1);
           // (the sim's grid: uv x along +x, uv y along +z)
           const uvOf = (px, pz) => [px / (2 * half[0]) + 0.5, pz / (2 * half[1]) + 0.5];
           if (moved > T.pondRippleRadius * 0.5) s.drops.push([...uvOf((x + lx) / 2, (z + lz) / 2), strength]);
@@ -291,6 +293,8 @@ export default function GardenPond({ tier, time, axes }) {
         }
       }
     } else s.last.set(1e9, 0, 0);
+
+    J.pondStir = stir; // (its sound)
 
     // a step for each drop (at least one a frame)
     const prevTarget = gl.getRenderTarget();

@@ -148,7 +148,9 @@ export default function SoilSwirl({ J, tier, shared, forge }) {
   );
 
   useFrame((_, delta) => {
-    const on = J.fracture > 0 && !J.inGarden;
+    // (hidden for now unless switched on: the broken rock's own sand and
+    // gravel revolve round the mark instead)
+    const on = T.soilSwirl && J.fracture > 0 && !J.inGarden;
     if (grainsRef.current) grainsRef.current.visible = on;
     if (!on) return;
     syncOrbit();

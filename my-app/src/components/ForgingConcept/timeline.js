@@ -29,6 +29,7 @@ export function createJourneyState() {
     crack: 0, // activation level (sound)
     eventT: 0, // the forging event's own clock (0 at the core → 1 forged)
     fracture: 0, // breakup of the excess rock (0..1; see deriveBreak)
+    breakBurst: 0, // its impact: the burst of energy as the rock blasts off (0..1, dying away)
     orbitSpeed: 0, // pace of the swirl the broken rock is carried into (0 → cruising)
     swirlOpen: 0, // the swirl widens to clear the camera's way through the mark
     // the garden
@@ -40,6 +41,8 @@ export function createJourneyState() {
     gardenReady: false, // set by Garden once it is built (and compiled)
     pAppear: 0, // the particle body streams in over the pond
     shapeT: 0, // ...and what it is: 0 the swirl, 1 the mark, 2 the cube, 3 the cloud, 4 the ring
+    pondStir: 0, // set by GardenPond: how hard the pointer is stirring the water (0..1)
+    logoStir: 0, // set by ParticleLogo: how hard the pointer is stirring the particle body (0..1)
     formT: 0, // set by ParticleLogo: the form as shown (past the mark it morphs on its own clock, not the scroll's)
     portal: 0, // through the ring into the light (1 = all light, onto the site)
     shock: 0, // shockwave across the dunes as the beam merges into the core (0 → spent)
@@ -110,6 +113,10 @@ export function deriveBreak(J) {
   J.fracture = Math.min(Math.max((t - start) / (end - start), 0), 1);
   J.beamFade = 1 - Math.cos((Math.min(Math.max((t - start) / 0.08, 0), 1) * Math.PI) / 2);
   J.orbitSpeed = t <= start ? 0 : 0.35 + 0.65 * sineOut((t - start) / (1 - start));
+  // the impact: in at once, dissipating by T.breakBurstEnd of the breakup
+  // (the rig jolts the camera, flares the bloom and smears the frame's edges with it)
+  const f = J.fracture;
+  J.breakBurst = f > 0 ? Math.min(f / 0.004, 1) * Math.pow(1 - Math.min(f / Math.max(T.breakBurstEnd, 0.01), 1), 2) : 0;
 }
 
 export function buildMasterTimeline(J, dom) {
@@ -137,15 +144,16 @@ export function buildMasterTimeline(J, dom) {
   // ...and none at all through the opening (it is only ±1.4 m clear)
   track(tl, J, "parallax", [
     [0, 1],
-    [P.climb, 0.7],
-    [P.core, 0.6],
-    [afterAt(0.4), 0.7],
-    [P.held, 0.7],
+    [P.climb, 0.8],
+    [P.core, 1.1],
+    [afterAt(0.4), 1.3],
+    [P.held, 1.3],
     [P.held + (P.pass - P.held) * 0.6, 0.15],
     [P.pass, 0],
     [P.out, 0],
-    [P.formed, 0.45],
-    [sectionAt("portal", 0.2), 0.45],
+    [P.formed, 1.4],
+    [sectionAt("portal", 0.2), 1.4],
+    [sectionAt("portal", 0.6), 0.2],
     [sectionAt("portal", 0.6), 0],
   ]);
   // (back off under the light: the garden's shots are its own)

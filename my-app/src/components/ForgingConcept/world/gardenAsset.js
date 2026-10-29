@@ -17,16 +17,14 @@ import { buildHeightGrid, createRidges, reshapeTerrain, widenPond } from "./gard
 // and everything placed on it moves with it.
 //
 // Grass, leaves and flowers sway in the wind, and the pointer makes wind of
-// its own: as it moves over the garden it releases puffs of air along its
-// path, carrying its speed. Each puff drifts on and spreads, reaches the
-// plants a moment later the further they are (so the response runs out as a
-// wave), bends them and lets them swing back once as it dies. A click sends a
-// ring of air out across the meadow. Bushes, plants and flowers also glow
-// where the pointer's line of sight passes (a short trail of it, fading).
+// its own: as it moves over the garden it brushes a wind field (windField.js)
+// along its path — the plants there are pushed along its motion and parted
+// from its line, harder the faster it goes, and ease back as the wind
+// relaxes behind it, leaving a soft wake. A click sends a ring of air out
+// across the meadow. Bushes, plants and flowers glow where it has just
+// passed — only while it moves.
 
 const GROUPS = ["GardenTerrain", "GrassPatches", "PlacedTrees", "PlacedBushes", "PlacedRocks", "FlowerClusters", "PlacedPlants"];
-export const TRAIL = 8; // lines of sight remembered (the glow)
-export const GUSTS = 10; // puffs of air in flight
 export const RIPPLES = 4; // rings of air from clicks
 // Small, dense things (grass, flowers) live on this layer, which the pond's
 // reflection leaves out: they would cost a second lawn and barely show.
@@ -37,16 +35,13 @@ export const GRASS_LAYER = 1;
 export function createSwayUniforms(time) {
   return {
     uTime: time,
-    uTrailO: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(0, -1000, 0, 0)) }, // origin, strength
-    uTrailD: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(0, 0, -1, 0)) }, // direction
-    uGustA: { value: Array.from({ length: GUSTS }, () => new THREE.Vector4()) }, // where (x, z), its wind (x, z)
-    uGustB: { value: Array.from({ length: GUSTS }, () => new THREE.Vector4()) }, // age (s), radius (m), drift (m/s)
-    uGustCount: { value: 0 },
+    uWindField: { value: null }, // the pointer's wind (windField.js)
+    uFieldRect: { value: new THREE.Vector4(0, 0, 1, 1) }, // its extent (world minX, minZ, sizeX, sizeZ)
+    uFieldOn: { value: 0 }, // 0 once it has died away (skip it)
     uRipple: { value: Array.from({ length: RIPPLES }, () => new THREE.Vector4()) }, // where (x, z), age (s), strength
     uRippleCount: { value: 0 },
     uPushAmount: { value: 1 },
     uWindAmount: { value: 1 },
-    uGlowRadius: { value: 1.6 },
     uGlowStrength: { value: 1 },
     uGlowColor: { value: new THREE.Color("#ffb45c") },
   };
@@ -54,22 +49,19 @@ export function createSwayUniforms(time) {
 
 export const SWAY_DECLS = /* glsl */ `
 uniform float uTime;
-uniform vec4 uTrailO[${TRAIL}];
-uniform vec4 uTrailD[${TRAIL}];
-uniform vec4 uGustA[${GUSTS}];
-uniform vec4 uGustB[${GUSTS}];
-uniform float uGustCount;
+uniform sampler2D uWindField;
+uniform vec4 uFieldRect;
+uniform float uFieldOn;
 uniform vec4 uRipple[${RIPPLES}];
 uniform float uRippleCount;
 uniform float uPushAmount;
 uniform float uWindAmount;
-uniform float uGlowRadius;
 varying float vSwGlow;
 `;
 
-// GLSL: the wind a plant at world xz feels from the pointer (gusts + click
-// ripples), as a horizontal offset (m) for its tip; and how lit it is by the
-// pointer's passing (0..1).
+// GLSL: the wind a plant at world xz feels from the pointer (its wind field
+// + click ripples), as a horizontal offset (m) for its tip; and how lit it
+// is by the pointer's passing (0..1).
 export const POINTER_WIND_GLSL = /* glsl */ `
 float pwHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 15731.743); }
 float pwNoise(vec2 p) {
@@ -78,30 +70,13 @@ float pwNoise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(pwHash(i), pwHash(i + vec2(1.0, 0.0)), u.x), mix(pwHash(i + vec2(0.0, 1.0)), pwHash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
+vec4 pwField(vec2 xz) {
+  vec2 uv = (xz - uFieldRect.xy) / uFieldRect.zw;
+  if (uFieldOn < 0.5 || any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec4(0.0);
+  return texture2D(uWindField, uv);
+}
 vec2 pointerWind(vec2 xz, float seed) {
-  // (most of the time there is no pointer wind at all: skip it)
-  if (uGustCount < 0.5 && uRippleCount < 0.5) return vec2(0.0);
-  vec2 acc = vec2(0.0);
-  for (int i = 0; i < ${GUSTS}; i++) {
-    if (float(i) >= uGustCount) break;
-    vec4 a = uGustA[i];
-    vec4 b = uGustB[i];
-    float strength = length(a.zw);
-    if (strength < 1e-4) continue;
-    vec2 dir = a.zw / strength;
-    // the puff drifts on along its way and spreads as it goes
-    vec2 rel = xz - a.xy - dir * b.z * b.x;
-    float R = b.y * (1.0 + b.x * 0.8);
-    float d2 = dot(rel, rel);
-    if (d2 > 12.0 * R * R) continue;
-    float along = dot(rel, dir);
-    float across = dot(rel, vec2(-dir.y, dir.x));
-    float reach = exp(-(along * along) / (2.2 * R * R) - (across * across) / (0.9 * R * R));
-    // it arrives later the further away; bends, then swings back once
-    float t = max(b.x - sqrt(d2) / 2.4, 0.0);
-    float response = (1.0 - exp(-t * 9.0)) * exp(-t * 2.1) * cos(t * 4.0);
-    acc += a.zw * reach * response;
-  }
+  vec2 acc = pwField(xz).rg;
   for (int i = 0; i < ${RIPPLES}; i++) {
     if (float(i) >= uRippleCount) break;
     vec4 r = uRipple[i];
@@ -112,21 +87,13 @@ vec2 pointerWind(vec2 xz, float seed) {
     acc += rel / max(d, 1e-3) * exp(-x * x) * cos(x * 2.0 + 0.5) * r.w * exp(-r.z * 1.2) * smoothstep(0.0, 0.3, d);
   }
   if (dot(acc, acc) < 1e-8) return vec2(0.0);
-  // broken up, never uniform, with a flutter across the wind
-  acc *= 0.6 + 0.8 * pwNoise(xz * 1.9 + uTime * 0.45 + seed * 3.0);
-  acc += vec2(-acc.y, acc.x) * sin(uTime * 7.5 + seed * 19.0) * 0.16;
+  // never quite uniform, with a flutter across the wind
+  acc *= 0.8 + 0.4 * pwNoise(xz * 1.9 + uTime * 0.45 + seed * 3.0);
+  acc += vec2(-acc.y, acc.x) * sin(uTime * 7.5 + seed * 19.0) * 0.12;
   return acc * uPushAmount;
 }
 float pointerGlow(vec3 world) {
-  float g = 0.0;
-  for (int i = 0; i < ${TRAIL}; i++) {
-    vec4 o = uTrailO[i];
-    if (o.w <= 0.001) continue;
-    vec3 rel = world - o.xyz;
-    vec3 aw = rel - uTrailD[i].xyz * max(dot(rel, uTrailD[i].xyz), 0.0);
-    g = max(g, o.w * exp(-dot(aw, aw) / (uGlowRadius * uGlowRadius)));
-  }
-  return g;
+  return pwField(world.xz).b;
 }
 `;
 

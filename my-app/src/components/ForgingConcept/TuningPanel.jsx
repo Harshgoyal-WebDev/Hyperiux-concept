@@ -5,10 +5,12 @@ import { LevaPanel, button, folder, useControls, useCreateStore } from "leva";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { STATES } from "./config";
 
-// Two Leva panels for every look property in tuning.js: the forge (slab,
-// energy, soil swirl) on the right, atmosphere, sand and audio beside it.
-// Controls are transient (onChange writes into T), so tuning never
-// re-renders the page. Press "h" to show / hide both.
+// Three Leva panels for every look property in tuning.js: the forge (slab,
+// energy, soil swirl) on the right, atmosphere, sand and audio beside it,
+// and the breakup (every stage's start and end, the blast, the streams of
+// sand and the sand and gravel) beside that. Controls are transient (onChange writes
+// into T), so tuning never re-renders the page. Press "h" to show / hide
+// them all.
 const OBJECT_SCHEMA = {
   "Slab & core": {
     fissureGlow: [0, 8, 0.05],
@@ -23,8 +25,6 @@ const OBJECT_SCHEMA = {
   "Scroll sequence": {
     forgeDuration: [2, 14, 0.1],
     forgeReverse: [0.5, 8, 0.1],
-    breakStart: [0, 0.6, 0.005],
-    breakEnd: [0.2, 1, 0.005],
   },
   Beam: {
     trailIntensity: [0, 5, 0.01],
@@ -37,11 +37,7 @@ const OBJECT_SCHEMA = {
   },
   "Soil swirl": {
     swirlSpeed: [0, 3, 0.01],
-    crumbleSand: [0, 60000, 100],
-    crumbleSize: [0.2, 4, 0.01],
-    crumbleOpacity: [0, 1, 0.01],
-    gravelCount: [0, 4000, 10],
-    gravelSize: [0.2, 3, 0.01],
+    soilSwirl: "bool",
     sandCount: [0, 12000, 10],
     sandSize: [0.2, 4, 0.01],
     sandSpeed: [0, 3, 0.01],
@@ -135,10 +131,6 @@ const OBJECT_SCHEMA = {
       gardenAir: [0, 2, 0.01],
       gardenLeafSize: [0.2, 3, 0.01],
       gardenMoteSize: [0.2, 3, 0.01],
-    },
-    Portal: {
-      portalGlow: [0, 3, 0.01],
-      portalRagged: [0, 1, 0.01],
     },
     Grass: {
       grassDensity: [0, 1, 0.01],
@@ -253,6 +245,10 @@ const WORLD_SCHEMA = {
     swirlVolume: [0, 2, 0.01],
     lightVolume: [0, 2, 0.01],
     gardenVolume: [0, 2, 0.01],
+    gardenMusicVolume: [0, 2, 0.01],
+    gardenTempo: [40, 100, 1],
+    pondVolume: [0, 2, 0.01],
+    swooshVolume: [0, 2, 0.01],
     logoVolume: [0, 2, 0.01],
     vanishVolume: [0, 2, 0.01],
     vanishStart: [0.6, 1, 0.001],
@@ -312,6 +308,51 @@ const WORLD_SCHEMA = {
   },
 };
 
+// The breakup, in a panel of its own: every stage's start and end, the
+// impact, the streams of sand, the sand and gravel.
+const BREAK_SCHEMA = {
+  "Timing (shares of the event)": {
+    breakStart: [0, 0.6, 0.005],
+    breakEnd: [0.2, 1, 0.005],
+  },
+  "Stages (start → end, shares of the breakup)": {
+    breakBurstEnd: [0.01, 0.5, 0.005],
+    breakBlastEnd: [0.01, 0.5, 0.005],
+    breakGatherStart: [0, 0.8, 0.005],
+    breakGatherEnd: [0.02, 1, 0.005],
+    breakGather: [0, 1, 0.01],
+    breakSpinStart: [0, 0.8, 0.005],
+    breakSpinEnd: [0.02, 1, 0.005],
+    breakGrindStart: [0, 0.95, 0.005],
+    breakGrindEnd: [0.05, 1, 0.005],
+    breakSandFlow: [0.01, 0.6, 0.005],
+  },
+  Impact: {
+    breakImpact: [0, 3, 0.01],
+    breakSpread: [0.2, 3, 0.01],
+    breakShrink: [0.2, 1, 0.01],
+    breakTumble: [0, 3, 0.01],
+  },
+  Streams: {
+    breakSpin: [0, 4, 0.01],
+    streams: [1, 8, 1],
+    streamRadius: [8, 60, 0.1],
+    streamTilt: [-90, 90, 0.5],
+    streamWobble: [0, 60, 0.5],
+    streamHeight: [0, 20, 0.1],
+    streamTail: [0.02, 1, 0.01],
+    streamWidth: [0, 20, 0.1],
+    streamLoose: [0, 1, 0.01],
+  },
+  "Sand & gravel": {
+    crumbleSand: [0, 60000, 100],
+    crumbleSize: [0.2, 4, 0.01],
+    crumbleOpacity: [0, 1, 0.01],
+    gravelCount: [0, 4000, 10],
+    gravelSize: [0.2, 3, 0.01],
+  },
+};
+
 function buildControls(schema) {
   const out = {};
   for (const [name, keys] of Object.entries(schema)) {
@@ -351,6 +392,7 @@ export default function TuningPanel({ onScrub }) {
 
   const objectStore = useCreateStore();
   const worldStore = useCreateStore();
+  const breakStore = useCreateStore();
 
   useControls(
     () => ({
@@ -371,6 +413,18 @@ export default function TuningPanel({ onScrub }) {
     { store: objectStore }
   );
   useControls(() => buildControls(WORLD_SCHEMA), { store: worldStore });
+  useControls(
+    () => ({
+      ...buildControls(BREAK_SCHEMA),
+      "Copy breakup settings": button(() => {
+        const keys = Object.values(BREAK_SCHEMA).flatMap((f) => Object.keys(f));
+        const json = JSON.stringify(Object.fromEntries(keys.map((k) => [k, T[k]])), null, 2);
+        navigator.clipboard?.writeText(json);
+        console.info("[forging-concept] breakup:\n" + json);
+      }),
+    }),
+    { store: breakStore }
+  );
 
   // keep the checkbox in step with the header's day / night toggle
   useEffect(() => {
@@ -386,6 +440,9 @@ export default function TuningPanel({ onScrub }) {
       <LevaPanel store={objectStore} hidden={hidden} collapsed titleBar={{ title: "Forge · energy · orbits (H)" }} />
       <div style={{ position: "fixed", top: 10, right: 300, width: 280, zIndex: 1000 }}>
         <LevaPanel store={worldStore} hidden={hidden} fill collapsed titleBar={{ title: "Atmosphere · sand · audio" }} />
+      </div>
+      <div style={{ position: "fixed", top: 10, right: 590, width: 280, zIndex: 1000 }}>
+        <LevaPanel store={breakStore} hidden={hidden} fill collapsed titleBar={{ title: "Breakup · sand streams" }} />
       </div>
     </>
   );

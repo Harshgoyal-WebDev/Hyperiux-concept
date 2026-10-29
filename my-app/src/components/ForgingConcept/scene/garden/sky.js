@@ -97,5 +97,12 @@ export function createGardenEnvironment(gl) {
   pmrem.dispose();
   mesh.geometry.dispose();
   material.dispose();
-  return target.texture;
+  // (disposing the map frees its render target too, not just the texture)
+  const texture = target.texture;
+  const disposeTexture = texture.dispose.bind(texture);
+  texture.dispose = () => {
+    target.dispose();
+    disposeTexture();
+  };
+  return texture;
 }

@@ -10,9 +10,10 @@ import { buildHeightGrid, createRidges, reshapeTerrain, widenPond } from "./gard
 // The GLB places every tree, bush, grass clump, rock, flower and plant as its
 // own node (4,884 of them) but each variant's parts share one mesh. Here every
 // (mesh, material) pair becomes one InstancedMesh carrying all its placements,
-// so the whole garden draws in a couple of hundred calls. More bushes and
-// flower clusters are planted from the GLB's own variants (on the terrain,
-// clear of the water and the trunks). The terrain stays a single mesh,
+// so the whole garden draws in a couple of hundred calls (its flower clusters
+// are left out: GardenFlowers grows the garden's own). More bushes are
+// planted from the GLB's own variants (on the terrain, clear of the water and
+// the trunks). The terrain stays a single mesh,
 // reshaped (a wider pond, low ridges beyond the clearing; gardenTerrain.js),
 // and everything placed on it moves with it.
 //
@@ -24,7 +25,8 @@ import { buildHeightGrid, createRidges, reshapeTerrain, widenPond } from "./gard
 // across the meadow. Bushes, plants and flowers glow where it has just
 // passed — only while it moves.
 
-const GROUPS = ["GardenTerrain", "GrassPatches", "PlacedTrees", "PlacedBushes", "PlacedRocks", "FlowerClusters", "PlacedPlants"];
+// (the GLB's FlowerClusters are left out: the garden grows its own flowers, GardenFlowers)
+const GROUPS = ["GardenTerrain", "GrassPatches", "PlacedTrees", "PlacedBushes", "PlacedRocks", "PlacedPlants"];
 export const RIPPLES = 4; // rings of air from clicks
 // Small, dense things (grass, flowers) live on this layer, which the pond's
 // reflection leaves out: they would cost a second lawn and barely show.
@@ -98,10 +100,10 @@ float pointerGlow(vec3 world) {
 `;
 
 // kinds: 0 grass (bends from the root, uv.y = 0 there), 1 tree leaves,
-// 2 bush / plant leaves (+ glow), 3 flowers (bend from the ground, + glow)
+// 2 bush / plant leaves (+ glow)
 const GLOWS = (kind) => kind >= 2;
 // (the trees' leaves take none of it: only the breeze — it saves the most)
-const POINTER_SHARE = [1, 0, 0.4, 0.45];
+const POINTER_SHARE = [1, 0, 0.4];
 const swayGlsl = (kind) => /* glsl */ `
 #ifdef USE_INSTANCING
 {
@@ -111,9 +113,7 @@ const swayGlsl = (kind) => /* glsl */ `
   ${
     kind === 0
       ? "float swW = pow(clamp(uv.y, 0.0, 1.0), 1.7);"
-      : kind === 3
-        ? "float swW = clamp((swWorld.y - swPivot.y) / 0.5, 0.0, 1.0);"
-        : "float swW = clamp(length(swWorld - swPivot) / 1.6, 0.0, 1.0);"
+      : "float swW = clamp(length(swWorld - swPivot) / 1.6, 0.0, 1.0);"
   }
   float swSeed = fract(sin(dot(swPivot.xz, vec2(12.9898, 78.233))) * 43758.5453);
   // the breeze: slow gusts rolling across the garden, a quicker flutter
@@ -168,16 +168,14 @@ const kindOf = (group, materialName) => {
   if (group === "GrassPatches" && materialName === "M_Grass") return 0;
   if (group === "PlacedTrees" && materialName === "M_Foliage") return 1;
   if ((group === "PlacedBushes" || group === "PlacedPlants") && materialName === "M_Foliage") return 2;
-  if (group === "FlowerClusters") return 3;
   return -1;
 };
 
 // gltf scene → { root, terrain, height, materials, anchors, textures }
 // lawnRadius: inside it the lawn's own blades cover the ground, so the GLB's
-// grass clumps there are left out; its flower clusters give way to the
-// garden's own flowers (GardenFlowers) when dropFlowers is set. pondScale
-// widens the pond; ridges is the height of the ridges' crests (m).
-export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extraFlowers = 0, lawnRadius = 0, dropFlowers = false, pondScale = 1, ridges = 0, sway }) {
+// grass clumps there are left out. pondScale widens the pond; ridges is the
+// height of the ridges' crests (m).
+export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawnRadius = 0, pondScale = 1, ridges = 0, sway }) {
   const scene = gltfScene;
   const top = scene.getObjectByName("HyperiuxGarden");
   const missing = top ? GROUPS.filter((n) => !top.getObjectByName(n)) : ["HyperiuxGarden"];
@@ -236,7 +234,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
   const moved = { x: 0, z: 0 };
   const shift = new THREE.Matrix4();
   const trunks = [];
-  const templates = { PlacedBushes: [], FlowerClusters: [] };
+  const templates = { PlacedBushes: [] };
   for (const groupName of GROUPS) {
     if (groupName === "GardenTerrain") continue;
     const group = top.getObjectByName(groupName);
@@ -254,7 +252,6 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
         if (!o.isMesh) return;
         m4.multiplyMatrices(toLocal, o.matrixWorld).premultiply(shift);
         if (parts) parts.push({ mesh: o, rel: new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld) });
-        if (groupName === "FlowerClusters" && dropFlowers) return;
         if (groupName === "GrassPatches") {
           pos.setFromMatrixPosition(m4);
           // the lawn covers the clearing; the GLB's clumps only beyond it
@@ -267,7 +264,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
     }
   }
 
-  // more bushes round the clearing and flowers in drifts through the grass
+  // more bushes round the clearing
   const clearOf = (x, z, water, trunk) => {
     const h = height.sample(x, z);
     if (!Number.isFinite(h) || h < GARDEN.water + water) return null;
@@ -296,23 +293,6 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
     plant("PlacedBushes", x, z, h, 0.7 + rng() * 0.6);
     n++;
   }
-  for (let n = 0, tries = 0; n < extraFlowers && tries < extraFlowers * 20; ) {
-    // drifts: a centre, then a handful of clusters round it
-    const a = rng() * Math.PI * 2;
-    const r = 7 + Math.pow(rng(), 0.8) * 30;
-    const cx = Math.cos(a) * r;
-    const cz = Math.sin(a) * r * 0.85;
-    const k = 4 + Math.floor(rng() * 6);
-    for (let i = 0; i < k && n < extraFlowers; i++, tries++) {
-      const x = cx + (rng() - 0.5) * 4;
-      const z = cz + (rng() - 0.5) * 4;
-      const h = clearOf(x, z, 0.12, 1.2);
-      if (h === null) continue;
-      plant("FlowerClusters", x, z, h, 0.8 + rng() * 0.5);
-      n++;
-    }
-    tries++;
-  }
 
   const root = new THREE.Group();
   root.name = "Garden";
@@ -326,7 +306,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, extr
     mesh.castShadow = b.group === "PlacedTrees" || b.group === "PlacedBushes" || b.group === "PlacedRocks";
     mesh.receiveShadow = true;
     mesh.name = `${b.group}:${b.material.name}`;
-    if (b.group === "GrassPatches" || b.group === "FlowerClusters") mesh.layers.set(GRASS_LAYER);
+    if (b.group === "GrassPatches") mesh.layers.set(GRASS_LAYER);
     root.add(mesh);
   }
 

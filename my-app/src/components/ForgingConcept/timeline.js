@@ -30,8 +30,7 @@ export function createJourneyState() {
     eventT: 0, // the forging event's own clock (0 at the core → 1 forged)
     fracture: 0, // breakup of the excess rock (0..1; see deriveBreak)
     breakBurst: 0, // its impact: the burst of energy as the rock blasts off (0..1, dying away)
-    orbitSpeed: 0, // pace of the swirl the broken rock is carried into (0 → cruising)
-    swirlOpen: 0, // the swirl widens to clear the camera's way through the mark
+    orbitSpeed: 0, // pace of the swirl's sound once the rock breaks (0 → cruising)
     // the garden
     align: 0, // shots corrected onto the real opening (see CameraRig)
     beamVis: 1, // the beam goes out as the camera heads for the opening
@@ -256,7 +255,6 @@ export function buildMasterTimeline(J, dom) {
   // ----- the garden: through the mark into daylight
   const approach = (k) => P.held + (P.pass - P.held) * k;
   seg(tl, J, "beamVis", 1, 0, approach(0.1), approach(0.6), "sine.inOut");
-  seg(tl, J, "swirlOpen", 0, 1, approach(0.15), approach(0.75), "sine.inOut");
   // the cube's inner faces light up, the camera flies into the glow, the
   // light fills the frame — the garden is switched in under it — and the
   // light fades away to the garden

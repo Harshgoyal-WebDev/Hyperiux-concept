@@ -11,7 +11,6 @@ import Terrain, { buildHeightField, buildTerrainGeometry } from "./Terrain";
 import SandField from "./SandField";
 import Forge from "./Forge";
 import ForgeBeam from "./ForgeBeam";
-import SoilSwirl from "./SoilSwirl";
 import CrumbleSand from "./CrumbleSand";
 import Gravel from "./Gravel";
 import Rocks, { buildRockSet } from "./Rocks";
@@ -111,7 +110,6 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         {forge && (
           <>
             <ForgeBeam terrain={terrain} forge={forge} J={J} shared={shared} />
-            <SoilSwirl J={J} tier={tier} shared={shared} forge={forge} />
             <CrumbleSand J={J} tier={tier} shared={shared} forge={forge} />
             {tier.maxGravel > 0 && <Gravel J={J} tier={tier} shared={shared} forge={forge} />}
           </>

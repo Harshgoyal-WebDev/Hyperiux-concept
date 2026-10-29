@@ -82,77 +82,15 @@ export const T = {
   beamDashLength: 0.18, // share of that spacing each dash fills
   beamBase: 0.54, // glow of the strands between dashes
 
-  // The swirl the broken rock turns into. Grain / dust counts are capped by
-  // the quality tier.
-  swirlSpeed: 0.99, // overall pace of the swirl
+  // The sand and gravel the broken rock turns into (counts are capped by the
+  // quality tier).
+  swirlSpeed: 0.99, // pace of the swirl's sound
   crumbleSand: 6000, // grains of sand the broken rock turns into (capped by the quality tier)
   crumbleSize: 0.83,
   crumbleOpacity: 1.0,
   gravelCount: 4000, // gravel it turns into (capped by the quality tier)
   gravelSize: 1.47,
-  sandCount: 1200, // fine soil shed into the swirl (capped by the quality tier)
-  sandSize: 0.75,
-  sandSpeed: 0.94,
   sandBrightness: 0.19,
-  // the orbits it all revolves on (see world/swirl.js)
-  orbitCount: 3, // how many orbits (1..8)
-  orbitRadius: 36, // metres: the innermost orbit (below ~28 it can pass through the mark)
-  orbitGap: 0, // metres between neighbouring orbits
-  orbitThickness: 5.3, // metres: diameter of each orbit's tube (thin wire → thick band)
-  orbitSpread: 0.23, // how far the particles fill in from the orbits towards the mark (0..1)
-  orbitTilt: 1, // degrees added to every orbit's lean towards / away from the camera
-  orbitRoll: 2, // ...its sideways roll
-  orbitTurn: 16, // ...and its turn about the vertical
-  // each orbit's own: lean, roll, turn (degrees), height (m), speed (rad/s,
-  // negative = the other way round), squash (depth / width)
-  orbit1Tilt: 12,
-  orbit1Roll: 0,
-  orbit1Turn: 0,
-  orbit1Height: 2,
-  orbit1Speed: 0.22,
-  orbit1Squash: 0.55,
-  orbit2Tilt: -10,
-  orbit2Roll: 32,
-  orbit2Turn: 6,
-  orbit2Height: -2,
-  orbit2Speed: -0.17,
-  orbit2Squash: 0.55,
-  orbit3Tilt: 18,
-  orbit3Roll: -36,
-  orbit3Turn: -6,
-  orbit3Height: 4,
-  orbit3Speed: 0.2,
-  orbit3Squash: 0.62,
-  orbit4Tilt: -6,
-  orbit4Roll: 12,
-  orbit4Turn: 4,
-  orbit4Height: 9,
-  orbit4Speed: 0.14,
-  orbit4Squash: 0.45,
-  orbit5Tilt: 20,
-  orbit5Roll: -18,
-  orbit5Turn: -4,
-  orbit5Height: -9,
-  orbit5Speed: -0.19,
-  orbit5Squash: 0.58,
-  orbit6Tilt: 4,
-  orbit6Roll: 48,
-  orbit6Turn: 10,
-  orbit6Height: 0,
-  orbit6Speed: 0.16,
-  orbit6Squash: 0.5,
-  orbit7Tilt: -16,
-  orbit7Roll: -52,
-  orbit7Turn: -10,
-  orbit7Height: 6,
-  orbit7Speed: -0.15,
-  orbit7Squash: 0.52,
-  orbit8Tilt: 8,
-  orbit8Roll: 20,
-  orbit8Turn: 0,
-  orbit8Height: -5,
-  orbit8Speed: 0.12,
-  orbit8Squash: 0.48,
 
   // The garden
   innerGlow: 1.81, // the cube outline's inner light the camera flies into
@@ -279,9 +217,8 @@ export const T = {
   // fills in over roughly the first 0.15
   breakStart: 0.1,
   breakEnd: 1.0,
-  soilSwirl: false, // the swirl's own sand and gravel on the orbits (hidden for now)
   breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
-  breakSpread: 1.3, // how far the blast scatters the rock (× the streams' radius)
+  breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
   breakShrink: 0.43, // the pieces' size once broken off
   breakSpin: 0.6, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
@@ -307,8 +244,8 @@ export const T = {
   streamLoose: 0.16, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
-  forgeDuration: 4.5,
-  forgeReverse: 3.0,
+  forgeDuration: 7.0,
+  forgeReverse: 4.5,
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

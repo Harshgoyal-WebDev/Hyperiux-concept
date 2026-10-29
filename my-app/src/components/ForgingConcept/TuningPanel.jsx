@@ -5,12 +5,12 @@ import { LevaPanel, button, folder, useControls, useCreateStore } from "leva";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { STATES } from "./config";
 
-// Three Leva panels for every look property in tuning.js: the forge (slab,
-// energy, soil swirl) on the right, atmosphere, sand and audio beside it,
-// and the breakup (every stage's start and end, the blast, the streams of
-// sand and the sand and gravel) beside that. Controls are transient (onChange writes
-// into T), so tuning never re-renders the page. Press "h" to show / hide
-// them all.
+// Four Leva panels for every look property in tuning.js, in one column down
+// the right: the forge (slab, energy, beam, post), the breakup (every
+// stage's start and end, the blast, the streams of sand and the sand and
+// gravel), the garden, and atmosphere, sand and audio. Controls are
+// transient (onChange writes into T), so tuning never re-renders the page.
+// Press "h" to show / hide them all.
 const OBJECT_SCHEMA = {
   "Slab & core": {
     fissureGlow: [0, 8, 0.05],
@@ -35,195 +35,120 @@ const OBJECT_SCHEMA = {
     beamDashLength: [0.02, 1, 0.01],
     beamBase: [0, 2, 0.01],
   },
-  "Soil swirl": {
-    swirlSpeed: [0, 3, 0.01],
-    soilSwirl: "bool",
-    sandCount: [0, 12000, 10],
-    sandSize: [0.2, 4, 0.01],
-    sandSpeed: [0, 3, 0.01],
+  "Breakup sand": {
     sandBrightness: [0, 3, 0.01],
-  },
-  // the swirl's orbits: the whole swirl, then each orbit in its own folder
-  Orbits: {
-    orbitCount: [1, 8, 1],
-    orbitRadius: [15, 70, 0.1],
-    orbitGap: [0, 15, 0.1],
-    orbitThickness: [0, 25, 0.1],
-    orbitSpread: [0, 1, 0.01],
-    orbitTilt: [-90, 90, 1],
-    orbitRoll: [-90, 90, 1],
-    orbitTurn: [-180, 180, 1],
-    "Orbit 1": {
-      orbit1Tilt: [-90, 90, 1],
-      orbit1Roll: [-90, 90, 1],
-      orbit1Turn: [-180, 180, 1],
-      orbit1Height: [-20, 20, 0.1],
-      orbit1Speed: [-0.6, 0.6, 0.005],
-      orbit1Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 2": {
-      orbit2Tilt: [-90, 90, 1],
-      orbit2Roll: [-90, 90, 1],
-      orbit2Turn: [-180, 180, 1],
-      orbit2Height: [-20, 20, 0.1],
-      orbit2Speed: [-0.6, 0.6, 0.005],
-      orbit2Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 3": {
-      orbit3Tilt: [-90, 90, 1],
-      orbit3Roll: [-90, 90, 1],
-      orbit3Turn: [-180, 180, 1],
-      orbit3Height: [-20, 20, 0.1],
-      orbit3Speed: [-0.6, 0.6, 0.005],
-      orbit3Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 4": {
-      orbit4Tilt: [-90, 90, 1],
-      orbit4Roll: [-90, 90, 1],
-      orbit4Turn: [-180, 180, 1],
-      orbit4Height: [-20, 20, 0.1],
-      orbit4Speed: [-0.6, 0.6, 0.005],
-      orbit4Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 5": {
-      orbit5Tilt: [-90, 90, 1],
-      orbit5Roll: [-90, 90, 1],
-      orbit5Turn: [-180, 180, 1],
-      orbit5Height: [-20, 20, 0.1],
-      orbit5Speed: [-0.6, 0.6, 0.005],
-      orbit5Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 6": {
-      orbit6Tilt: [-90, 90, 1],
-      orbit6Roll: [-90, 90, 1],
-      orbit6Turn: [-180, 180, 1],
-      orbit6Height: [-20, 20, 0.1],
-      orbit6Speed: [-0.6, 0.6, 0.005],
-      orbit6Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 7": {
-      orbit7Tilt: [-90, 90, 1],
-      orbit7Roll: [-90, 90, 1],
-      orbit7Turn: [-180, 180, 1],
-      orbit7Height: [-20, 20, 0.1],
-      orbit7Speed: [-0.6, 0.6, 0.005],
-      orbit7Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 8": {
-      orbit8Tilt: [-90, 90, 1],
-      orbit8Roll: [-90, 90, 1],
-      orbit8Turn: [-180, 180, 1],
-      orbit8Height: [-20, 20, 0.1],
-      orbit8Speed: [-0.6, 0.6, 0.005],
-      orbit8Squash: [0.2, 1.2, 0.01],
-    },
-  },
-  Garden: {
-    innerGlow: [0, 3, 0.01],
-    gardenEnvIntensity: [0, 2, 0.01],
-    gardenSun: [0, 8, 0.01],
-    Camera: {
-      gardenFovOffset: [-15, 20, 0.5],
-      gardenOrbitRadius: [0.6, 1.6, 0.01],
-      gardenOrbitHeight: [-2, 8, 0.05],
-    },
-    Air: {
-      gardenAir: [0, 2, 0.01],
-      gardenLeafSize: [0.2, 3, 0.01],
-      gardenMoteSize: [0.2, 3, 0.01],
-    },
-    Grass: {
-      grassDensity: [0, 1, 0.01],
-      grassHeight: [0.2, 3, 0.01],
-      grassWidth: [0.2, 3, 0.01],
-      grassRoot: "color",
-      grassMid: "color",
-      grassTip: "color",
-      grassDry: "color",
-      grassTranslucency: [0, 3, 0.01],
-    },
-    Flowers: {
-      flowerDensity: [0, 1, 0.01],
-      flowerHeight: [0.3, 4, 0.01],
-      flowerSize: [0.3, 4, 0.01],
-      tulipRed: "color",
-      tulipPink: "color",
-      tulipYellow: "color",
-      tulipOrange: "color",
-      tulipWhite: "color",
-      tulipPurple: "color",
-      daisyColor: "color",
-      spireLavender: "color",
-      spireRose: "color",
-    },
-    "Tree blossom": {
-      treeBlossomShare: [0, 1, 0.01],
-      treeBlossomDensity: [0, 1, 0.01],
-      treeBlossomSize: [0.2, 4, 0.01],
-      treeBlossomPink: "color",
-      treeBlossomWhite: "color",
-      treeBlossomRose: "color",
-      treeBlossomLilac: "color",
-    },
-    Landscape: {
-      pondSize: [1, 2.4, 0.01],
-      gardenRidges: [0, 16, 0.1],
-      gardenMountains: [0, 3, 0.01],
-    },
-    "Hover · flowers & bushes": {
-      gardenHoverRadius: [0.2, 8, 0.01],
-      gardenHoverStrength: [0, 3, 0.01],
-      gardenHoverLinger: [0.05, 4, 0.01],
-      gardenWind: [0, 3, 0.01],
-      gardenGlow: [0, 4, 0.01],
-      gardenGlowRadius: [0.2, 6, 0.01],
-      gardenGlowColor: "color",
-    },
-    Pond: {
-      pondReflect: [0, 1, 0.01],
-      pondDistortion: [0, 0.2, 0.001],
-      pondCurrentSpeed: [0, 4, 0.01],
-      pondCurrentScale: [0.2, 4, 0.01],
-      pondRippleStrength: [0, 4, 0.01],
-      pondRippleForce: [0, 4, 0.01],
-      pondRippleRadius: [0.1, 3, 0.01],
-      pondRippleDamping: [0.9, 0.999, 0.001],
-      pondDeep: "color",
-      pondShallow: "color",
-      pondClarity: [0, 1, 0.01],
-    },
-    "Particle body": {
-      logoParticleSize: [0.2, 3, 0.01],
-      logoParticleGlow: [0.2, 3, 0.01],
-      logoSpecular: [0, 3, 0.01],
-      logoRim: [0, 3, 0.01],
-      logoColorA: "color",
-      logoColorB: "color",
-      logoColorC: "color",
-      logoColorD: "color",
-      logoMorphSpeed: [0.2, 8, 0.01],
-      logoMorphStagger: [0, 0.8, 0.01],
-      logoMorphPull: [0, 15, 0.1],
-      logoSpring: [1, 60, 0.1],
-      logoDamping: [0.8, 0.995, 0.001],
-      logoFlow: [0, 4, 0.01],
-      logoSwirlSpeed: [0, 4, 0.01],
-      logoHoverRadius: [0.02, 0.4, 0.005],
-      logoHoverForce: [0, 4, 0.01],
-      logoDrag: [0, 4, 0.01],
-      logoScatterTime: [0.1, 5, 0.05],
-      logoViscosity: [0, 0.9, 0.01],
-      logoRepulsion: [0, 0.2, 0.001],
-      logoCoreGlow: [0, 3, 0.01],
-      logoWhiteout: [0, 1.5, 0.01],
-      logoYaw: [-180, 180, 1],
-    },
+    swirlSpeed: [0, 3, 0.01],
   },
   Post: {
     bloomIntensity: [0, 3, 0.01],
     bloomThreshold: [0, 3, 0.01],
     bloomRadius: [0, 1, 0.01],
     vignette: [0, 2, 0.01],
+  },
+};
+
+// The garden, in a panel of its own.
+const GARDEN_SCHEMA = {
+  Light: {
+    innerGlow: [0, 3, 0.01],
+    gardenEnvIntensity: [0, 2, 0.01],
+    gardenSun: [0, 8, 0.01],
+  },
+  Camera: {
+    gardenFovOffset: [-15, 20, 0.5],
+    gardenOrbitRadius: [0.6, 1.6, 0.01],
+    gardenOrbitHeight: [-2, 8, 0.05],
+  },
+  Air: {
+    gardenAir: [0, 2, 0.01],
+    gardenLeafSize: [0.2, 3, 0.01],
+    gardenMoteSize: [0.2, 3, 0.01],
+  },
+  Grass: {
+    grassDensity: [0, 1, 0.01],
+    grassHeight: [0.2, 3, 0.01],
+    grassWidth: [0.2, 3, 0.01],
+    grassRoot: "color",
+    grassMid: "color",
+    grassTip: "color",
+    grassDry: "color",
+    grassTranslucency: [0, 3, 0.01],
+  },
+  Flowers: {
+    flowerDensity: [0, 1, 0.01],
+    flowerHeight: [0.3, 4, 0.01],
+    flowerSize: [0.3, 4, 0.01],
+    tulipRed: "color",
+    tulipPink: "color",
+    tulipYellow: "color",
+    tulipOrange: "color",
+    tulipWhite: "color",
+    tulipPurple: "color",
+    daisyColor: "color",
+    spireLavender: "color",
+    spireRose: "color",
+  },
+  "Tree blossom": {
+    treeBlossomShare: [0, 1, 0.01],
+    treeBlossomDensity: [0, 1, 0.01],
+    treeBlossomSize: [0.2, 4, 0.01],
+    treeBlossomPink: "color",
+    treeBlossomWhite: "color",
+    treeBlossomRose: "color",
+    treeBlossomLilac: "color",
+  },
+  Landscape: {
+    pondSize: [1, 2.4, 0.01],
+    gardenRidges: [0, 16, 0.1],
+    gardenMountains: [0, 3, 0.01],
+  },
+  "Hover · flowers & bushes": {
+    gardenHoverRadius: [0.2, 8, 0.01],
+    gardenHoverStrength: [0, 3, 0.01],
+    gardenHoverLinger: [0.05, 4, 0.01],
+    gardenWind: [0, 3, 0.01],
+    gardenGlow: [0, 4, 0.01],
+    gardenGlowRadius: [0.2, 6, 0.01],
+    gardenGlowColor: "color",
+  },
+  Pond: {
+    pondReflect: [0, 1, 0.01],
+    pondDistortion: [0, 0.2, 0.001],
+    pondCurrentSpeed: [0, 4, 0.01],
+    pondCurrentScale: [0.2, 4, 0.01],
+    pondRippleStrength: [0, 4, 0.01],
+    pondRippleForce: [0, 4, 0.01],
+    pondRippleRadius: [0.1, 3, 0.01],
+    pondRippleDamping: [0.9, 0.999, 0.001],
+    pondDeep: "color",
+    pondShallow: "color",
+    pondClarity: [0, 1, 0.01],
+  },
+  "Particle body": {
+    logoParticleSize: [0.2, 3, 0.01],
+    logoParticleGlow: [0.2, 3, 0.01],
+    logoSpecular: [0, 3, 0.01],
+    logoRim: [0, 3, 0.01],
+    logoColorA: "color",
+    logoColorB: "color",
+    logoColorC: "color",
+    logoColorD: "color",
+    logoMorphSpeed: [0.2, 8, 0.01],
+    logoMorphStagger: [0, 0.8, 0.01],
+    logoMorphPull: [0, 15, 0.1],
+    logoSpring: [1, 60, 0.1],
+    logoDamping: [0.8, 0.995, 0.001],
+    logoFlow: [0, 4, 0.01],
+    logoSwirlSpeed: [0, 4, 0.01],
+    logoHoverRadius: [0.02, 0.4, 0.005],
+    logoHoverForce: [0, 4, 0.01],
+    logoDrag: [0, 4, 0.01],
+    logoScatterTime: [0.1, 5, 0.05],
+    logoViscosity: [0, 0.9, 0.01],
+    logoRepulsion: [0, 0.2, 0.001],
+    logoCoreGlow: [0, 3, 0.01],
+    logoWhiteout: [0, 1.5, 0.01],
+    logoYaw: [-180, 180, 1],
   },
 };
 
@@ -353,6 +278,10 @@ const BREAK_SCHEMA = {
   },
 };
 
+// half as wide again as Leva's default (280 px), the extra all for the labels
+const PANEL_WIDTH = 420;
+const THEME = { sizes: { rootWidth: `${PANEL_WIDTH}px`, controlWidth: "190px" } };
+
 function buildControls(schema) {
   const out = {};
   for (const [name, keys] of Object.entries(schema)) {
@@ -368,10 +297,7 @@ function buildControls(schema) {
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };
-      else if (spec === "vec3") {
-        // vectors stay the same object in T; copy the components in
-        items[key] = { value: { ...T[key] }, step: 0.1, onChange: (v) => Object.assign(T[key], v) };
-      } else items[key] = { value: T[key], min: spec[0], max: spec[1], step: spec[2], onChange };
+      else items[key] = { value: T[key], min: spec[0], max: spec[1], step: spec[2], onChange };
     }
     out[name] = folder(items, { collapsed: true });
   }
@@ -393,6 +319,7 @@ export default function TuningPanel({ onScrub }) {
   const objectStore = useCreateStore();
   const worldStore = useCreateStore();
   const breakStore = useCreateStore();
+  const gardenStore = useCreateStore();
 
   useControls(
     () => ({
@@ -413,6 +340,7 @@ export default function TuningPanel({ onScrub }) {
     { store: objectStore }
   );
   useControls(() => buildControls(WORLD_SCHEMA), { store: worldStore });
+  useControls(() => buildControls(GARDEN_SCHEMA), { store: gardenStore });
   useControls(
     () => ({
       ...buildControls(BREAK_SCHEMA),
@@ -435,15 +363,31 @@ export default function TuningPanel({ onScrub }) {
     return () => window.removeEventListener(NIGHT_EVENT, sync);
   }, [worldStore]);
 
+  // one column down the right, half as wide again as Leva's default so the
+  // labels fit; it scrolls when the open panels run past the screen
   return (
-    <>
-      <LevaPanel store={objectStore} hidden={hidden} collapsed titleBar={{ title: "Forge · energy · orbits (H)" }} />
-      <div style={{ position: "fixed", top: 10, right: 300, width: 280, zIndex: 1000 }}>
-        <LevaPanel store={worldStore} hidden={hidden} fill collapsed titleBar={{ title: "Atmosphere · sand · audio" }} />
-      </div>
-      <div style={{ position: "fixed", top: 10, right: 590, width: 280, zIndex: 1000 }}>
-        <LevaPanel store={breakStore} hidden={hidden} fill collapsed titleBar={{ title: "Breakup · sand streams" }} />
-      </div>
-    </>
+    <div
+      style={{
+        position: "fixed",
+        top: 84, // (below the header's controls)
+        right: 10,
+        width: PANEL_WIDTH,
+        maxHeight: "calc(100vh - 94px)",
+        overflowY: "auto",
+        display: hidden ? "none" : "flex",
+        flexDirection: "column",
+        gap: 8,
+        zIndex: 1000,
+      }}
+    >
+      {[
+        [objectStore, "Forge · energy (H)"],
+        [breakStore, "Breakup · sand streams"],
+        [gardenStore, "Garden"],
+        [worldStore, "Atmosphere · sand · audio"],
+      ].map(([store, title]) => (
+        <LevaPanel key={title} store={store} hidden={hidden} fill collapsed theme={THEME} titleBar={{ title, drag: false }} />
+      ))}
+    </div>
   );
 }

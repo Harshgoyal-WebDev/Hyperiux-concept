@@ -171,6 +171,8 @@ const WATER_UNIFORMS = (axes, half) => ({
 
 // axes: the pond's semi-axes (x, z), as widened
 export default function GardenPond({ J, tier, time, axes }) {
+  // (it works only while the garden is on screen, and its ripples only
+  // while they are still running: a few seconds after the last drop)
   const { gl, camera, size } = useThree();
   const built = useMemo(() => {
     // the ripple grid's half extent (m)
@@ -245,11 +247,15 @@ export default function GardenPond({ J, tier, time, axes }) {
   }, [built, gl, size, tier]);
 
   const s = useMemo(
-    () => ({ ray: new THREE.Raycaster(), ndc: new THREE.Vector2(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit: new THREE.Vector3(), last: new THREE.Vector3(1e9, 0, 0), drops: [] }),
+    () => ({ ray: new THREE.Raycaster(), ndc: new THREE.Vector2(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit: new THREE.Vector3(), last: new THREE.Vector3(1e9, 0, 0), drops: [], lastDrop: -1e9 }),
     []
   );
 
   useFrame((_, delta) => {
+    if (!J.inGarden) {
+      J.pondStir = 0;
+      return;
+    }
     const u = built.water.material.uniforms;
     u.uTime.value = time.value;
     u.uReflect.value = T.pondReflect;
@@ -295,6 +301,9 @@ export default function GardenPond({ J, tier, time, axes }) {
     } else s.last.set(1e9, 0, 0);
 
     J.pondStir = stir; // (its sound)
+    const now = performance.now();
+    if (s.drops.length) s.lastDrop = now;
+    if (now - s.lastDrop > 6000 && built.cleared) return;
 
     // a step for each drop (at least one a frame)
     const prevTarget = gl.getRenderTarget();

@@ -23,8 +23,8 @@ import GardenAir from "./GardenAir";
 
 // The garden beyond the forged logo, as its own world (WorldSwitch swaps it
 // in under the light): hyperiux-garden-environment.glb — terrain, trees,
-// bushes, grass, rocks, flowers, with more bushes and flowers planted, the
-// pond widened and low ridges raised beyond the clearing — placed at
+// bushes, grass, rocks (its flowers left out for the garden's own), with more
+// bushes planted, the pond widened and ridges raised round it — placed at
 // GARDEN_ORIGIN, under a daylight sky with a warm sun from behind the
 // camera; a lawn of real grass over the clearing, blossom on the trees, the
 // pond (a mirror with currents and ripples), two rings of small mountains
@@ -121,7 +121,6 @@ export default function Garden({ J, tier, worlds }) {
         grassShare: tier.gardenGrass,
         extraBushes: tier.gardenBushes,
         lawnRadius: LAWN_RADIUS,
-        dropFlowers: true,
         pondScale: ground.pond,
         ridges: ground.ridges,
         sway,

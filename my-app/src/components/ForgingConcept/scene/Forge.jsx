@@ -389,7 +389,8 @@ export default function Forge({ J, shared, groundY, onReady }) {
   }, [forge]);
 
   useFrame((_, delta) => {
-    if (!built) return;
+    // (nothing of it is on screen in the garden)
+    if (!built || J.inGarden) return;
     const { U, stages, halo, point } = built;
     U.uCrackSpread.value = J.crackSpread * T.crackSpread;
     // the light filling the cube outline's openings

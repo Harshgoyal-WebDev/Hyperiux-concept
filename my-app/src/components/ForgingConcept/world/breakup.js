@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { sandNoise } from "./forgeAsset";
-import { ORBIT_GLSL, ORBIT_UNIFORMS } from "./swirl";
 import { T } from "../tuning";
 
 // The broken rock's flight, and what it turns into. Every stage has its own
@@ -243,9 +242,6 @@ export function breakupUniforms(forge, shared) {
     ...FLOW_UNIFORMS,
     uS: { value: forge.scale },
     uCenter: { value: forge.world.logo.clone() },
-    uClock: { value: 0 },
-    uOpen: { value: 0 },
-    ...ORBIT_UNIFORMS,
     uTime: shared.uTime,
   };
 }
@@ -253,7 +249,8 @@ export function breakupUniforms(forge, shared) {
 // GLSL: breakupFlow(piece, local, threshold, drift, out pos) → how far along
 // its flow into its stream it is (0..1), or -1 while it is still stone.
 export const breakupGLSL = (pieces) => /* glsl */ `
-${ORBIT_GLSL}
+uniform vec3 uCenter; // the mark
+uniform float uTime;
 ${STREAM_GLSL}
 uniform vec4 uPiece[${pieces}]; // world position + erosion
 uniform vec4 uPieceQ[${pieces}]; // orientation

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
-import { makeOrbits, syncOrbit } from "../world/swirl";
 import { breakupGLSL, breakupUniforms, puffDirection, samplePieceSurfaces } from "../world/breakup";
 import { PALETTE } from "../config";
 import { T } from "../tuning";
@@ -95,25 +94,20 @@ function patch(material, uniforms, pieces) {
 
 export default function Gravel({ J, tier, shared, forge }) {
   const ref = useRef();
-  const clock = useRef(0);
   const built = useMemo(() => {
     const count = tier.maxGravel;
     const rng = mulberry32(5150);
     const { local, piece, threshold } = samplePieceSurfaces(forge, count, rng);
-    const orbits = makeOrbits(count, 1.1, rng);
+    // (the draws the old orbit placement took, so every grain keeps its size, tint and drift)
+    for (let k = 0; k < count * 8; k++) rng();
     const gravel = new Float32Array(count * 4);
     const drift = new Float32Array(count * 4);
-    const orbit = new Float32Array(count * 4);
-    const plane = new Float32Array(count * 4);
     const dir = new THREE.Vector3();
     for (let i = 0; i < count; i++) {
       // mostly small chips, a few larger stones (metres)
       gravel.set([piece[i], threshold[i], 0.08 + Math.pow(rng(), 2.2) * 0.42, rng()], i * 4);
       puffDirection(rng, dir);
       drift.set([dir.x, dir.y, dir.z, rng()], i * 4);
-      const o = orbits[i];
-      orbit.set(o.orbit, i * 4);
-      plane.set(o.plane, i * 4);
     }
     const stone = stoneGeometry();
     const geometry = new THREE.InstancedBufferGeometry();
@@ -123,8 +117,6 @@ export default function Gravel({ J, tier, shared, forge }) {
     geometry.setAttribute("aLocal", new THREE.InstancedBufferAttribute(local, 3));
     geometry.setAttribute("aGravel", new THREE.InstancedBufferAttribute(gravel, 4));
     geometry.setAttribute("aDrift", new THREE.InstancedBufferAttribute(drift, 4));
-    geometry.setAttribute("aOrbit", new THREE.InstancedBufferAttribute(orbit, 4));
-    geometry.setAttribute("aPlane", new THREE.InstancedBufferAttribute(plane, 4));
     geometry.instanceCount = 0;
     const uniforms = {
       ...breakupUniforms(forge, shared),
@@ -146,15 +138,11 @@ export default function Gravel({ J, tier, shared, forge }) {
     [built]
   );
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     const on = J.fracture > 0 && !J.inGarden && T.gravelCount >= 1;
     if (ref.current) ref.current.visible = on;
     if (!on) return;
-    syncOrbit();
-    clock.current += Math.min(delta, 0.1) * J.orbitSpeed * T.swirlSpeed * T.sandSpeed;
     const u = built.uniforms;
-    u.uClock.value = clock.current;
-    u.uOpen.value = J.swirlOpen;
     u.uGravelSize.value = T.gravelSize;
     // shrinks away in the light before the worlds switch
     u.uFade.value = 1 - THREE.MathUtils.smoothstep(J.flash, 0.3, 0.9);

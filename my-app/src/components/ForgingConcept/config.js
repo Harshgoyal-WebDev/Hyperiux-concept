@@ -10,9 +10,7 @@ import * as THREE from "three";
 // SlabChunk_### }, with every Cracks_* strip parented to the stone it lies on.
 export const ASSETS = {
   forgeGlb: "/models/hyperiux-forging-assets.glb",
-  forgeMeta: "/models/hyperiux-forging-metadata.json",
   gardenGlb: "/models/hyperiux-garden-environment.glb",
-  gardenMeta: "/models/hyperiux-garden-metadata.json",
 };
 
 // The asset is authored in metres (10 × 12 × 2.4 m slab). It is scaled up
@@ -117,7 +115,6 @@ export const GARDEN = {
 };
 // garden metres → world: the entrance lands 6 m beyond the opening
 export const GARDEN_ORIGIN = new THREE.Vector3(OPENING_NOMINAL.x, OPENING_NOMINAL.y - GARDEN.entrance.y, 0.3 - (GARDEN.entrance.z + 6));
-export const gardenToWorld = (x, y, z) => [x + GARDEN_ORIGIN.x, y + GARDEN_ORIGIN.y, z + GARDEN_ORIGIN.z];
 
 // Ten visual states as ranges of p. Everything in between is interpolated.
 export const STATES = [
@@ -164,10 +161,8 @@ export const RAIL = [
 // Look
 // ---------------------------------------------------------------------------
 export const PALETTE = {
-  orange: "#FF5F00",
   basalt: "#3a332e",
   sand: "#b4683c",
-  white: "#FFFFFF",
 };
 
 // Low sunset sun, behind the slab and to the right of the hero view (the
@@ -186,7 +181,6 @@ export const TIERS = {
     terrainSegments: 300,
     dust: 700,
     // soil swirl: most grains / dust it can draw (Leva picks how many)
-    maxGrains: 12000,
     maxCrumble: 60000, // sand the broken rock turns into
     maxGravel: 4000, // ...and gravel
     sandGrains: 16000,
@@ -208,7 +202,6 @@ export const TIERS = {
     dpr: [1, 1.2],
     terrainSegments: 220,
     dust: 450,
-    maxGrains: 6000,
     maxCrumble: 30000,
     maxGravel: 2000,
     sandGrains: 10000,
@@ -230,7 +223,6 @@ export const TIERS = {
     dpr: [1, 1],
     terrainSegments: 150,
     dust: 220,
-    maxGrains: 2000,
     maxCrumble: 10000,
     maxGravel: 600,
     sandGrains: 0, // no hover on touch

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
-import { makeOrbits, syncOrbit } from "../world/swirl";
 import { breakupGLSL, breakupUniforms, puffDirection, samplePieceSurfaces } from "../world/breakup";
 import { T } from "../tuning";
 
@@ -69,34 +68,27 @@ void main() {
 function buildGeometry(forge, count) {
   const rng = mulberry32(919);
   const { local, piece, threshold } = samplePieceSurfaces(forge, count, rng);
-  const orbits = makeOrbits(count, 1.25, rng);
+  // (the draws the old orbit placement took, so every grain keeps its size, tint and drift)
+  for (let k = 0; k < count * 8; k++) rng();
   const info = new Float32Array(count * 4);
   const drift = new Float32Array(count * 4);
-  const orbit = new Float32Array(count * 4);
-  const plane = new Float32Array(count * 4);
   const dir = new THREE.Vector3();
   for (let i = 0; i < count; i++) {
     info.set([piece[i], threshold[i], 0.1 + rng() * 0.14 + (rng() < 0.08 ? 0.14 : 0), rng()], i * 4);
     puffDirection(rng, dir);
     drift.set([dir.x, dir.y, dir.z, rng()], i * 4);
-    const o = orbits[i];
-    orbit.set(o.orbit, i * 4);
-    plane.set(o.plane, i * 4);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 3), 3)); // placed in the shader
   geometry.setAttribute("aLocal", new THREE.BufferAttribute(local, 3));
   geometry.setAttribute("aInfo", new THREE.BufferAttribute(info, 4));
   geometry.setAttribute("aDrift", new THREE.BufferAttribute(drift, 4));
-  geometry.setAttribute("aOrbit", new THREE.BufferAttribute(orbit, 4));
-  geometry.setAttribute("aPlane", new THREE.BufferAttribute(plane, 4));
   return geometry;
 }
 
 export default function CrumbleSand({ J, tier, shared, forge }) {
   const { gl, camera } = useThree();
   const ref = useRef();
-  const clock = useRef(0);
   const built = useMemo(() => {
     const geometry = buildGeometry(forge, tier.maxCrumble);
     const material = new THREE.ShaderMaterial({
@@ -126,16 +118,11 @@ export default function CrumbleSand({ J, tier, shared, forge }) {
     [built]
   );
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     const on = J.fracture > 0 && !J.inGarden;
     if (ref.current) ref.current.visible = on;
     if (!on) return;
-    syncOrbit();
-    // the same pace as the swirl's own sand
-    clock.current += Math.min(delta, 0.1) * J.orbitSpeed * T.swirlSpeed * T.sandSpeed;
     const u = built.material.uniforms;
-    u.uClock.value = clock.current;
-    u.uOpen.value = J.swirlOpen;
     u.uScale.value = gl.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     u.uSize.value = T.crumbleSize;
     u.uBright.value = (1 - shared.uNight.value * 0.6) * T.sandBrightness;

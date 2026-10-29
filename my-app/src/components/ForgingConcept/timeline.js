@@ -18,6 +18,11 @@ export function createJourneyState() {
     parallax: 1, // how much mouse parallax this shot allows
     // energy
     intro: 0, // 1 skips the beam's load-in race (review frames)
+    enterAt: 0, // when the visitor entered (s, page clock): the beam's race starts from it (Infinity while the loader is up)
+    reveal: 0, // the loader opening over the scene (0..1, as Loader.jsx draws it; 0 when there is no loader)
+    arrive: 1, // the camera's arrival from far off as the visitor enters (0 → 1; the loader sets it going)
+    forgeReady: false, // set by Scene once the forge is built (or found missing)
+    gardenCompiled: false, // set by Garden once its shaders are compiled
     beam: 0, // the beam's travel along its whole path, from the hero to the core
     beamSparks: 0, // particles running along the line while it travels
     beamFade: 0, // the line on the stone goes as the stone breaks away
@@ -44,6 +49,7 @@ export function createJourneyState() {
     logoStir: 0, // set by ParticleLogo: how hard the pointer is stirring the particle body (0..1)
     formT: 0, // set by ParticleLogo: the form as shown (past the mark it morphs on its own clock, not the scroll's)
     portal: 0, // through the ring into the light (1 = all light, onto the site)
+    whiteout: 0, // the screen fading to white, onto the site (starts before the pass through the ring)
     shock: 0, // shockwave across the dunes as the beam merges into the core (0 → spent)
     jolt: 0, // the camera's jolt at that impact
     edgeFx: 0, // motion blur + chromatic aberration at the frame's edges, through the event
@@ -139,15 +145,20 @@ export function buildMasterTimeline(J, dom) {
   axis("tgtZ", (_p, q) => q[2]);
   axis("fov", (_p, _q, f) => f);
   // The shot holds its position through the event, but the cursor still
-  // moves it a little (parallax), during the cracking, the breakup and after.
-  // ...and none at all through the opening (it is only ±1.4 m clear)
+  // moves it (parallax): a little through the cracking, more once the slab
+  // breaks, most over the forged mark until the camera nears the cube's
+  // opening — and none at all through it (it is only ±1.4 m clear)
   track(tl, J, "parallax", [
     [0, 1],
     [P.climb, 0.8],
     [P.core, 1.1],
-    [afterAt(0.4), 1.3],
-    [P.held, 1.3],
-    [P.held + (P.pass - P.held) * 0.6, 0.15],
+    // the slab broken and the mark forged: plenty, all the way to the gap
+    [eventAt(T.breakStart + 0.05), 1.6],
+    [P.forged, 2.0],
+    [afterAt(0.4), 2.2],
+    [P.held, 2.2],
+    [P.held + (P.pass - P.held) * 0.55, 1.2],
+    [P.held + (P.pass - P.held) * 0.8, 0.2],
     [P.pass, 0],
     [P.out, 0],
     [P.formed, 1.4],
@@ -286,6 +297,9 @@ export function buildMasterTimeline(J, dom) {
   ]);
   // through the ring: its light opens up and fills the frame, onto the site
   seg(tl, J, "portal", 0, 1, sectionAt("portal", 0.25), 1, "sine.in");
+  // ...and the screen fades to white from the torus's last frame, so the
+  // pass through it is already in the light
+  seg(tl, J, "whiteout", 0, 1, sectionAt("portal", 0), sectionAt("portal", 0.62), "sine.inOut");
 
   track(tl, J, "dust", [
     [0, 1],

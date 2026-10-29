@@ -10,7 +10,9 @@ import * as THREE from "three";
 //              out from its line, harder the faster it goes.
 // r, g: the push at a plant's tip (metres, world x / z); b: how lit the
 // plants are by the pointer's passing (only while it moves — it fades as
-// soon as it stops). Every swaying material samples it once per vertex
+// soon as it stops); a: the height of the ground the pointer touched there
+// (world y), so only what stands near it lights up — the grass and flowers
+// under the pointer, not the tree canopy above them. Every swaying material samples it once per vertex
 // (gardenAsset.js POINTER_WIND_GLSL), however many strokes there are.
 
 const SIZE = 256;
@@ -29,14 +31,19 @@ uniform float uPush; // how far it pushes the plants (m)
 uniform float uRadius; // its reach (field uv)
 uniform float uGlowRadius;
 uniform float uGlow; // how lit its path is (0 when it isn't moving)
+uniform float uHitY; // the height of the ground it is touching (world y)
 uniform float uRelax; // share of the wind left after this frame
 uniform float uFade; // ...and of the glow
+uniform float uWake; // how much it spreads to its neighbours each frame
+uniform float uAlong; // how much it pushes along the pointer's motion...
+uniform float uApart; // ...and parts out from its line
+uniform float uEase; // share of the way to its push the field goes each frame (lower = it builds up gently)
 varying vec2 vUv;
 void main() {
   vec4 c = texture2D(uPrev, vUv);
   vec4 n = (texture2D(uPrev, vUv + vec2(uTexel.x, 0.0)) + texture2D(uPrev, vUv - vec2(uTexel.x, 0.0)) +
             texture2D(uPrev, vUv + vec2(0.0, uTexel.y)) + texture2D(uPrev, vUv - vec2(0.0, uTexel.y))) * 0.25;
-  c = mix(c, n, 0.3);
+  c = mix(c, n, uWake);
   c.rg *= uRelax;
   c.b *= uFade;
   // the brush: the distance to the pointer's path this frame
@@ -51,11 +58,12 @@ void main() {
     // along its motion, and parted out from its line
     vec2 along = uVel / speed;
     vec2 away = d > 1e-6 ? off / d : vec2(0.0);
-    vec2 push = (along * 0.75 + away * 0.55) * uPush * min(speed / 6.0, 1.0);
-    c.rg = mix(c.rg, push, w * 0.55);
+    vec2 push = (along * uAlong + away * uApart) * uPush * min(speed / 6.0, 1.0);
+    c.rg = mix(c.rg, push, w * uEase);
   }
   float wg = exp(-pow(d / uGlowRadius, 2.0) * 2.2);
   c.b = max(c.b, wg * uGlow);
+  if (wg * uGlow > 0.02) c.a = mix(c.a, uHitY, clamp(wg * 2.0, 0.0, 1.0));
   gl_FragColor = c;
 }
 `;
@@ -75,8 +83,13 @@ export function createWindField(rect) {
       uRadius: { value: 0.02 },
       uGlowRadius: { value: 0.015 },
       uGlow: { value: 0 },
+      uHitY: { value: 0 },
       uRelax: { value: 0.95 },
       uFade: { value: 0.95 },
+      uWake: { value: 0.3 },
+      uAlong: { value: 0.75 },
+      uApart: { value: 0.55 },
+      uEase: { value: 0.55 },
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
@@ -97,7 +110,7 @@ export function createWindField(rect) {
     texture: targets[0].texture,
     // one step: the pointer's path (world x, z from → to; null when it
     // isn't over the ground), its speed, the reach of its push and glow (m)
-    step(gl, { from, to, vel, push, radius, glowRadius, glow, relax, fade }) {
+    step(gl, { from, to, vel, push, radius, glowRadius, glow, relax, fade, wake = 0.3, along = 0.75, apart = 0.55, ease = 0.55, hitY = 0 }) {
       const u = material.uniforms;
       if (from && to) {
         toUv(from.x, from.z, u.uA.value);
@@ -111,8 +124,13 @@ export function createWindField(rect) {
       u.uRadius.value = radius / rect.z;
       u.uGlowRadius.value = glowRadius / rect.z;
       u.uGlow.value = glow;
+      u.uHitY.value = hitY;
       u.uRelax.value = relax;
       u.uFade.value = fade;
+      u.uWake.value = wake;
+      u.uAlong.value = along;
+      u.uApart.value = apart;
+      u.uEase.value = ease;
       const prev = gl.getRenderTarget();
       if (!cleared) {
         for (const t of targets) {

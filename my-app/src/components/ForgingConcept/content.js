@@ -41,33 +41,6 @@ export const ABOUT = {
   body: "We unravel complex design challenges through meticulous user research, expert analysis, prototyping, and collaborative design with users and stakeholders. Harnessing the power of cutting edge tools and our proprietary approach we craft delightful and intuitive experiences.", // site
 };
 
-export const SOLUTIONS = {
-  eyebrow: "Explore Our Solutions", // site
-  title: ["We Don't Just Offer Solutions,", "We Craft Impact"], // site
-  items: [
-    {
-      title: "Strategy",
-      body: "Strategic planning based on insight is the starting point of everything we do.",
-      tags: ["UI design strategy", "Branding", "Consumer research"],
-    },
-    {
-      title: "UI/UX Design",
-      body: "A UI/UX partner for startups and enterprises, from responsive web design to design systems.",
-      tags: ["Responsive web design", "Design systems"],
-    },
-    {
-      title: "Technology",
-      body: "Our mission is to help you thrive in today's fast-evolving digital landscape.",
-      tags: ["HTML", "CSS", "JavaScript", "React", "Vue", "Angular"],
-    },
-    {
-      title: "Marketing",
-      body: "Brand marketing, social media, SEO, influencer management and marketing automation.",
-      tags: ["Brand", "Social", "SEO", "Automation"],
-    },
-  ],
-};
-
 export const CTA = {
   title: "Let's Bring Your Ideas To Life!", // site
   email: "hi@hyperiux.com",

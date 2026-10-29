@@ -22,6 +22,7 @@ uniform float uSize;
 varying float vA;
 varying float vTint;
 varying float vHot;
+varying float vStir;
 void main() {
   vec3 p;
   float g = breakupFlow(int(aInfo.x + 0.5), aLocal, aInfo.y, aDrift, p);
@@ -30,16 +31,20 @@ void main() {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     gl_PointSize = 0.0;
     vA = 0.0;
+    vStir = 0.0;
     return;
   }
+  float heat;
+  p = breakupStir(p, aDrift.w, heat);
   vec4 mv = viewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  float px = aInfo.z * uSize * uScale / max(-mv.z, 1.0);
+  float px = aInfo.z * uSize * uScale / max(-mv.z, 1.0) * (1.0 + heat * 0.5);
   gl_PointSize = clamp(px, 1.0, 6.0);
   vA = smoothstep(0.0, 0.03, g) * min(px, 1.0);
   vTint = aInfo.w;
   // a few grains still hot from the cracks, cooling on the way out
   vHot = step(0.88, fract(aDrift.w * 7.13)) * (1.0 - smoothstep(0.0, 0.45, g));
+  vStir = heat;
 }
 `;
 
@@ -52,6 +57,7 @@ uniform float uBright;
 varying float vA;
 varying float vTint;
 varying float vHot;
+varying float vStir;
 void main() {
   if (vA < 0.004) discard;
   float d = length(gl_PointCoord - 0.5);
@@ -59,6 +65,8 @@ void main() {
   // basalt grit and sand
   vec3 col = mix(uDark, uLight, vTint) * uBright;
   col = mix(col, uHotColor * 2.5, vHot);
+  // stirred by the pointer: burning white-hot
+  col = mix(col, vec3(1.9, 1.7, 1.4), vStir * 0.9);
   gl_FragColor = vec4(col, vA * uOpacity * (1.0 - smoothstep(0.3, 0.5, d)));
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -125,6 +133,7 @@ export default function CrumbleSand({ J, tier, shared, forge }) {
     const u = built.material.uniforms;
     u.uScale.value = gl.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     u.uSize.value = T.crumbleSize;
+    u.uStirAmount.value = T.breakStirSand;
     u.uBright.value = (1 - shared.uNight.value * 0.6) * T.sandBrightness;
     // gone in the light before the worlds switch
     u.uOpacity.value = T.crumbleOpacity * (1 - THREE.MathUtils.smoothstep(J.flash, 0.3, 0.9));

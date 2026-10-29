@@ -109,7 +109,7 @@ export const GARDEN = {
   shapes: {
     mark: new THREE.Vector3(0, 6.2, -2),
     cube: new THREE.Vector3(0, 6.2, -2),
-    cloud: new THREE.Vector3(0, 7.0, -2),
+    cloud: new THREE.Vector3(0, 7.6, -2), // (the infinity, clear of the trees on the bank)
     ring: new THREE.Vector3(0, 6.4, -2), // the way through
   },
 };
@@ -139,22 +139,6 @@ export const STATES = [
   { id: "g-cloud", n: "18", label: "Technology", start: P.cube, end: P.cloud },
   { id: "g-final", n: "19", label: "Organic growth", start: P.cloud, end: P.ring },
   { id: "g-portal", n: "20", label: "Portal", start: P.ring, end: 1 },
-];
-
-// Labels on the bottom progress rail, at their p.
-export const RAIL = [
-  { label: "Hero", at: 0 },
-  { label: "Beam", at: P.hero },
-  { label: "Core", at: P.climb },
-  { label: "Activation", at: eventAt(0.04) },
-  { label: "Forging", at: eventAt(0.5) },
-  { label: "Orbits", at: P.forged },
-  { label: "Through", at: P.held },
-  { label: "Garden", at: P.out },
-  { label: "Behaviour", at: sectionAt("mark", 0.3) },
-  { label: "Design", at: sectionAt("cube", 0.3) },
-  { label: "Technology", at: sectionAt("cloud", 0.3) },
-  { label: "Growth", at: sectionAt("ring", 0.3) },
 ];
 
 // ---------------------------------------------------------------------------

@@ -34,6 +34,11 @@ import { T } from "../tuning";
 // flowing round the Hyperiux mark. A function of each piece's own progress, so scrolling back
 // gathers it back into the stone. Shared by the sand (CrumbleSand) and the
 // gravel (Gravel).
+//
+// The pointer stirs them: a field over the screen (BreakupStir brushes it
+// along the pointer's path) pushes each grain in the screen's plane — along
+// the pointer's motion and parted from its line — and lights it white-hot;
+// as the field relaxes the grains ease back into their streams.
 
 const DEG = Math.PI / 180;
 const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 5);
@@ -232,6 +237,14 @@ export function puffDirection(rng, out) {
   return out.set(rng() - 0.5, rng() * 0.7, 0.35 + rng() * 0.65).normalize();
 }
 
+// The pointer's stir over the screen (BreakupStir keeps it).
+export const STIR_UNIFORMS = {
+  uStir: { value: null },
+  uStirOn: { value: 0 },
+  uStirGlow: { value: 0 },
+  uStirSpread: { value: 0.3 },
+};
+
 // Uniforms the flow reads (by reference: the forge updates them in place).
 export function breakupUniforms(forge, shared) {
   return {
@@ -240,6 +253,8 @@ export function breakupUniforms(forge, shared) {
     uPieceU: { value: forge.pieceProgress },
     uPieceStream: { value: forge.pieceStream },
     ...FLOW_UNIFORMS,
+    ...STIR_UNIFORMS,
+    uStirAmount: { value: 1 }, // (each layer's own)
     uS: { value: forge.scale },
     uCenter: { value: forge.world.logo.clone() },
     uTime: shared.uTime,
@@ -257,6 +272,29 @@ uniform vec4 uPieceQ[${pieces}]; // orientation
 uniform vec4 uPieceU[${Math.ceil(pieces / 4)}]; // each piece's own progress, four to a vec4
 uniform vec4 uPieceStream[${pieces}]; // its stream, how far back along it, its size, how much wider than the stream its loop is
 uniform float uS; // asset → world scale
+uniform sampler2D uStir; // the pointer's stir over the screen: push (screen uv) in rg, heat in b
+uniform float uStirOn;
+uniform float uStirAmount; // how much this layer (sand / gravel) is stirred
+uniform float uStirGlow; // how much a stirred grain lights up
+uniform float uStirSpread; // how unevenly the grains are pushed (0 = all alike)
+// a grain at p, stirred: pushed in the screen's plane by the field where it
+// is on screen (a little more or less for each, so it parts like a fluid);
+// heat: how hot the stir leaves it (0..1)
+vec3 breakupStir(vec3 p, float seed, out float heat) {
+  heat = 0.0;
+  if (uStirOn < 0.5) return p;
+  vec4 clip = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  if (clip.w <= 0.0) return p;
+  vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return p;
+  vec4 f = texture2D(uStir, uv);
+  vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+  vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+  float worldH = 2.0 * clip.w / projectionMatrix[1][1]; // metres per screen height there
+  float aspect = projectionMatrix[1][1] / projectionMatrix[0][0];
+  heat = f.b * uStirGlow;
+  return p + (right * f.r * aspect + up * f.g) * worldH * uStirAmount * (1.0 - uStirSpread + 2.0 * uStirSpread * fract(seed * 23.17));
+}
 vec3 bkRot(vec4 q, vec3 v) { return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v); }
 float bkProgress(int i) {
   vec4 q = uPieceU[i / 4];

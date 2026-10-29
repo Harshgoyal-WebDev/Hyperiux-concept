@@ -1,0 +1,251 @@
+"use client";
+import React, { useRef } from "react";
+import Image from "next/image";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import HeadAnim from "../Animations/HeadAnim";
+
+gsap.registerPlugin(useGSAP);
+
+const data = [
+{
+   id: 1,
+    img: "/assets/images/homepage/clients-grid-images/montra-icon.svg",
+    alt: "montra",
+    bgimg: "/assets/images/homepage/clients-grid-images/montra-background.png",
+},
+{
+   id: 2,
+    img: "/assets/images/homepage/clients-grid-images/monielink-icon.svg",
+    alt: "monielink",
+    bgimg: "/assets/images/homepage/clients-grid-images/monielink-background.png",
+},
+{
+   id: 3,
+    img: "/assets/images/homepage/clients-grid-images/yellow-icon.svg",
+    alt: "yellow",
+    bgimg: "/assets/images/homepage/clients-grid-images/yellow-background.png",
+},
+{
+   id: 4,
+    img: "/assets/images/homepage/clients-grid-images/bespin-labs-icon.svg",
+    alt: "bespin-labs",
+    bgimg: "/assets/images/homepage/clients-grid-images/bespin-labs-background.png",
+},
+{
+   id: 5,
+    img: "/assets/images/homepage/clients-grid-images/dsw-icon.svg",
+    alt: "dsw",
+    bgimg: "/assets/images/homepage/clients-grid-images/dsw-background.png",
+},
+{
+   id: 6,
+    img: "/assets/images/homepage/clients-grid-images/patronum-icon.svg",
+    alt: "patronum",
+    bgimg: "/assets/images/homepage/clients-grid-images/patronum-background.png",
+},
+{
+   id: 7,
+    img: "/assets/images/homepage/clients-grid-images/quickx-icon.svg",
+    alt: "quickx",
+    bgimg: "/assets/images/homepage/clients-grid-images/quickx-background.png",
+},
+{
+   id: 8,
+    img: "/assets/images/homepage/clients-grid-images/kedarkala-icon.svg",
+    alt: "kedarkala",
+    bgimg: "/assets/images/homepage/clients-grid-images/kedarkala-background.png",
+},
+{
+   id: 9,
+    img: "/assets/images/homepage/clients-grid-images/dmtca-icon.svg",
+    alt: "dmtca",
+    bgimg: "/assets/images/homepage/clients-grid-images/dmtca-background.png",
+},
+{
+   id: 10,
+    img: "/assets/images/homepage/clients-grid-images/ams-icon.svg",
+    alt: "ams",
+    bgimg: "/assets/images/homepage/clients-grid-images/ams-background.png",
+},
+{
+   id: 11,
+    img: "/assets/images/homepage/clients-grid-images/patra-icon.svg",
+    alt: "patra",
+    bgimg: "/assets/images/homepage/clients-grid-images/patra-background.png",
+},
+{
+   id: 12,
+    img: "/assets/images/homepage/clients-grid-images/hiveminds-icon.svg",
+    alt: "hiveminds",
+    bgimg: "/assets/images/homepage/clients-grid-images/hiveminds-background.png",
+}
+];
+
+const ClientCard = ({ img, bg, alt, id, index, totalItems }) => {
+  const cols = 4;
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  const totalRows = Math.ceil(totalItems / cols);
+  const isTopRow = row === 0;
+  const isBottomRow = row === totalRows - 1;
+  const isLeftCol = col === 0;
+  const isRightCol = col === cols - 1;
+  let borderClasses = "border-[#D9D9D9] ";
+
+  borderClasses += isTopRow ? "border-t-[1px] " : "border-t-[0.5px] ";
+  borderClasses += isBottomRow ? "border-b-[1px] " : "border-b-[0.5px] ";
+  borderClasses += isLeftCol ? "border-l-[1px] " : "border-l-[0.5px] ";
+  borderClasses += isRightCol ? "border-r-[1px] " : "border-r-[0.5px] ";
+
+  return (
+    <div
+      key={id}
+      className={`h-full w-full p-[1.7vw] group duration-300 transition-all relative overflow-hidden max-sm:p-[5vw] ${borderClasses} ${index==totalItems-1?"max-sm:hidden":""}`}
+    >
+      <img
+        src={bg}
+        width={100}
+        height={100}
+        quality={100}
+        loading="lazy"
+        alt={`${alt} background`}
+        style={{
+          transitionTimingFunction: "cubic-bezier(.33,1,.48,.89)",
+          transitionDuration: "1s",
+        }}
+        className="absolute top-0 left-0 w-full h-full object-cover opacity-0 scale-105 group-hover:opacity-100 group-hover:scale-100"
+      />
+      <div className="relative z-10 h-full w-full flex items-center justify-center">
+        <Image
+          src={img}
+          width={200}
+          height={150}
+          alt={alt}
+          style={{
+            transitionTimingFunction: "cubic-bezier(.33,1,.48,.89)",
+            transitionDuration: "0.5s",
+          }}
+          className="object-contain w-full h-full grayscale-100 scale-[1.2] invert group-hover:invert-0"
+        />
+      </div>
+    </div>
+  );
+};
+
+const MobileClientCard = ({ img, alt }) => {
+  return (
+    <div className="flex h-[40vw] w-[51vw] shrink-0 items-center justify-center border border-[#D9D9D9] bg-[#fefefe] px-[7vw]">
+      <div className="h-[15vh] w-auto">
+
+     
+      <Image
+        src={img}
+        width={350}
+        height={250}
+        alt={alt}
+        className="h-full w-full object-cover grayscale-100 invert"
+      />
+       </div>
+    </div>
+  );
+};
+
+const MobileMarqueeRow = ({ items, direction = "left", className = "" }) => {
+  const rowRef = useRef(null);
+
+  useGSAP(
+    () => {
+      const row = rowRef.current;
+
+      if (!row) return;
+
+      gsap.set(row, { xPercent: direction === "left" ? 0 : -50 });
+
+      gsap.to(row, {
+        xPercent: direction === "left" ? -50 : 0,
+        duration: 20,
+        ease: "none",
+        repeat: -1,
+      });
+    },
+    { scope: rowRef, dependencies: [direction] }
+  );
+
+  return (
+    <div className={`w-screen overflow-hidden ${className}`}>
+      <div ref={rowRef} className="flex w-max will-change-transform">
+        {[...items, ...items].map((item, index) => (
+          <MobileClientCard
+            key={`${item.id}-${index}`}
+            img={item.img}
+            alt={item.alt}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ClientsGrid = () => {
+  const topMobileClients = data.slice(0, 6);
+  const bottomMobileClients = data.slice(6, 12);
+
+  return (
+    <>
+      <section
+        className="h-full w-screen pt-[7%] px-[5vw] bg-[#fefefe] relative z-50 text-[#111111] max-sm:hidden"
+        id="clients"
+      >
+        <div className="space-y-[5vw] max-sm:space-y-[10vw]">
+          <div className="w-full flex items-center max-sm:justify-start">
+            {/* <Copy> */}
+            <HeadAnim>
+              <h2 className="font-aeonik text-[6.5vw] leading-[1.2] max-sm:text-[11vw]">
+                Clients Love Us!
+              </h2>
+            </HeadAnim>
+            {/* </Copy> */}
+          </div>
+
+          <div className="grid grid-cols-4 max-sm:grid-cols-2 fadeup relative z-50">
+            {data.map((item, index) => (
+              <ClientCard
+                key={item.id}
+                img={item.img}
+                id={item.id}
+                alt={item.alt}
+                bg={item.bgimg}
+                index={index}
+                totalItems={data.length}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="hidden w-screen max-sm:h-[75vh] relative z-10  bg-[#fefefe] py-[15%] text-[#111111] max-sm:flex max-sm:flex-col  max-sm:justify-center max-sm:gap-[2vw]" id="clients">
+        <div className="mb-[14vw] bg-white px-[7vw]">
+          <HeadAnim>
+            <h2 className="font-aeonik text-[11vw] leading-[1.2]">
+              Clients
+              <br />
+              Love Us!
+            </h2>
+          </HeadAnim>
+        </div>
+
+        <div className="fadeup relative z-50 w-screen overflow-hidden">
+          <MobileMarqueeRow items={topMobileClients} direction="left" />
+          <MobileMarqueeRow
+            items={bottomMobileClients}
+            direction="right"
+            className="-mt-px"
+          />
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default ClientsGrid;

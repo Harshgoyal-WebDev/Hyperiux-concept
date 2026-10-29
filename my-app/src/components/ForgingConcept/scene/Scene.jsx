@@ -13,11 +13,13 @@ import Forge from "./Forge";
 import ForgeBeam from "./ForgeBeam";
 import CrumbleSand from "./CrumbleSand";
 import Gravel from "./Gravel";
+import BreakupStir from "./BreakupStir";
 import Rocks, { buildRockSet } from "./Rocks";
 import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
 import WorldSwitch from "./WorldSwitch";
 import Garden from "./garden/Garden";
 import { getAudio } from "../audio";
+import { gardenFetched } from "../loading";
 
 // Feeds the journey state to the score and sound effects every frame.
 function SoundDriver({ J }) {
@@ -25,10 +27,10 @@ function SoundDriver({ J }) {
   return null;
 }
 
-// The garden (a large GLB) starts downloading once the forge is in, and is
-// built a little later while the visitor is still on the hero — or at once
-// if the journey is already heading for it (a deep link, a fast scroll) —
-// so it is ready, compiled and hidden, well before the camera reaches it.
+// The garden (a large GLB) is built once the forge is in and its file has
+// arrived (the loader fetches both up front) — or a little later at most, or
+// at once if the journey is already heading for it (a deep link, a fast
+// scroll) — so it is ready, compiled and hidden behind the loader.
 function useGardenGate(J, forgeReady) {
   const [open, setOpen] = useState(false);
   const readyAt = useRef(0);
@@ -39,7 +41,7 @@ function useGardenGate(J, forgeReady) {
   }, [forgeReady]);
   useFrame(() => {
     if (open || !forgeReady) return;
-    if (J.progress > P.core || performance.now() - readyAt.current > 2500) setOpen(true);
+    if (gardenFetched() || J.progress > P.core || performance.now() - readyAt.current > 2500) setOpen(true);
   });
   return open;
 }
@@ -79,9 +81,12 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
   const onReady = useCallback(
     (f, missing) => {
       setForge(f);
+      // (J is the journey's plain mutable state, written outside render)
+      // eslint-disable-next-line react-hooks/immutability
+      J.forgeReady = true;
       if (!f) onMissing?.(missing);
     },
-    [onMissing],
+    [onMissing, J],
   );
 
   // the two worlds (see WorldSwitch)
@@ -112,6 +117,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
             <ForgeBeam terrain={terrain} forge={forge} J={J} shared={shared} />
             <CrumbleSand J={J} tier={tier} shared={shared} forge={forge} />
             {tier.maxGravel > 0 && <Gravel J={J} tier={tier} shared={shared} forge={forge} />}
+            <BreakupStir J={J} />
           </>
         )}
         {tier.sandGrains > 0 && <SandField J={J} tier={tier} shared={shared} heightField={heightField} />}

@@ -63,6 +63,16 @@ export function CameraRig({ J, opening }) {
       v.p.addScaledVector(v.right, v.mouse.x * 5 * amt).addScaledVector(v.up, v.mouse.y * 2.2 * amt);
       v.t.addScaledVector(v.right, v.mouse.x * 0.4 * amt).addScaledVector(v.up, v.mouse.y * 0.2 * amt);
     }
+    // entering: the whole scene comes in from far off to the camera's place
+    // (pulled back along its view and lifted, closing in quickly then
+    // settling), the lens a little wider on the way
+    if (J.arrive < 1) {
+      const far = Math.pow(1 - J.arrive, 3);
+      v.fwd.subVectors(v.t, v.p).normalize();
+      v.p.addScaledVector(v.fwd, -T.arriveDistance * far);
+      v.p.y += T.arriveLift * far;
+      lens += 14 * far;
+    }
     // the jolt as the beam merges into the core
     // (and the rock blasting off)
     const jolt = Math.max(J.jolt, J.breakBurst * 1.3 * T.breakImpact) * T.shockShake;
@@ -155,6 +165,7 @@ export function Lights({ tier, shared }) {
   const sun = useRef();
   const hemi = useRef();
   const fill = useRef();
+  const ambient = useRef();
   const { camera, scene } = useThree();
   const focus = useMemo(() => new THREE.Vector3(), []);
   const fwd = useMemo(() => new THREE.Vector3(), []);
@@ -189,6 +200,12 @@ export function Lights({ tier, shared }) {
       hemi.current.color.copy(hexColor(T.hemiSky)).lerp(NIGHT_SKY, night);
       hemi.current.groundColor.copy(hexColor(T.hemiGround)).lerp(NIGHT_GROUND, night);
     }
+    // ...and an even ambient so the soil and stone aren't lost in the dark
+    if (ambient.current) {
+      ambient.current.intensity = T.nightAmbient * night;
+      ambient.current.visible = ambient.current.intensity > 0.001;
+      setColor(ambient.current, T.nightAmbientColor);
+    }
     if (fill.current) {
       fill.current.intensity = T.fillIntensity * (1 - night);
       fill.current.visible = fill.current.intensity > 0.001;
@@ -200,6 +217,7 @@ export function Lights({ tier, shared }) {
   return (
     <>
       <hemisphereLight ref={hemi} args={["#8d99ad", "#6e3a1a", 0]} visible={false} />
+      <ambientLight ref={ambient} args={["#8f8ea8", 0]} visible={false} />
       <directionalLight
         ref={sun}
         color="#ffb27a"
@@ -303,27 +321,52 @@ export function Dust({ J, tier, shared }) {
 // Edge motion blur + chromatic aberration: the frame smears outwards and its
 // colours split towards the edges (the centre stays clean) — through the
 // forging event, from the impact until the logo stands.
+// Also the loader's opening (Loader.jsx): along the inside of its edge, as it
+// spreads from the centre to the screen's edges, the scene is warped (drawn
+// in towards the centre, as if stretched through the opening), smeared
+// outwards and split into its colours, settling to clean towards the centre.
 // ---------------------------------------------------------------------------
 const EDGE_FX = /* glsl */ `
 uniform float uAmount;
 uniform float uChroma;
+uniform float uOpen; // the loader's opening (0..1, as Loader.jsx draws it)
+uniform float uReveal; // ...how strongly its edge distorts the scene (0 = not at all)
+uniform float uRevealWarp;
+uniform float uRevealBlur;
+uniform float uRevealChroma;
+uniform float uAspect;
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 dir = uv - 0.5;
   float edge = smoothstep(0.12, 0.72, length(dir * vec2(1.0, 0.8)) * 1.35);
   float a = uAmount * edge;
-  if (a < 0.0005) {
+  // the opening's edge: the same radius the loader draws (screen heights)
+  float rv = 0.0;
+  if (uReveal > 0.001) {
+    vec2 p = dir * vec2(uAspect, 1.0);
+    float reach = length(vec2(0.5 * uAspect, 0.5)) + 0.45;
+    float inside = (uOpen * reach - 0.2) - length(p); // > 0 inside the opening
+    // strongest at the edge (and under its soft fray), fading inwards
+    rv = uReveal * smoothstep(-0.3, 0.0, inside) * (1.0 - smoothstep(0.0, 0.55, inside));
+  }
+  if (a < 0.0005 && rv < 0.0005) {
     outputColor = inputColor;
     return;
   }
+  // the warp: sampled from nearer the centre, so the scene there stretches
+  // outwards towards the edge
+  vec2 base = uv - dir * rv * uRevealWarp * 0.22;
+  float len = a * 0.07 + rv * uRevealBlur * 0.11;
+  float chroma = uChroma * (a > 0.0005 ? 1.0 : 0.0) + rv * uRevealChroma * 0.9;
   vec3 acc = vec3(0.0);
   float w = 0.0;
   for (int i = 0; i < 10; i++) {
     float t = float(i) / 9.0;
-    vec2 o = dir * t * a * 0.07;
+    vec2 o = dir * t * len;
     float k = 1.0 - t * 0.6;
-    acc.r += texture2D(inputBuffer, uv - o * (1.0 + uChroma)).r * k;
-    acc.g += texture2D(inputBuffer, uv - o).g * k;
-    acc.b += texture2D(inputBuffer, uv - o * (1.0 - uChroma)).b * k;
+    // (kept on the screen: past its edge the image would smear)
+    acc.r += texture2D(inputBuffer, clamp(base - o * (1.0 + chroma), 0.001, 0.999)).r * k;
+    acc.g += texture2D(inputBuffer, clamp(base - o, 0.001, 0.999)).g * k;
+    acc.b += texture2D(inputBuffer, clamp(base - o * (1.0 - chroma), 0.001, 0.999)).b * k;
     w += k;
   }
   outputColor = vec4(acc / w, inputColor.a);
@@ -335,6 +378,12 @@ class EdgeFxEffect extends Effect {
       uniforms: new Map([
         ["uAmount", new THREE.Uniform(0)],
         ["uChroma", new THREE.Uniform(0.6)],
+        ["uOpen", new THREE.Uniform(0)],
+        ["uReveal", new THREE.Uniform(0)],
+        ["uRevealWarp", new THREE.Uniform(1)],
+        ["uRevealBlur", new THREE.Uniform(1)],
+        ["uRevealChroma", new THREE.Uniform(1)],
+        ["uAspect", new THREE.Uniform(1.6)],
       ]),
     });
   }
@@ -348,11 +397,22 @@ class EdgeFxEffect extends Effect {
 export function Post({ J, tier }) {
   const bloom = useRef();
   const vignette = useRef();
+  const { size } = useThree();
   const edgeFx = useMemo(() => new EdgeFxEffect(), []);
   useEffect(() => () => edgeFx.dispose(), [edgeFx]);
   useFrame(() => {
-    edgeFx.uniforms.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
-    edgeFx.uniforms.get("uChroma").value = T.edgeChroma;
+    const fx = edgeFx.uniforms;
+    fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
+    fx.get("uChroma").value = T.edgeChroma;
+    // the loader opening over the scene (eases in as it starts, out as it
+    // reaches the corners)
+    const open = J.reveal;
+    fx.get("uOpen").value = open;
+    fx.get("uReveal").value = open > 0 && open < 1 ? THREE.MathUtils.smoothstep(open, 0, 0.08) * (1 - THREE.MathUtils.smoothstep(open, 0.72, 1)) : 0;
+    fx.get("uRevealWarp").value = T.revealWarp;
+    fx.get("uRevealBlur").value = T.revealBlur;
+    fx.get("uRevealChroma").value = T.revealChroma;
+    fx.get("uAspect").value = size.width / Math.max(size.height, 1);
     if (bloom.current) {
       bloom.current.intensity = (J.bloom + J.breakBurst * 0.8 * T.breakImpact) * T.bloomIntensity;
       bloom.current.luminanceMaterial.threshold = T.bloomThreshold;

@@ -2,7 +2,7 @@
 
 import { forwardRef } from "react";
 import { GARDEN_SECTIONS, HERO } from "./content";
-import { ASSETS, RAIL } from "./config";
+import { ASSETS } from "./config";
 
 // HTML layers above the canvas. Nothing here captures the pointer except
 // the rail buttons, so text stays selectable and links stay clickable.
@@ -75,31 +75,6 @@ export function GardenCopy({ blockRefs }) {
     </div>
   );
 }
-
-export const ProgressRail = forwardRef(function ProgressRail({ fillRef, itemRefs, onJump }, ref) {
-  return (
-    <nav ref={ref} aria-label="Forging progress" className="absolute inset-x-[5vw] bottom-[3.2vh] z-30 max-[33.875rem]:inset-x-[6vw]">
-      <div className="relative h-px w-full bg-white/20">
-        <div ref={fillRef} className="absolute inset-0 origin-left scale-x-0 bg-[#FF5F00]" />
-      </div>
-      <ol className="relative mt-0 h-[3.4vh]">
-        {RAIL.map((item, i) => (
-          <li key={item.label} className="absolute top-0 -translate-x-1/2" style={{ left: `${item.at * 100}%` }}>
-            <button
-              type="button"
-              ref={(el) => (itemRefs.current[i] = el)}
-              onClick={() => onJump(item.at)}
-              className="group flex -translate-y-[5px] cursor-pointer flex-col items-center gap-[0.7vh] text-white/45 transition-colors duration-300 data-[active=true]:text-white"
-            >
-              <span className="block size-[9px] rounded-full border border-current bg-[#0c0a09] transition-colors duration-300 group-data-[active=true]:border-[#FF5F00] group-data-[active=true]:bg-[#FF5F00]" />
-              <span className="font-[family-name:var(--font-aeonikpro)] text-[0.72vw] uppercase tracking-[0.22em] max-[64rem]:text-[1.4vw] max-[33.875rem]:hidden">{item.label}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
-});
 
 // Shown only when the forging GLB can't be used. Nothing stands in for it:
 // a substitute slab or logo would misrepresent the asset.

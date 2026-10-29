@@ -21,7 +21,9 @@ export const T = {
   lightVolume: 0.6, // the cube's inner light, and passing through it
   gardenVolume: 0.6, // water, leaves and birds
   gardenMusicVolume: 0.8, // the garden's own score (hopeful, unhurried, D major)
-  gardenTempo: 70, // its BPM
+  gardenTempo: 84, // its BPM
+  gardenBeatVolume: 0.7, // its gentle beat (kick, clap, shaker)
+  dimensionWarp: 1.0, // the music stretched through a vacuum as the worlds change
   pondVolume: 0.7, // the water stirred by the pointer (subtle)
   swooshVolume: 0.8, // the rush of air as the pointer stirs the particle body
   logoVolume: 0.7, // the particle logo gathering and settling
@@ -33,6 +35,8 @@ export const T = {
   night: false,
   moonIntensity: 1.6,
   moonColor: "#a9bcff",
+  nightAmbient: 1.8, // ambient light at night, so the soil reads (fades in with the night)
+  nightAmbientColor: "#8f8ea8",
   stars: 1.0,
 
   // Lighting & atmosphere (the sand-dune concept's sunset)
@@ -73,6 +77,15 @@ export const T = {
   sandColor: "#2c1000",
   rippleStrength: 1.5,
 
+  // Entering (after the loader)
+  arriveDuration: 3.4, // seconds for the scene to come in from far off to the camera
+  arriveDistance: 220, // how far back the camera starts (m, along its view)
+  arriveLift: 46, // ...and how far up
+  loaderReveal: 2.2, // seconds for the loader to open from the centre out to the edges
+  revealWarp: 2.0, // the scene warped along the inside of the opening's edge
+  revealBlur: 3.0, // ...smeared outwards (motion blur)
+  revealChroma: 1.4, // ...and split into its colours
+
   // Beam
   trailIntensity: 2.98,
   beamFlow: 0.91, // pace of the dashes streaming along the strands
@@ -94,11 +107,14 @@ export const T = {
 
   // The garden
   innerGlow: 1.81, // the cube outline's inner light the camera flies into
+  // the sky: clouds drifting across it
+  skyCloudCover: 0.55, // how much of the sky they cover
+  skyCloudSpeed: 1.0, // how fast they drift
   gardenSun: 2.76,
   // the garden camera's lens, relative to its composed shots (degrees)
-  gardenFovOffset: 0,
-  gardenOrbitRadius: 1.0, // the revolution round the pond: its radius (× the composed one)
-  gardenOrbitHeight: 0, // ...and the camera's height on it (m, added)
+  gardenFovOffset: 6.5,
+  gardenOrbitRadius: 1.15, // the revolution round the pond: its radius (× the composed one)
+  gardenOrbitHeight: 1.35, // ...and the camera's height on it (m, added)
   // the lawn
   grassDensity: 1.0, // share of the blades drawn
   grassHeight: 2.19,
@@ -109,9 +125,12 @@ export const T = {
   grassDry: "#b5a35a",
   grassTranslucency: 1.0, // the sun glowing through the blades when looking towards it
   // flowers through the lawn: tulips, daisies, spires
-  flowerDensity: 1.0, // share of them drawn
-  flowerHeight: 2.0, // stem length (scaled with the grass's height too)
-  flowerSize: 1.6, // bloom size
+  flowerDensity: 0.5, // share of them drawn (all three kinds)
+  tulipDensity: 1.0, // ...and of each kind
+  daisyDensity: 0.7,
+  spireDensity: 0.44,
+  flowerHeight: 1.25, // stem length (scaled with the grass's height too)
+  flowerSize: 3.42, // bloom size
   tulipRed: "#d8242f",
   tulipPink: "#f06aa0",
   tulipYellow: "#f5cf3a",
@@ -122,9 +141,9 @@ export const T = {
   spireLavender: "#8f6fd6",
   spireRose: "#e06aa8",
   // blossom on the trees (and its petals on the air)
-  treeBlossomShare: 0.8, // share of the trees in flower
+  treeBlossomShare: 1.0, // share of the trees in flower
   treeBlossomDensity: 1.0, // share of each tree's blossoms drawn
-  treeBlossomSize: 1.0,
+  treeBlossomSize: 2.0,
   treeBlossomPink: "#f5a9c4",
   treeBlossomWhite: "#f6ecec",
   treeBlossomRose: "#e2638f",
@@ -133,55 +152,63 @@ export const T = {
   // clearing (their crests' height, m) are built into the garden, so the
   // garden is rebuilt when they change; the small mountains ringing it
   // (their height)
-  pondSize: 1.9,
-  gardenRidges: 5,
-  gardenMountains: 1.0,
+  pondSize: 2.22,
+  gardenRidges: 9.6,
+  gardenMountains: 1.21,
   // the pointer in the garden: grass and leaves part along its path,
   // bushes, plants and flowers glow where it passes
   gardenHoverRadius: 2.2, // metres: how wide a puff of the pointer's wind is
   gardenHoverStrength: 1.0, // how hard the pointer's wind blows (and a click's ripple)
   gardenHoverLinger: 0.9, // seconds its path takes to close up / fade
+  gardenHoverSmooth: 0.08, // seconds the pointer's motion is smoothed over (higher = softer, lazier)
+  gardenHoverWake: 0.3, // how much its wind spreads out behind it, frame to frame (a softer, wider wake)
   gardenWind: 1.0, // sway of grass, leaves and flowers
   gardenGlow: 1.0,
   gardenGlowRadius: 1.6,
   gardenGlowColor: "#ffb45c",
   // the pond
   pondReflect: 1.0, // how much of it is mirror
-  pondDistortion: 0.04, // how much the surface breaks up the reflection
-  pondCurrentSpeed: 1.0,
-  pondCurrentScale: 1.2, // size of the current's ripples (higher = finer)
-  pondRippleStrength: 1.0, // how strongly the pointer's rings show
-  pondRippleForce: 1.0, // how big a ring the pointer drops
+  pondDistortion: 0.2, // how much the surface breaks up the reflection
+  pondCurrentSpeed: 2.24,
+  pondCurrentScale: 4.0, // size of the current's ripples (higher = finer)
+  pondRippleStrength: 2.02, // how strongly the pointer's rings show
+  pondRippleForce: 1.36, // how big a ring the pointer drops
   pondRippleRadius: 0.8, // metres
-  pondRippleDamping: 0.985, // how long they run (closer to 1 = longer)
-  pondDeep: "#0b2a2c",
-  pondShallow: "#3a5a3f",
-  pondClarity: 0.45, // opacity over the shallows
+  pondRippleDamping: 0.98, // how long they run (closer to 1 = longer)
+  pondDeep: "#000000",
+  pondShallow: "#01520d",
+  pondClarity: 0, // opacity over the shallows
   // the bubble logo
-  logoParticleSize: 0.23, // bubble size
-  logoParticleGlow: 1.66, // how bright they are
-  logoSpecular: 2.91, // their glossy highlight
-  logoRim: 0.65, // warm light round their edges
+  logoParticleSize: 0.46, // bubble size
+  logoParticleGlow: 1.12, // how bright they are
+  logoSpecular: 0.61, // their glossy highlight
+  logoRim: 0, // warm light round their edges
   logoColorA: "#ff5f00",
-  logoColorB: "#ff8a1f",
-  logoColorC: "#ffb347",
-  logoColorD: "#d9400a",
-  logoMorphSpeed: 3.2, // forms per second once a section sets off a morph (higher = faster)
-  logoMorphStagger: 0.2, // how spread out the bubbles' starts are (0 = all at once)
-  logoMorphPull: 5, // how hard a bubble far from its place is pulled there (higher = lands sooner)
-  logoSpring: 9.5, // how firmly they hold their place (elasticity)
+  logoColorB: "#ffac1f",
+  logoColorC: "#ff7547",
+  logoColorD: "#ff4300",
+  logoMorphSpeed: 3.29, // forms per second once a section sets off a morph (higher = faster)
+  logoMorphStagger: 0, // how spread out the bubbles' starts are (0 = all at once)
+  logoGatherSpeed: 0.9, // how quickly the scattered bubbles are swept up into the mark (higher = quicker)
+  logoGatherStagger: 0.4, // how spread out their lift-off is (a gust sweeping through rather than all at once)
+  logoGatherWhirl: 5, // how many radians the whirlwind winds them round as it lifts them
+  logoMorphPull: 15, // how hard a bubble far from its place is pulled there (higher = lands sooner)
+  logoSpring: 60, // how firmly they hold their place (elasticity)
   logoDamping: 0.85, // how quickly their wobble dies (lower = more fluid drag)
   logoFlow: 0.67, // how much the flow churns them
   logoSwirlSpeed: 0.03, // the vortex's pace
+  logoInfinitySpeed: 0.06, // loops a second its particles flow round the infinity
+  logoInfinitySize: 6.8, // metres: the infinity's half-width
+  logoInfinityTube: 1.4, // metres: its tube's radius
   logoHoverRadius: 0.1, // share of the screen's height round the pointer that it stirs
-  logoHoverForce: 1.0, // ...how hard it parts them
-  logoDrag: 0.9, // ...and how much they are carried along with its movement
+  logoHoverForce: 4.0, // ...how hard it parts them
+  logoDrag: 2.84, // ...and how much they are carried along with its movement
   logoYaw: 0, // degrees the mark is turned (0 = square to the camera in its section)
   logoViscosity: 0.25, // how much each bubble takes on its neighbours' motion (fluid feel)
   logoRepulsion: 0.02, // how much they keep their distance
-  logoScatterTime: 1.6, // seconds a stirred bubble drifts loose before finding its way home
-  logoCoreGlow: 0.6, // the warm glow at the body's centre
-  logoWhiteout: 0.85, // how white-hot stirred and fast bubbles burn
+  logoScatterTime: 5.0, // seconds a stirred bubble drifts loose before finding its way home
+  logoCoreGlow: 0, // the warm glow at the body's centre
+  logoWhiteout: 0.71, // how white-hot stirred and fast bubbles burn
   // the air: drifting leaves and warm motes
   gardenAir: 1.0,
   gardenLeafSize: 1.0,
@@ -217,6 +244,19 @@ export const T = {
   // fills in over roughly the first 0.15
   breakStart: 0.1,
   breakEnd: 1.0,
+  // the pointer stirring the broken rock's sand and gravel
+  breakStirForce: 4.0, // how far it pushes them
+  breakStirRadius: 0.17, // how wide its reach is (share of the screen)
+  breakStirLinger: 4.0, // seconds they take to ease back into their streams
+  breakStirAlong: 0.69, // how much they are pushed along the pointer's motion...
+  breakStirApart: 0, // ...and parted out from its line
+  breakStirSmooth: 0.5, // seconds the pointer's motion is smoothed over (higher = softer, lazier)
+  breakStirWake: 0.8, // how much the stir spreads out behind the pointer (a softer, wider wake)
+  breakStirSpread: 0.46, // how unevenly the grains are pushed (0 = all alike: more fluid the higher)
+  breakStirSand: 1.52, // how much the crumbled sand is stirred...
+  breakStirGravel: 1.66, // ...and the gravel
+  breakStirEase: 0.12, // how quickly the grains give way under the pointer (lower = they drift aside more gently)
+  breakStirGlow: 0, // how much a stirred grain lights up (0 = not at all)
   breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
   breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
   breakShrink: 0.43, // the pieces' size once broken off

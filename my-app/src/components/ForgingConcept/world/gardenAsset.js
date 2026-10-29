@@ -94,8 +94,13 @@ vec2 pointerWind(vec2 xz, float seed) {
   acc += vec2(-acc.y, acc.x) * sin(uTime * 7.5 + seed * 19.0) * 0.12;
   return acc * uPushAmount;
 }
+// (only near the height of what the pointer touched: within ~2.5 m of it —
+// on the ground the grass, the flowers, the bushes there, not the canopy
+// above; on a tree, its blossom there, not the grass beneath)
 float pointerGlow(vec3 world) {
-  return pwField(world.xz).b;
+  vec4 f = pwField(world.xz);
+  float dy = max(abs(world.y - f.a) - 1.0, 0.0) / 1.5;
+  return f.b * exp(-dy * dy);
 }
 `;
 
@@ -234,6 +239,11 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   const moved = { x: 0, z: 0 };
   const shift = new THREE.Matrix4();
   const trunks = [];
+  // each tree's canopy (garden space: centre and half-extents of its leaves),
+  // for the pointer to touch
+  const canopies = [];
+  const leafBox = new THREE.Box3();
+  const partBox = new THREE.Box3();
   const templates = { PlacedBushes: [] };
   for (const groupName of GROUPS) {
     if (groupName === "GardenTerrain") continue;
@@ -248,9 +258,14 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
       // each placed variant's parts relative to it (to plant more of them)
       const parts = templates[groupName] ? [] : null;
       const rootInv = parts ? new THREE.Matrix4().copy(placed.matrixWorld).invert() : null;
+      leafBox.makeEmpty();
       placed.traverse((o) => {
         if (!o.isMesh) return;
         m4.multiplyMatrices(toLocal, o.matrixWorld).premultiply(shift);
+        if (groupName === "PlacedTrees" && o.material.name === "M_Foliage") {
+          if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+          leafBox.union(partBox.copy(o.geometry.boundingBox).applyMatrix4(m4));
+        }
         if (parts) parts.push({ mesh: o, rel: new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld) });
         if (groupName === "GrassPatches") {
           pos.setFromMatrixPosition(m4);
@@ -261,6 +276,11 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
         add(groupName, o, m4.clone());
       });
       if (parts?.length) templates[groupName].push(parts);
+      if (!leafBox.isEmpty()) {
+        const c = leafBox.getCenter(new THREE.Vector3());
+        const r = leafBox.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+        canopies.push({ x: c.x, y: c.y, z: c.z, rx: r.x, ry: r.y, rz: r.z });
+      }
     }
   }
 
@@ -313,5 +333,5 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   const textures = new Set();
   for (const m of materials.values()) for (const k of ["map", "normalMap", "roughnessMap", "aoMap", "alphaMap"]) if (m[k]) textures.add(m[k]);
 
-  return { root, terrain, height, trunks, materials: [...materials.values()], textures: [...textures], anchors };
+  return { root, terrain, height, trunks, canopies, materials: [...materials.values()], textures: [...textures], anchors };
 }

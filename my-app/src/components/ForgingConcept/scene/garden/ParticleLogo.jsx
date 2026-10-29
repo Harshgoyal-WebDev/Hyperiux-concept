@@ -6,7 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
 import { mulberry32 } from "../../world/layout";
-import { sampleCube, sampleLogo3D, sampleSphere, sampleTorus } from "../../world/logoParticles";
+import { sampleCube, sampleLogo3D, sampleTorus } from "../../world/logoParticles";
 import { GARDEN, GARDEN_ORIGIN } from "../../config";
 import { pointer } from "../../pointer";
 import { T } from "../../tuning";
@@ -14,11 +14,12 @@ import { GARDEN_SUN } from "./sky";
 
 // The garden's particle body: tens of thousands of glossy bubbles in the
 // Hyperiux palette that take one form after another as the visitor scrolls —
-// a swirl streaming in over the pond, the Hyperiux mark (in 3D: the four
-// shapes as slabs, the cube outline as a real cube), a cube, a great cloud,
-// and a ring the camera flies through into the light — all over the pond's
-// middle, the mark and the ring turned to the camera as it revolves round
-// them. Arriving sets off the swirl's gathering into the mark, and each
+// a swirl streaming in over the pond, the Hyperiux mark (a deep solid: the
+// four shapes as slabs, the cube outline through the same depth, all one
+// body), a cube, an infinity whose particles keep flowing round its loops,
+// and a torus the camera flies through into the light — all over the pond's
+// middle, the mark, the infinity and the torus turned to the camera as it
+// revolves round them. Arriving sets off the swirl's gathering into the mark, and each
 // change of section the next morph; each then plays out on its own clock
 // (T.logoMorphSpeed), however slowly the visitor scrolls. How hard the
 // pointer is stirring the body goes to J.logoStir (its swoosh).
@@ -76,9 +77,28 @@ vec3 rotX(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(p.x, p.y 
 const FORMS_GLSL = /* glsl */ `
 uniform sampler2D tMark; // the mark (xyz), kind (w)
 uniform sampler2D tCube;
-uniform sampler2D tCloud;
+uniform sampler2D tCloud; // the infinity: place along it (0..1), round its tube (rad), how far out in the tube (0..1), pace
+uniform float uInfFlow; // how far round the infinity its particles have flowed (loops)
+uniform float uInfSize; // its half-width (m)
+uniform float uInfTube; // its tube's radius (m)
+uniform float uInfRate; // loops a second the flow runs at
+// a point of the infinity (its own space) for particle data F, the flow at flow
+vec3 infinityLocal(vec4 F, float flow) {
+  // a lemniscate tube, its particles flowing on round its loops (each at
+  // its own pace), the crossing passing over itself
+  float t = 6.2831853 * (F.x + flow * F.w);
+  float s0 = sin(t), c0 = cos(t);
+  vec2 c = vec2(c0, s0 * c0) / (1.0 + s0 * s0) * uInfSize;
+  float t1 = t + 0.01;
+  float s1 = sin(t1), c1 = cos(t1);
+  vec2 tg = normalize(vec2(c1, s1 * c1) / (1.0 + s1 * s1) * uInfSize - c);
+  vec3 nrm = vec3(-tg.y, tg.x, 0.0);
+  float r = uInfTube * F.z;
+  return vec3(c, s0 * uInfSize * 0.12) + (nrm * cos(F.y) + vec3(0.0, 0.0, 1.0) * sin(F.y)) * r;
+}
 uniform sampler2D tRing;
-uniform sampler2D tSwirl; // radius, angle, height seed, pace
+uniform sampler2D tSwirl; // how far out (pond radii), angle, height seed, pace
+uniform vec2 uPondAxes; // the pond's semi-axes (m)
 uniform vec3 uCentre[5];
 uniform float uYaw[5];
 uniform float uScale[5];
@@ -88,13 +108,26 @@ uniform float uWaterY;
 vec3 formPos(int i, vec2 uv) {
   if (i == 0) {
     // the swirl: a ribbon streaming round over the pond
+    // scattered low over the whole pond and the grass round it, drifting
+    // slowly, a little higher over the banks (just over the grass)
     vec4 S = texture2D(tSwirl, uv);
-    float ang = S.y + uClock * S.w * (2.2 / max(S.x, 1.0));
-    float y = uWaterY + 1.2 + S.z * 1.4 + sin(ang * 2.0 + S.x * 0.7) * 1.1;
-    return uCentre[0] + vec3(cos(ang) * S.x, y - uCentre[0].y, sin(ang) * S.x * 0.85);
+    float ang = S.y + uClock * S.w * 0.4 / max(S.x, 0.3);
+    vec2 xz = vec2(cos(ang), sin(ang)) * S.x * uPondAxes;
+    float bank = smoothstep(0.9, 1.15, S.x);
+    float y = uWaterY + 0.35 + S.z * 0.6 + bank * (1.3 + S.z * 0.8) + sin(ang * 3.0 + S.x * 5.0 + uClock) * 0.15;
+    return vec3(uCentre[0].x + xz.x, y, uCentre[0].z + xz.y);
   }
-  vec3 p = i == 1 ? texture2D(tMark, uv).xyz : i == 2 ? texture2D(tCube, uv).xyz : i == 3 ? texture2D(tCloud, uv).xyz : texture2D(tRing, uv).xyz;
+  vec3 p;
+  if (i == 3) p = infinityLocal(texture2D(tCloud, uv), uInfFlow);
+  else p = i == 1 ? texture2D(tMark, uv).xyz : i == 2 ? texture2D(tCube, uv).xyz : texture2D(tRing, uv).xyz;
   return uCentre[i] + rotY(rotX(p * uScale[i], uTilt), uYaw[i]);
+}
+// how fast a bubble's place in the infinity is moving (m/s): the flow
+vec3 infinityVel(vec2 uv) {
+  vec4 F = texture2D(tCloud, uv);
+  float h = 0.01;
+  vec3 d = (infinityLocal(F, uInfFlow + uInfRate * h) - infinityLocal(F, uInfFlow)) / h;
+  return rotY(rotX(d * uScale[3], uTilt), uYaw[3]);
 }
 `;
 
@@ -104,6 +137,7 @@ uniform float uDt;
 uniform float uTime;
 uniform float uShapeT;
 uniform float uStagger; // share of a morph the bubbles' starts are spread over
+uniform float uWhirl; // how far the whirlwind winds the gathering bubbles round the mark (rad)
 uniform float uPull; // extra pull on a bubble far from its place (so a morph lands quickly)
 uniform float uSpring;
 uniform float uDamping;
@@ -145,6 +179,17 @@ void main() {
   float m = smoothstep(delay, delay + 1.0 - uStagger, fr);
   vec3 target = mix(formPos(int(i0), uv), formPos(int(i0) + 1, uv), m);
   float travel = sin(3.14159 * m);
+  // gathering from the ground into the mark: swept up in a whirlwind round
+  // it — wound round its centre (unwinding as it lands) and lifted
+  if (int(i0) == 0) {
+    vec3 c = uCentre[1];
+    float wind = (1.0 - m) * (1.0 - m) * uWhirl + travel * 1.2;
+    target = c + rotY(target - c, wind) + vec3(0.0, travel * 3.0, 0.0);
+  }
+  // in the infinity, carried along with its flow (so it rides the loops
+  // instead of trailing behind its moving place)
+  float onInf = (int(i0) == 3 ? 1.0 - m : 0.0) + (int(i0) + 1 == 3 ? m : 0.0);
+  if (onInf > 0.001) vel = mix(vel, infinityVel(uv), clamp(onInf * 0.35 * dt60, 0.0, 1.0));
   // sparks drift loosely round the body
   target += spark * pnFlow(vec3(seed.x * 9.0, seed.y * 70.0, uTime * 0.05)) * 0.6;
 
@@ -210,15 +255,22 @@ void main() {
 const POSITION = /* glsl */ `
 uniform float uDt;
 uniform float uHover;
+uniform float uSpeedGlow; // how much speed lights a bubble (low while it gathers from the ground)
+uniform float uCarry; // the turn of the camera-facing form this frame (rad, about y)...
+uniform vec3 uCarryAt; // ...round its centre
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   vec4 P = texture2D(tPos, uv);
   vec4 V = texture2D(tVel, uv);
-  vec3 pos = P.xyz + V.xyz * uDt;
+  // carried round with the form as it turns to follow the camera, rather
+  // than flying after it (its edges would light up with the speed)
+  vec3 q = P.xyz - uCarryAt;
+  float cc = cos(uCarry), cs = sin(uCarry);
+  vec3 pos = uCarryAt + vec3(q.x * cc + q.z * cs, q.y, -q.x * cs + q.z * cc) + V.xyz * uDt;
   // glow: up quickly with speed / scatter, down slowly
   float speed = length(V.xyz);
   // (a morph's flight is quick: only the fastest bubbles light up from it)
-  float want = clamp(clamp((speed - 6.0) * 0.12, 0.0, 1.0) + V.w * 0.7, 0.0, 1.0);
+  float want = clamp(clamp((speed - 6.0) * 0.12, 0.0, 1.0) * uSpeedGlow + V.w * 0.7, 0.0, 1.0);
   float glow = P.w + (want - P.w) * min(1.0, uDt * (want > P.w ? 12.0 : 2.5));
   gl_FragColor = vec4(pos, clamp(glow, 0.0, 1.0));
 }
@@ -243,6 +295,7 @@ uniform vec3 uGlowColor;
 uniform vec3 uCoreColor;
 uniform float uWhiteout;
 uniform float uPortal;
+uniform float uSpeedGlow;
 varying vec3 vColor;
 varying vec3 vAdd;
 varying float vBlow;
@@ -264,8 +317,8 @@ void main() {
   vColor = uPalette[int(aInfo.y + 0.5)];
   float core = 1.0 - smoothstep(0.0, uCoreReach, length(p - uCore));
   core *= core;
-  vAdd = uGlowColor * glow * 1.5 + uCoreColor * core * uCoreGlow + uGlowColor * smoothstep(5.0, 14.0, speed) * 0.4 + uCoreColor * uPortal * 1.5;
-  vBlow = smoothstep(0.25, 0.95, clamp(glow * 0.7 + scatter * 0.45 + smoothstep(8.0, 18.0, speed) * 0.3 + uPortal * 0.6, 0.0, 1.0)) * uWhiteout;
+  vAdd = uGlowColor * glow * 1.5 + uCoreColor * core * uCoreGlow + uGlowColor * smoothstep(5.0, 14.0, speed) * 0.4 * uSpeedGlow + uCoreColor * uPortal * 1.5;
+  vBlow = smoothstep(0.25, 0.95, clamp(glow * 0.7 + scatter * 0.45 + smoothstep(8.0, 18.0, speed) * 0.3 * uSpeedGlow + uPortal * 0.6, 0.0, 1.0)) * uWhiteout;
   vSpark = aInfo.z;
   vSun = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
 }
@@ -309,6 +362,14 @@ void main() {
 }
 `;
 
+// the infinity's particles: where along it each starts (0..1), where round
+// its tube (rad), how far out in the tube (most near its skin), its pace
+function sampleInfinity(count, rng) {
+  const out = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) out.set([rng(), rng() * Math.PI * 2, Math.sqrt(0.15 + 0.85 * rng()), 0.85 + rng() * 0.3], i * 4);
+  return out;
+}
+
 function dataTexture(size, data) {
   const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
   t.minFilter = THREE.NearestFilter;
@@ -328,12 +389,13 @@ function build(tier) {
   const size = Math.ceil(Math.sqrt(tier.logoPoints));
   const count = size * size;
   const rng = mulberry32(2024);
-  const logo = sampleLogo3D(count, { height: 8.5, thickness: 0.9 });
+  // (big and deep: a solid you can see round as the camera circles it)
+  const logo = sampleLogo3D(count, { height: 10.5, thickness: 2.6 });
   const forms = {
     mark: pack(count, logo.positions, logo.kinds),
-    cube: pack(count, sampleCube(count, { size: 5.6 })),
-    cloud: pack(count, sampleSphere(count, { radius: 5.6 })),
-    ring: pack(count, sampleTorus(count, { radius: 4.6, tube: 1.25 })),
+    cube: pack(count, sampleCube(count, { size: 7.2 })),
+    cloud: sampleInfinity(count, rng),
+    ring: pack(count, sampleTorus(count, { radius: 5.8, tube: 1.5 })),
   };
   const waterY = GARDEN.water;
   const swirl = new Float32Array(count * 4);
@@ -341,14 +403,15 @@ function build(tier) {
   const ref = new Float32Array(count * 2);
   const info = new Float32Array(count * 4);
   for (let i = 0; i < count; i++) {
-    // a ribbon round the pond, 5.5–8.5 m out
-    swirl.set([5.5 + rng() * 3, rng() * Math.PI * 2, rng(), 0.7 + rng() * 0.6], i * 4);
+    // scattered over the pond and the grass round it (out to 1.55 pond
+    // radii, evenly over the area)
+    swirl.set([Math.sqrt(rng()) * 1.55, rng() * Math.PI * 2, rng(), 0.7 + rng() * 0.6], i * 4);
     const spark = rng() < 0.02 ? 1 : 0;
     const delay = rng();
     // bubbles: mostly small, a few big ones; sparks tiny
     const radius = spark ? 0.018 + rng() * 0.012 : 0.035 + Math.pow(rng(), 2.6) * 0.13;
-    // the palette (0–3), the mark's cube in the brand colour (4)
-    const colour = logo.kinds[i] > 0.5 && rng() < 0.85 ? 4 : Math.floor(Math.pow(rng(), 1.3) * 4);
+    // the palette (0–3), all through the mark (its cube is part of it)
+    const colour = Math.floor(Math.pow(rng(), 1.3) * 4);
     seed.set([delay, radius, colour, spark], i * 4);
     ref.set([((i % size) + 0.5) / size, (Math.floor(i / size) + 0.5) / size], i * 2);
     info.set([radius, colour, spark, delay], i * 4);
@@ -376,6 +439,7 @@ function build(tier) {
       uCoreColor: { value: new THREE.Color("#ffd9b0") },
       uWhiteout: { value: 1 },
       uPortal: { value: 0 },
+      uSpeedGlow: { value: 1 },
       uGlow: { value: 1 },
       uSpec: { value: 1 },
       uRim: { value: 0.6 },
@@ -410,7 +474,10 @@ function createSim(gl, data, time) {
     const r = swirl[i * 4];
     const a = swirl[i * 4 + 1];
     const hs = swirl[i * 4 + 2];
-    pos0.image.data.set([GARDEN.pond.x + Math.cos(a) * r, waterY + 1.2 + hs * 1.4, GARDEN.pond.z + Math.sin(a) * r * 0.85, 0], i * 4);
+    const ax = GARDEN.pondGlbAxes[0] * T.pondSize;
+    const az = GARDEN.pondGlbAxes[1] * T.pondSize;
+    const bank = THREE.MathUtils.smoothstep(r, 0.9, 1.15);
+    pos0.image.data.set([GARDEN.pond.x + Math.cos(a) * r * ax, waterY + 0.35 + hs * 0.6 + bank * (1.3 + hs * 0.8), GARDEN.pond.z + Math.sin(a) * r * az, 0], i * 4);
   }
   const velVar = gpu.addVariable("tVel", VELOCITY, vel0);
   const posVar = gpu.addVariable("tPos", POSITION, pos0);
@@ -428,7 +495,14 @@ function createSim(gl, data, time) {
     uScale: { value: [1, 1, 1, 1, 1] },
     uTilt: { value: 0 },
     uClock: { value: 0 },
+    uInfFlow: { value: 0 },
+    uInfSize: { value: 8 },
+    uInfTube: { value: 1.4 },
+    uInfRate: { value: 0.06 },
     uWaterY: { value: waterY },
+    uPondAxes: { value: new THREE.Vector2(...GARDEN.pondGlbAxes) },
+    uWhirl: { value: 5 },
+    uSpeedGlow: { value: 1 },
   };
   const simU = {
     ...forms_,
@@ -457,10 +531,15 @@ function createSim(gl, data, time) {
     uDrag: { value: 1 },
     uStagger: { value: 0.3 },
     uPull: { value: 4 },
+    uCarry: { value: 0 },
+    uCarryAt: { value: new THREE.Vector3() },
   };
   Object.assign(velVar.material.uniforms, simU);
   posVar.material.uniforms.uDt = simU.uDt;
   posVar.material.uniforms.uHover = simU.uHover;
+  posVar.material.uniforms.uSpeedGlow = simU.uSpeedGlow;
+  posVar.material.uniforms.uCarry = simU.uCarry;
+  posVar.material.uniforms.uCarryAt = simU.uCarryAt;
   const error = gpu.init();
   if (error) {
     console.error(`[forging-concept] particle body: ${error}`);
@@ -469,6 +548,10 @@ function createSim(gl, data, time) {
   }
   return { gpu, velVar, posVar, simU };
 }
+
+// which forms turn to face the camera (the swirl, the mark, the cube, the
+// infinity, the torus)
+const FACES_CAMERA = [0, 1, 0, 1, 1];
 
 export default function ParticleLogo({ J, tier, time }) {
   const { gl, camera, size } = useThree();
@@ -507,6 +590,8 @@ export default function ParticleLogo({ J, tier, time }) {
       cam: new THREE.Vector3(),
       ndc: new THREE.Vector3(),
       core: new THREE.Vector3(),
+      facing: null,
+      age: 0,
     }),
     []
   );
@@ -515,17 +600,26 @@ export default function ParticleLogo({ J, tier, time }) {
     const sm = sim.current;
     if (!sm || !J.inGarden) return;
     const dt = Math.min(delta, 1 / 30);
+    s.age += dt;
     const u = sm.simU;
     u.uDt.value = dt;
     u.uClock.value += dt * T.logoSwirlSpeed;
+    u.uInfFlow.value += dt * T.logoInfinitySpeed;
+    u.uInfRate.value = T.logoInfinitySpeed;
+    u.uInfSize.value = T.logoInfinitySize;
+    u.uInfTube.value = T.logoInfinityTube;
     // the form: the scroll gathers the swirl into the mark; past it, the
     // section sets the form and the morph runs at its own pace
     const goal = J.shapeT < 0.12 ? 0 : Math.max(1, Math.round(J.shapeT));
-    const step = T.logoMorphSpeed * dt;
+    const step = (s.form < 1 && goal <= 1 ? T.logoGatherSpeed : T.logoMorphSpeed) * dt;
     s.form += THREE.MathUtils.clamp(goal - s.form, -step, step);
     J.formT = s.form;
     u.uShapeT.value = s.form;
-    u.uStagger.value = T.logoMorphStagger;
+    // (the gathering from the ground runs at its own pace, the bubbles
+    // swept up a few at a time, like a gust)
+    u.uStagger.value = s.form < 1 ? Math.max(T.logoMorphStagger, T.logoGatherStagger) : T.logoMorphStagger;
+    u.uWhirl.value = T.logoGatherWhirl;
+    u.uPondAxes.value.set(GARDEN.pondGlbAxes[0] * T.pondSize, GARDEN.pondGlbAxes[1] * T.pondSize);
     u.uPull.value = T.logoMorphPull;
     u.uSpring.value = T.logoSpring;
     u.uDamping.value = T.logoDamping;
@@ -567,8 +661,8 @@ export default function ParticleLogo({ J, tier, time }) {
     J.logoStir = over * Math.min(s.vel.length() * 1.6, 1) * u.uHover.value;
 
     // each form turned to its view: the mark faces the camera as it revolves,
-    // leaning a little to the pointer; the cube turns slowly; the cloud
-    // drifts round; the ring faces the camera, and opens wide as the camera
+    // leaning a little to the pointer; the cube turns slowly; the infinity
+    // and the torus face the camera, the torus opening wide as the camera
     // goes through
     const k = 1 - Math.exp(-dt * 3);
     s.lean += ((pointer.active ? pointer.x : 0) * 0.18 - s.lean) * k;
@@ -578,10 +672,19 @@ export default function ParticleLogo({ J, tier, time }) {
     const yaw = u.uYaw.value;
     yaw[1] = facing + THREE.MathUtils.degToRad(T.logoYaw) + s.lean + Math.sin(time.value * 0.21) * 0.06;
     yaw[2] = time.value * 0.12;
-    yaw[3] = time.value * 0.05;
+    yaw[3] = facing + s.lean * 0.5;
     yaw[4] = facing + s.lean * 0.5;
     u.uTilt.value = s.tilt;
     u.uScale.value[4] = 1 + J.portal * 1.8;
+    // the forms that face the camera (the mark, the infinity, the torus)
+    // turn with it as it revolves: the bubbles are carried round by the same
+    // turn, so the scroll's revolution never sets them flying
+    const turn = s.facing === null ? 0 : Math.atan2(Math.sin(facing - s.facing), Math.cos(facing - s.facing));
+    s.facing = facing;
+    const f0 = Math.min(Math.floor(Math.max(s.form, 0)), 3);
+    const facingW = FACES_CAMERA[f0] + (FACES_CAMERA[f0 + 1] - FACES_CAMERA[f0]) * THREE.MathUtils.smoothstep(s.form - f0, 0.2, 0.8);
+    u.uCarry.value = turn * facingW;
+    u.uCarryAt.value.copy(s.core);
 
     sm.gpu.compute();
 
@@ -598,12 +701,24 @@ export default function ParticleLogo({ J, tier, time }) {
     m.uCoreGlow.value = T.logoCoreGlow;
     m.uWhiteout.value = T.logoWhiteout;
     m.uPortal.value = J.portal;
+    // (swept up from the ground they stay in their colours: speed only lights
+    // them once the mark has formed)
+    // (nor while they first settle into a form further on — a deep link, or
+    // the scene rebuilt on return — rushing there from the ground)
+    // and past the mark the morphs' flights don't light them either: the
+    // cube, the infinity and the torus form in their own colours (only the
+    // pointer's touch lights them)
+    const calm =
+      THREE.MathUtils.smoothstep(s.form, 0.9, 1.4) * (1 - THREE.MathUtils.smoothstep(s.form, 1.05, 1.3)) * THREE.MathUtils.smoothstep(s.age, 2, 4);
+    m.uSpeedGlow.value = calm;
+    u.uSpeedGlow.value = calm;
     // the core glows at the centre of the current form
     const c = u.uCentre.value;
     const i0 = Math.min(Math.floor(Math.max(s.form, 0)), 3);
     s.core.lerpVectors(c[i0], c[i0 + 1], THREE.MathUtils.smoothstep(s.form - i0, 0.2, 0.8));
     m.uCore.value.copy(s.core);
-    m.uCoreReach.value = s.form > 2.5 && s.form < 3.5 ? 6 : 3.5;
+    // (a soft warmth through the whole body, not a hot spot on the cube)
+    m.uCoreReach.value = s.form > 2.5 && s.form < 3.5 ? 7 : 8;
     const pal = m.uPalette.value;
     pal[0].set(T.logoColorA);
     pal[1].set(T.logoColorB);

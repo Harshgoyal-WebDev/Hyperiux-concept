@@ -162,7 +162,11 @@ export default function Garden({ J, tier, worlds }) {
     g.fog = fog;
     g.environment = env;
     if (!garden.missing) for (const t of garden.textures) gl.initTexture(t);
-    gl.compileAsync(g, camera).catch(() => {});
+    gl.compileAsync(g, camera)
+      .catch(() => {})
+      .then(() => {
+        J.gardenCompiled = true;
+      });
     // (its sun's shadows are drawn once, not every frame: draw them again)
     gl.shadowMap.needsUpdate = true;
     g.visible = worlds.gardenActive;
@@ -225,8 +229,10 @@ export default function Garden({ J, tier, worlds }) {
     }),
     []
   );
-  // where the pointer's line of sight meets the ground (garden height grid),
-  // in world space; false if it misses
+  // where the pointer's line of sight first meets the garden — a tree's
+  // canopy (so its blossom lights up, not the grass under it) or the ground
+  // (garden height grid) — in world space; false if it misses
+  const canopies = garden.canopies || [];
   const groundHit = (ray, out) => {
     const o = ray.origin;
     const d = ray.direction;
@@ -235,6 +241,16 @@ export default function Garden({ J, tier, worlds }) {
       const x = o.x + d.x * t - GARDEN_ORIGIN.x;
       const z = o.z + d.z * t - GARDEN_ORIGIN.z;
       const y = o.y + d.y * t - GARDEN_ORIGIN.y;
+      // (the canopy as the ellipsoid inside its leaves' bounds)
+      for (const c of canopies) {
+        const ex = (x - c.x) / (c.rx * 0.85);
+        const ey = (y - c.y) / (c.ry * 0.85);
+        const ez = (z - c.z) / (c.rz * 0.85);
+        if (ex * ex + ey * ey + ez * ez <= 1) {
+          out.set(x + GARDEN_ORIGIN.x, y + GARDEN_ORIGIN.y, z + GARDEN_ORIGIN.z);
+          return true;
+        }
+      }
       const h = garden.height?.sample(x, z);
       if (Number.isFinite(h) && y <= h) {
         out.set(x + GARDEN_ORIGIN.x, h + GARDEN_ORIGIN.y, z + GARDEN_ORIGIN.z);
@@ -255,6 +271,8 @@ export default function Garden({ J, tier, worlds }) {
     const dt = Math.min(delta, 0.1);
     time.value += dt;
     sky.uniforms.uTime.value = time.value;
+    sky.uniforms.uCover.value = T.skyCloudCover;
+    sky.uniforms.uSpeed.value = T.skyCloudSpeed;
 
     const now = performance.now();
     s.ndc.set(pointer.x, pointer.y);
@@ -269,7 +287,7 @@ export default function Garden({ J, tier, worlds }) {
     if (hit && !s.hasHit) s.lastHit.copy(s.hit);
     const step = hit ? Math.hypot(s.hit.x - s.lastHit.x, s.hit.z - s.lastHit.z) : 0;
     // its speed over the ground, smoothed (and none at all when it jumps)
-    if (hit && moved && step < 8) s.vel.lerp(s.want.set((s.hit.x - s.lastHit.x) / dt, (s.hit.z - s.lastHit.z) / dt), 1 - Math.exp(-dt / 0.05));
+    if (hit && moved && step < 8) s.vel.lerp(s.want.set((s.hit.x - s.lastHit.x) / dt, (s.hit.z - s.lastHit.z) / dt), 1 - Math.exp(-dt / Math.max(T.gardenHoverSmooth, 0.005)));
     else s.vel.multiplyScalar(Math.exp(-dt / 0.08));
     const speed = Math.min(s.vel.length(), 30);
     s.moving += ((moved && hit ? Math.min(speed / 4, 1) : 0) - s.moving) * (1 - Math.exp(-dt / (moved ? 0.06 : 0.12)));
@@ -288,6 +306,8 @@ export default function Garden({ J, tier, worlds }) {
         glow: s.moving,
         relax: Math.exp(-dt / (linger * 0.6)),
         fade: Math.exp(-dt / (linger * 0.5)),
+        wake: T.gardenHoverWake,
+        hitY: s.hit.y,
       });
       sway.uFieldRect.value.copy(wind.rect);
     }

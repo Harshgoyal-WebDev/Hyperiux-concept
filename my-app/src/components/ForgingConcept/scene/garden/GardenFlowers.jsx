@@ -385,7 +385,8 @@ export default function GardenFlowers({ tier, garden, sway }) {
     u.uSize.value = T.flowerSize * Math.sqrt(T.grassHeight);
     u.uSun.value = T.gardenSun;
     for (const k of built.kinds) {
-      k.geo.instanceCount = Math.min(Math.round(k.planted * T.flowerDensity), k.planted);
+      const kindShare = k.kind === "tulip" ? T.tulipDensity : k.kind === "daisy" ? T.daisyDensity : T.spireDensity;
+      k.geo.instanceCount = Math.min(Math.round(k.planted * T.flowerDensity * kindShare), k.planted);
       // the colours (live from the panel)
       const pal = palette(k.kind);
       const key = pal.join();

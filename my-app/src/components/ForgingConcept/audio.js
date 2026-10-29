@@ -29,10 +29,18 @@ import { pointer } from "./pointer";
 //   garden – water lapping, leaves, and birds now and then; and its own
 //            score, crossfaded in from the abyss as the camera comes out of
 //            the light: light, airy and unhurried, in D major, in a bright
-//            hall of its own — a high pad of sines, a music-box figure with
-//            sparkles and now and then a few notes of melody over it, a
-//            light bass on the bar — moving through Dmaj9 – Gmaj9 – Bm9 –
-//            Asus2 (bliss, hope, growth).
+//            hall of its own, no sustained pad (nothing of the abyss's synth
+//            in it) — a music-box figure with sparkles and now and then a
+//            few notes of melody over it, a
+//            bass that moves — over a gentle beat (a soft kick, a clap in
+//            the reverb on 2 and 4, a swung shaker), moving through Dmaj9 –
+//            A – Bm9 – Gmaj9: uplifting, still soothing.
+//   dimension – the switch between the worlds: both scores pass through a
+//            vacuum — the music is stretched (a sliding delay bends its
+//            pitch: the dunes' score sucked down and away, the garden's
+//            released up into place), muffled and resonant at the peak,
+//            smeared into the reverb, with an inhaling rush of air and a
+//            soft thump as the worlds change.
 //   pond   – a soft swish and a few droplet plips as the pointer stirs the
 //            water (subtle).
 //   swoosh – an airy rush as the pointer stirs the particle body, swelling
@@ -97,15 +105,15 @@ const BASS = [38, 34, 31, 33]; // chord roots, an octave or two down
 const ARP = [0, 1, 2, 3, 2, 1, 3, 2]; // chord-tone order over a bar of 8ths
 const BELLS = [74, 77, 79, 81, 84, 86]; // D minor pentatonic, high
 
-// The garden: D major, open and high, a chord every two bars:
-// Dmaj9 – Gmaj9(♯11) – Bm9 – A(sus2)
+// The garden: D major, open and high, a chord every two bars, the classic
+// lift: Dmaj9 – A(add9) – Bm9 – Gmaj9
 const G_CHORDS = [
   [50, 57, 61, 64, 66], // Dmaj9
-  [43, 57, 59, 62, 66], // Gmaj9
+  [45, 52, 57, 59, 64], // A(add9)
   [47, 54, 57, 61, 62], // Bm9
-  [45, 52, 57, 59, 64], // Asus2
+  [43, 57, 59, 62, 66], // Gmaj9
 ];
-const G_BASS = [38, 31, 35, 33];
+const G_BASS = [38, 33, 35, 31];
 // the felt-piano figure over a bar of 8ths (chord-tone index, or -1 to rest)
 const G_ARP = [1, 3, 2, 4, -1, 3, 2, -1];
 const G_MELODY = [74, 76, 78, 81, 83, 86]; // D major pentatonic, above it
@@ -138,6 +146,7 @@ class AudioEngine {
 
     this.sfx = this.bus(0.45);
 
+    this.buildDimension();
     this.buildMusic(t);
     this.buildSand();
     this.buildBeam();
@@ -255,7 +264,7 @@ class AudioEngine {
     // vanishes) → dry out + a reverb send that grows as it vanishes
     this.musicLevel = this.gain(1);
     this.musicTone = this.filter("lowpass", 18000, 0.5);
-    this.musicLevel.connect(this.musicTone).connect(this.master);
+    this.musicLevel.connect(this.musicTone).connect(this.dimIn);
     this.musicWet = this.gain(0.55);
     this.musicTone.connect(this.musicWet).connect(this.reverb);
     // held voices, detuned (sink) as the world vanishes
@@ -617,6 +626,35 @@ class AudioEngine {
     this.loop(this.noise, 1.2).connect(this.filter("highpass", 5200, 0.5)).connect(this.gain(0.25)).connect(this.lightGain);
   }
 
+  // the switch between the worlds: both scores run through it — a sliding
+  // delay (its slide bends their pitch), a resonant low-pass, a send into
+  // the hall — and a rush of air through the vacuum
+  buildDimension() {
+    const { ctx } = this;
+    this.dimIn = this.gain(1);
+    this.dimDelay = ctx.createDelay(1);
+    this.dimDelay.delayTime.value = 0;
+    this.dimFilter = this.filter("lowpass", 20000, 0.7);
+    this.dimIn.connect(this.dimDelay).connect(this.dimFilter).connect(this.master);
+    this.dimSend = this.gain(0);
+    this.dimFilter.connect(this.dimSend).connect(this.reverb);
+    this.vacuumGain = this.gain(0);
+    this.vacuumFilter = this.filter("bandpass", 300, 2.2);
+    this.loop(this.noise, 0.9).connect(this.vacuumFilter).connect(this.vacuumGain).connect(this.sfx);
+    this.vacuumGain.connect(this.gain(0.8)).connect(this.reverb);
+    this.lastDimPop = -10;
+  }
+
+  // the worlds change: a soft, deep thump and a breath of air
+  dimensionPop() {
+    const t = this.ctx.currentTime;
+    const out = this.gain(T.dimensionWarp);
+    out.connect(this.sfx);
+    out.connect(this.gain(1.2)).connect(this.reverb);
+    this.tone(t, out, { f0: 140, f1: 38, glide: 0.5, peak: 0.35, attack: 0.01, decay: 1.4 });
+    this.noiseHit(t, out, { type: "lowpass", freq: 2400, to: 160, q: 0.8, peak: 0.18, attack: 0.01, decay: 1.2 });
+  }
+
   // through the light: an airy swell opening onto the garden
   passThrough() {
     const t = this.ctx.currentTime;
@@ -643,12 +681,15 @@ class AudioEngine {
   }
 
   // the garden's score, light and airy, in a bright hall of its own (not
-  // the abyss's dark one): a high, soft pad of sines and triangles, a
-  // music-box / felt-piano figure up high, sparkles above it, a light bass
+  // the abyss's dark one) and with no held synth pad: a music-box /
+  // felt-piano figure up high, sparkles above it, a light bass, a soft beat
   buildGardenMusic(t) {
     const { ctx } = this;
     this.gMusic = this.gain(0);
-    this.gMusic.connect(this.master);
+    this.gMusic.connect(this.dimIn);
+    // the beat, under it all (dry, but for the clap)
+    this.gBeat = this.gain(1);
+    this.gBeat.connect(this.gMusic);
     this.gHall = ctx.createConvolver();
     this.gHall.buffer = this.impulse(4.5, 3, 0.85);
     const hallOut = this.gain(0.9);
@@ -658,28 +699,6 @@ class AudioEngine {
     this.gDry = this.gain(0.75);
     this.gDry.connect(this.gMusic);
     this.gDry.connect(this.gSend);
-    // pad: sines and triangles, open and high, breathing slowly
-    const padFilter = this.filter("lowpass", 2400, 0.4);
-    const pad = this.gain(0.038);
-    this.lfo(0.07, 0.012, pad.gain);
-    padFilter.connect(pad).connect(this.gDry);
-    this.gVoices = G_CHORDS[0].slice(1, 5).map((n, i) =>
-      [
-        ["sine", -5],
-        ["triangle", 5],
-      ].map(([type, cents]) => {
-        const o = ctx.createOscillator();
-        o.type = type;
-        o.frequency.value = midi(n + 12);
-        o.detune.value = cents;
-        const g = this.gain(type === "triangle" ? 0.5 : 1);
-        // each voice shimmers a little on its own
-        this.lfo(0.13 + i * 0.04, 0.25, g.gain);
-        o.connect(g).connect(padFilter);
-        o.start(t);
-        return o;
-      })
-    );
     this.gChord = 0;
     this.gStep = 0;
     this.gNextStep = t + 0.5;
@@ -700,24 +719,41 @@ class AudioEngine {
     const beatLen = 60 / T.gardenTempo;
     const stepsPerChord = 16;
     const inBar = step % 8;
-    if (step % stepsPerChord === 0) {
-      this.gChord = (step / stepsPerChord) % G_CHORDS.length;
-      G_CHORDS[this.gChord].slice(1, 5).forEach((n, i) => {
-        for (const o of this.gVoices[i]) o.frequency.setTargetAtTime(midi(n + 12), t, 1.2);
-      });
-    }
+    if (step % stepsPerChord === 0) this.gChord = (step / stepsPerChord) % G_CHORDS.length;
     const tones = G_CHORDS[this.gChord];
-    // a light, round bass once a bar
-    if (inBar === 0) {
+    // the beat: gentle, swung a little; every eighth bar it breathes (no kick)
+    const beat = T.gardenBeatVolume;
+    const swing = inBar % 2 ? beatLen * 0.5 * 0.16 : 0;
+    const breathe = step % 64 >= 56;
+    if (beat > 0) {
+      // a soft, round kick on 1 and on the "and" of 3
+      if (!breathe && (inBar === 0 || inBar === 5)) this.tone(t + swing, this.gBeat, { f0: 120, f1: 44, glide: 0.11, peak: 0.24 * beat * (inBar === 0 ? 1 : 0.7), attack: 0.004, decay: 0.42 });
+      // a clap on 2 and 4, mostly in the reverb
+      if (inBar === 2 || inBar === 6) {
+        const clap = this.gain(1);
+        clap.connect(this.gBeat);
+        clap.connect(this.gSend);
+        this.noiseHit(t, clap, { type: "bandpass", freq: 1700, q: 0.9, peak: 0.06 * beat, attack: 0.003, decay: 0.15 });
+        this.noiseHit(t + 0.018, clap, { type: "bandpass", freq: 2100, q: 1.1, peak: 0.04 * beat, attack: 0.002, decay: 0.12 });
+      }
+      // a shaker on every eighth, the off-beats leaning in
+      this.noiseHit(t + swing, this.gBeat, { type: "highpass", freq: 7200, q: 0.7, peak: (inBar % 2 ? 0.026 : 0.014) * beat, attack: 0.004, decay: 0.055 });
+    }
+    // a bass that moves: the root on 1, its octave on the "and" of 2, the
+    // fifth on 4 — round and plucked
+    const bassAt = inBar === 0 ? 0 : inBar === 3 ? 12 : inBar === 6 ? 7 : null;
+    if (bassAt !== null) {
       const o = ctx.createOscillator();
-      o.frequency.value = midi(G_BASS[this.gChord] + 12);
+      o.type = "triangle";
+      o.frequency.value = midi(G_BASS[this.gChord] + bassAt);
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.045 * T.bassVolume, t + 0.12);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + beatLen * 4);
+      const len = inBar === 0 ? beatLen * 1.6 : beatLen * 0.7;
+      g.gain.setValueAtTime(0, t + swing);
+      g.gain.linearRampToValueAtTime(0.06 * T.bassVolume, t + swing + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + swing + len);
       o.connect(g).connect(this.gDry);
-      o.start(t);
-      o.stop(t + beatLen * 4.1);
+      o.start(t + swing);
+      o.stop(t + swing + len + 0.05);
     }
     // the music-box figure, high and unhurried, a touch uneven like a hand
     const k = G_ARP[inBar];
@@ -871,6 +907,24 @@ class AudioEngine {
       this.gNextStep += 60 / T.gardenTempo / 2;
     }
     smooth(this.gMusic.gain, g * T.gardenMusicVolume * left, 0.8);
+    // the switch between the worlds: x runs across it, dw peaks in the middle
+    const x = smoothstep(J.progress, P.through - 0.02, P.out + 0.004);
+    const dw = Math.sin(Math.PI * x) * T.dimensionWarp;
+    // stretched: the delay slides out (the pitch bends down: the dunes'
+    // score sucked away) and back (bends up: the garden's released), wavering
+    smooth(this.dimDelay.delayTime, 0.16 * dw * dw + 0.006 * Math.abs(Math.sin(t * 9)) * dw, 0.06);
+    // muffled and ringing at the peak, smeared into the hall
+    smooth(this.dimFilter.frequency, 380 + 19600 * Math.pow(1 - Math.min(dw, 1), 2.6), 0.06);
+    smooth(this.dimFilter.Q, 0.7 + 7 * Math.min(dw, 1), 0.08);
+    smooth(this.dimSend.gain, 1.6 * dw, 0.1);
+    // the rush of air through the vacuum, its pitch rising then falling
+    smooth(this.vacuumGain.gain, Math.pow(Math.min(dw, 1), 1.5) * 0.3, 0.06);
+    smooth(this.vacuumFilter.frequency, 220 * Math.pow(12, Math.min(dw, 1)), 0.06);
+    // a thump as the worlds change (at the white)
+    if (this.prev.progress < P.through !== J.progress < P.through && t - this.lastDimPop > 1.5 && T.dimensionWarp > 0) {
+      this.lastDimPop = t;
+      this.dimensionPop();
+    }
     this.echo.delayTime.setTargetAtTime((60 / T.musicTempo) * 0.75, t, 0.5);
     if (t >= this.nextBell) {
       if (v < 0.5 && g < 0.5) this.bell(t + 0.05);
@@ -881,7 +935,8 @@ class AudioEngine {
     // bends down in pitch and slows its tremolo (slow motion)
     const fr = J.fracture;
     const w = Math.max(J.crack * 0.75, Math.sin(Math.PI * Math.min(fr / 0.8, 1)));
-    smooth(this.warpGain.gain, w * T.warpVolume * 0.5, 0.15);
+    // (the dunes' sounds: none of them in the garden)
+    smooth(this.warpGain.gain, w * T.warpVolume * 0.5 * (1 - g), 0.15);
     const bend = 1 - 0.42 * Math.min(fr * 1.2, 1);
     for (const { o, ratio } of this.warpTones) smooth(o.frequency, 55 * ratio * bend, 0.25);
     smooth(this.warpFilter.frequency, 260 + 1400 * Math.max(J.crack, 0) * (1 - fr * 0.7), 0.2);
@@ -891,7 +946,9 @@ class AudioEngine {
     smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * left * (1 - g), 0.6);
     smooth(this.musicTone.frequency, 18000 * Math.pow(1 - v, 3) + 220, 0.4);
     smooth(this.musicWet.gain, 0.55 + 1.4 * Math.sin(Math.PI * Math.min(v * 1.2, 1)), 0.5);
-    this.sink = -v * 160; // cents: the held voices sink, new notes start there
+    // cents: the held voices sink (as it vanishes, and sucked down into the
+    // vacuum between the worlds); new notes start there
+    this.sink = -v * 160 - 700 * smoothstep(x, 0.05, 0.5) * T.dimensionWarp;
     for (const { o, base } of this.musicDetuned) o.detune.setTargetAtTime(base + this.sink, t, 0.6);
     smooth(this.vanishGain.gain, Math.sin(Math.PI * v) * T.vanishVolume * 0.18, 0.3);
 

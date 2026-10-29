@@ -8,8 +8,9 @@ export const GARDEN_SUN = new THREE.Vector3(0.5, 0.57, 0.65).normalize();
 export const SKY_GLSL = /* glsl */ `
 vec3 gardenSky(vec3 d, vec3 sunDir) {
   float h = d.y;
-  vec3 zenith = vec3(0.09, 0.28, 0.66);
-  vec3 horizon = vec3(0.58, 0.75, 0.92);
+  // a bright, clear blue, paling to the horizon
+  vec3 zenith = vec3(0.07, 0.3, 0.82);
+  vec3 horizon = vec3(0.6, 0.79, 0.98);
   vec3 col = mix(horizon, zenith, pow(smoothstep(0.0, 0.62, h), 0.75));
   // below the horizon: a soft haze (only seen past the far hills)
   col = mix(col, vec3(0.62, 0.7, 0.72), smoothstep(0.0, -0.12, h));
@@ -38,19 +39,32 @@ float gsFbm(vec2 p) {
   }
   return v;
 }
-// a few soft cumulus, thinning towards the horizon, drifting slowly
-float gardenClouds(vec3 d, float t) {
-  if (d.y < 0.015) return 0.0;
-  vec2 uv = d.xz / (d.y + 0.12) * 0.55 + vec2(t * 0.006, t * 0.002);
-  float c = gsFbm(uv * 1.3);
-  c = smoothstep(0.63, 0.9, c);
-  return c * smoothstep(0.015, 0.16, d.y) * 0.9;
+// soft cumulus drifting across on the wind (uCover of the sky, at uSpeed),
+// their shapes slowly changing as they go (the noise is warped by itself,
+// the warp drifting a little slower than the clouds), thinning towards the
+// horizon; shade: 1 on their sunlit tops, less in their thick undersides
+uniform float uCover;
+uniform float uSpeed;
+float gardenClouds(vec3 d, float t, vec3 sunDir, out float shade) {
+  shade = 1.0;
+  if (d.y < 0.012) return 0.0;
+  vec2 uv = d.xz / (d.y + 0.1) * 0.5;
+  vec2 wind = vec2(0.045, 0.018) * t * uSpeed;
+  float warp = gsFbm(uv * 0.7 + wind * 0.6 + 3.1);
+  vec2 q = uv * 1.25 + wind + warp * 0.7;
+  float c = gsFbm(q);
+  float th = mix(0.78, 0.44, uCover);
+  float dens = smoothstep(th, th + 0.22, c);
+  // the side towards the sun is thinner: lit; deep inside, shaded
+  float toward = gsFbm(q + normalize(sunDir.xz + 1e-4) * 0.08);
+  shade = clamp(0.86 + (c - toward) * 3.0 - smoothstep(th + 0.1, th + 0.4, c) * 0.18, 0.6, 1.08);
+  return dens * smoothstep(0.012, 0.14, d.y);
 }
 `;
 
 export function createSkyMaterial({ clouds = true } = {}) {
   return new THREE.ShaderMaterial({
-    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 } },
+    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 }, uCover: { value: 0.55 }, uSpeed: { value: 1 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -70,10 +84,12 @@ export function createSkyMaterial({ clouds = true } = {}) {
         vec3 col = gardenSky(d, uSunDir);
         ${
           clouds
-            ? `float c = gardenClouds(d, uTime);
-        // lit from the sun's side, a little shaded underneath
-        vec3 cloud = mix(vec3(0.82, 0.86, 0.9), vec3(1.04, 1.02, 0.98), smoothstep(-0.2, 0.6, dot(d, uSunDir)));
-        col = mix(col, cloud, c);`
+            ? `float shade;
+        float c = gardenClouds(d, uTime, uSunDir, shade);
+        // white in the sun, cool grey in their own shade, warmer towards the sun
+        vec3 cloud = mix(vec3(0.7, 0.76, 0.86), vec3(1.08, 1.06, 1.02), smoothstep(0.6, 1.05, shade));
+        cloud *= 0.92 + 0.12 * smoothstep(-0.2, 0.6, dot(d, uSunDir));
+        col = mix(col, cloud, c * 0.95);`
             : ""
         }
         gl_FragColor = vec4(col, 1.0);

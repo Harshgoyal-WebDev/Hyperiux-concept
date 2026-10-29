@@ -103,9 +103,10 @@ function alongSegments(segs, total, rng, out) {
 
 // The mark as a solid, for the particle body: the flat logo extruded
 // `thickness` deep — the four filled shapes as slabs (particles on their
-// faces, round their sides and a few inside), and the cube outline as the
+// faces, round their sides and some inside), and the cube outline as the
 // flat stroke it is in the logo (the SVG's own path, its 7-unit width,
-// through the same depth), so its faces stay empty. Returns positions
+// through the same depth), so its faces stay empty — all at one density, so
+// the cube reads as part of the mark. Returns positions
 // (logo-local metres, centred, y up, z towards the viewer) and per particle
 // its kind (0 slab, 1 cube outline).
 export function sampleLogo3D(count, { height, thickness = 0.9, seed = 17 }) {
@@ -164,31 +165,42 @@ export function sampleLogo3D(count, { height, thickness = 0.9, seed = 17 }) {
   const strokeTotal = strokeSegs.reduce((acc, g) => acc + g.len, 0);
   const pt = new THREE.Vector2();
 
-  // shares: the outline is thin, so it gets more than its area
-  const cubeCount = Math.round(count * 0.22);
+  // shares by surface (metres²), so the cube outline and the slabs are
+  // equally dense — one solid, not a bright cube set into dimmer arms: the
+  // slabs' faces, their sides, the outline's faces and sides, and some
+  // inside for body (so it reads as a solid, not a shell)
+  const faces = 2 * areaTotal * k * k;
+  const sides = outlineTotal * k * thickness;
+  const stroked = strokeTotal * k * (2 * LOGO_SVG.strokeWidth * k + 2 * thickness);
+  const shell = faces + sides + stroked;
+  const inside = 0.14;
+  const cubeShare = (stroked / shell) * (1 - inside);
+  const faceShare = (faces / shell) * (1 - inside);
+  const sideShare = (sides / shell) * (1 - inside);
+  const cubeCount = Math.round(count * cubeShare);
   for (let i = 0; i < count; i++) {
     if (i < cubeCount) {
       const { tx, ty } = alongSegments(strokeSegs, strokeTotal, rng, pt);
-      const across = (rng() - 0.5) * LOGO_SVG.strokeWidth;
-      // most on its faces and edges, some through it
-      const r = rng();
-      const z = r < 0.4 ? (rng() < 0.5 ? -0.5 : 0.5) * thickness : (rng() - 0.5) * thickness;
+      // its faces (front and back) or its sides (along the stroke's edges)
+      const faceSide = rng() < (2 * LOGO_SVG.strokeWidth * k) / (2 * LOGO_SVG.strokeWidth * k + 2 * thickness);
+      const across = faceSide ? (rng() - 0.5) * LOGO_SVG.strokeWidth : (rng() < 0.5 ? -0.5 : 0.5) * LOGO_SVG.strokeWidth;
+      const z = faceSide ? (rng() < 0.5 ? -0.5 : 0.5) * thickness : (rng() - 0.5) * thickness;
       put(i, pt.x - ty * across, pt.y + tx * across, z, 1);
       continue;
     }
-    const r = rng();
-    if (r < 0.5) {
+    const r = rng() * (1 - cubeShare);
+    if (r < faceShare) {
       // front and back faces
       const [x, y] = inTri(pickTri());
       put(i, x, y, (rng() < 0.5 ? -0.5 : 0.5) * thickness, 0);
-    } else if (r < 0.85) {
+    } else if (r < faceShare + sideShare) {
       // round the sides
       alongSegments(outline, outlineTotal, rng, pt);
       put(i, pt.x, pt.y, (rng() - 0.5) * thickness, 0);
     } else {
-      // a few inside
+      // inside
       const [x, y] = inTri(pickTri());
-      put(i, x, y, (rng() - 0.5) * thickness * 0.8, 0);
+      put(i, x, y, (rng() - 0.5) * thickness * 0.85, 0);
     }
   }
   return { positions, kinds, count, metresPerUnit: k };
@@ -216,20 +228,6 @@ export function sampleCube(count, { size = 6, seed = 31 } = {}) {
     }
     p.applyMatrix4(turn);
     out.set([p.x, p.y, p.z], i * 3);
-  }
-  return out;
-}
-
-// a cloud: a ball, densest towards its skin, ragged at the edge
-export function sampleSphere(count, { radius = 5.5, seed = 41 } = {}) {
-  const rng = mulberry32(seed);
-  const out = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const u = rng() * 2 - 1;
-    const a = rng() * Math.PI * 2;
-    const s = Math.sqrt(1 - u * u);
-    const r = radius * (rng() < 0.7 ? 0.86 + rng() * 0.16 : Math.cbrt(rng()));
-    out.set([s * Math.cos(a) * r, u * r, s * Math.sin(a) * r], i * 3);
   }
   return out;
 }

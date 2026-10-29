@@ -26,6 +26,15 @@ const OBJECT_SCHEMA = {
     forgeDuration: [2, 14, 0.1],
     forgeReverse: [0.5, 8, 0.1],
   },
+  Entering: {
+    arriveDuration: [0.5, 8, 0.05],
+    arriveDistance: [0, 600, 1],
+    arriveLift: [0, 200, 1],
+    loaderReveal: [0.4, 5, 0.05],
+    revealWarp: [0, 3, 0.01],
+    revealBlur: [0, 3, 0.01],
+    revealChroma: [0, 3, 0.01],
+  },
   Beam: {
     trailIntensity: [0, 5, 0.01],
     beamFlow: [0, 4, 0.01],
@@ -54,6 +63,10 @@ const GARDEN_SCHEMA = {
     gardenEnvIntensity: [0, 2, 0.01],
     gardenSun: [0, 8, 0.01],
   },
+  Sky: {
+    skyCloudCover: [0, 1, 0.01],
+    skyCloudSpeed: [0, 6, 0.01],
+  },
   Camera: {
     gardenFovOffset: [-15, 20, 0.5],
     gardenOrbitRadius: [0.6, 1.6, 0.01],
@@ -76,6 +89,9 @@ const GARDEN_SCHEMA = {
   },
   Flowers: {
     flowerDensity: [0, 1, 0.01],
+    tulipDensity: [0, 1, 0.01],
+    daisyDensity: [0, 1, 0.01],
+    spireDensity: [0, 1, 0.01],
     flowerHeight: [0.3, 4, 0.01],
     flowerSize: [0.3, 4, 0.01],
     tulipRed: "color",
@@ -106,6 +122,8 @@ const GARDEN_SCHEMA = {
     gardenHoverRadius: [0.2, 8, 0.01],
     gardenHoverStrength: [0, 3, 0.01],
     gardenHoverLinger: [0.05, 4, 0.01],
+    gardenHoverSmooth: [0.01, 0.5, 0.005],
+    gardenHoverWake: [0, 0.8, 0.01],
     gardenWind: [0, 3, 0.01],
     gardenGlow: [0, 4, 0.01],
     gardenGlowRadius: [0.2, 6, 0.01],
@@ -113,9 +131,9 @@ const GARDEN_SCHEMA = {
   },
   Pond: {
     pondReflect: [0, 1, 0.01],
-    pondDistortion: [0, 0.2, 0.001],
+    pondDistortion: [0, 0.5, 0.001],
     pondCurrentSpeed: [0, 4, 0.01],
-    pondCurrentScale: [0.2, 4, 0.01],
+    pondCurrentScale: [0.2, 8, 0.01],
     pondRippleStrength: [0, 4, 0.01],
     pondRippleForce: [0, 4, 0.01],
     pondRippleRadius: [0.1, 3, 0.01],
@@ -135,15 +153,21 @@ const GARDEN_SCHEMA = {
     logoColorD: "color",
     logoMorphSpeed: [0.2, 8, 0.01],
     logoMorphStagger: [0, 0.8, 0.01],
-    logoMorphPull: [0, 15, 0.1],
-    logoSpring: [1, 60, 0.1],
+    logoGatherSpeed: [0.1, 4, 0.01],
+    logoGatherStagger: [0, 0.8, 0.01],
+    logoGatherWhirl: [0, 15, 0.1],
+    logoMorphPull: [0, 30, 0.1],
+    logoSpring: [1, 120, 0.1],
     logoDamping: [0.8, 0.995, 0.001],
     logoFlow: [0, 4, 0.01],
     logoSwirlSpeed: [0, 4, 0.01],
+    logoInfinitySpeed: [0, 1, 0.005],
+    logoInfinitySize: [3, 16, 0.1],
+    logoInfinityTube: [0.3, 4, 0.05],
     logoHoverRadius: [0.02, 0.4, 0.005],
-    logoHoverForce: [0, 4, 0.01],
+    logoHoverForce: [0, 8, 0.01],
     logoDrag: [0, 4, 0.01],
-    logoScatterTime: [0.1, 5, 0.05],
+    logoScatterTime: [0.1, 10, 0.05],
     logoViscosity: [0, 0.9, 0.01],
     logoRepulsion: [0, 0.2, 0.001],
     logoCoreGlow: [0, 3, 0.01],
@@ -171,7 +195,9 @@ const WORLD_SCHEMA = {
     lightVolume: [0, 2, 0.01],
     gardenVolume: [0, 2, 0.01],
     gardenMusicVolume: [0, 2, 0.01],
-    gardenTempo: [40, 100, 1],
+    gardenTempo: [40, 120, 1],
+    gardenBeatVolume: [0, 2, 0.01],
+    dimensionWarp: [0, 2, 0.01],
     pondVolume: [0, 2, 0.01],
     swooshVolume: [0, 2, 0.01],
     logoVolume: [0, 2, 0.01],
@@ -183,6 +209,8 @@ const WORLD_SCHEMA = {
     night: "bool",
     moonIntensity: [0, 6, 0.01],
     moonColor: "color",
+    nightAmbient: [0, 4, 0.01],
+    nightAmbientColor: "color",
     stars: [0, 3, 0.01],
   },
   "Lighting & atmosphere": {
@@ -268,6 +296,20 @@ const BREAK_SCHEMA = {
     streamTail: [0.02, 1, 0.01],
     streamWidth: [0, 20, 0.1],
     streamLoose: [0, 1, 0.01],
+  },
+  "Pointer stir": {
+    breakStirForce: [0, 4, 0.01],
+    breakStirRadius: [0.01, 0.3, 0.005],
+    breakStirLinger: [0.05, 4, 0.01],
+    breakStirAlong: [0, 2, 0.01],
+    breakStirApart: [0, 2, 0.01],
+    breakStirSmooth: [0.005, 0.5, 0.005],
+    breakStirWake: [0, 0.8, 0.01],
+    breakStirSpread: [0, 1, 0.01],
+    breakStirSand: [0, 3, 0.01],
+    breakStirGravel: [0, 3, 0.01],
+    breakStirEase: [0.01, 1, 0.01],
+    breakStirGlow: [0, 2, 0.01],
   },
   "Sand & gravel": {
     crumbleSand: [0, 60000, 100],
@@ -364,9 +406,13 @@ export default function TuningPanel({ onScrub }) {
   }, [worldStore]);
 
   // one column down the right, half as wide again as Leva's default so the
-  // labels fit; it scrolls when the open panels run past the screen
+  // labels fit; it scrolls when the open panels run past the screen (its
+  // wheel and touch are kept from the page's smooth scroll: Lenis honours
+  // data-lenis-prevent, and the page's own wheel listener never hears it)
   return (
     <div
+      data-lenis-prevent
+      onWheel={(e) => e.stopPropagation()}
       style={{
         position: "fixed",
         top: 84, // (below the header's controls)

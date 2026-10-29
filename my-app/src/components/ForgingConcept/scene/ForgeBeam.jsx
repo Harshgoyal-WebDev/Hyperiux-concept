@@ -276,10 +276,10 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const u = built.beam.material.uniforms;
     const front = Math.max(T.beamStart, built.intro);
     const head = front + (1 - front) * J.beam;
-    // The load-in race runs on the page's own clock (0.5 s in, 2.8 s long,
-    // eased in and out), so nothing can rewind it; a review frame sets
-    // J.intro to skip it.
-    const k = THREE.MathUtils.clamp((performance.now() / 1000 - 0.5) / 2.8, 0, 1);
+    // The load-in race runs on the page's own clock (0.5 s after the visitor
+    // enters, 2.8 s long, eased in and out), so nothing can rewind it; a
+    // review frame sets J.intro to skip it.
+    const k = THREE.MathUtils.clamp((performance.now() / 1000 - J.enterAt - 0.5) / 2.8, 0, 1);
     const race = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     u.uHead.value = THREE.MathUtils.lerp(built.intro, head, Math.max(race, J.intro));
     // once the core has taken the energy the beam settles to a quieter glow

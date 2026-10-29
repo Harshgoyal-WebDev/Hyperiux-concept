@@ -9,14 +9,15 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import Scene from "./scene/Scene";
-import { AssetBadge, GardenCopy, HeroOverlay, ProgressRail } from "./Overlays";
-import WhiteWebsite from "./WhiteWebsite";
+import { AssetBadge, GardenCopy, HeroOverlay } from "./Overlays";
+import HomeSections from "@/components/HyperiuxHome/HomeSections";
 import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
+import Loader, { LoaderCover } from "./Loader";
 import { buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
-import { ASSETS, JOURNEY_VH, P, RAIL, SCROLL_VH, STATES, detectTier, detectWebGL, sectionAt } from "./config";
+import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, sectionAt } from "./config";
 import { GARDEN_SECTIONS } from "./content";
 import { CTA } from "./content";
 
@@ -97,7 +98,7 @@ export default function ForgingConcept() {
       <main className="w-full">
         <Header />
         <StaticJourney />
-        <WhiteWebsite />
+        <HomeSections />
       </main>
     );
   }
@@ -106,15 +107,17 @@ export default function ForgingConcept() {
       <main className="w-full">
         <Header />
         <ReducedStill tier={env.tier} />
-        <WhiteWebsite />
+        <HomeSections />
       </main>
     );
   }
   return (
     <main className="w-full">
+      {/* (until the client knows its setup, the server's loader covers the page) */}
+      {!env && <LoaderCover />}
       <Header nightToggle />
       <Journey env={env} />
-      <WhiteWebsite />
+      <HomeSections />
     </main>
   );
 }
@@ -239,17 +242,29 @@ const TRAVEL_VH = JOURNEY_VH - 100; // scroll travel of the pinned section
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 const linear = (t) => t;
 
+// The loader (Loader.jsx) holds the page until the scene is in; a review
+// frame (?p=) skips it.
+const wantsLoader = () => typeof window !== "undefined" && !new URLSearchParams(window.location.search).has("p");
+
 function Journey({ env }) {
   // Plain state object written by the GSAP timeline, read by the scene.
-  const [J] = useState(createJourneyState);
+  // Behind the loader the beam's race waits and the camera waits far off.
+  const [J] = useState(() => {
+    const j = createJourneyState();
+    if (wantsLoader()) {
+      j.enterAt = Infinity;
+      j.arrive = 0;
+    }
+    return j;
+  });
+  const withLoader = useState(wantsLoader)[0];
+  const [entered, setEntered] = useState(() => !withLoader); // clicked in (or no loader)
+  const [settled, setSettled] = useState(() => !withLoader); // ...and the camera has (mostly) arrived: the scroll is free
   const [asset, setAsset] = useForgeAsset();
   const lenis = useLenis();
 
   const sectionRef = useRef(null);
   const heroRef = useRef(null);
-  const railRef = useRef(null);
-  const railFillRef = useRef(null);
-  const railItemRefs = useRef([]);
   const hudRef = useRef(null);
   const glowRef = useRef(null);
   const portalRef = useRef(null);
@@ -277,8 +292,11 @@ function Journey({ env }) {
     };
   }, []);
 
-  // Pause rendering when the hero is off screen; release the GPU entirely
-  // when it is far out of view, rebuild on approach.
+  // Pause rendering when the hero is off screen. On the low tier the GPU is
+  // released entirely when it is far out of view (rebuilt on approach);
+  // otherwise the scene is kept, so scrolling back up from the site lands
+  // straight in the garden as it was, with nothing to rebuild.
+  const releaseOffscreen = env?.tier?.name === "low";
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -288,7 +306,7 @@ function Journey({ env }) {
         clearTimeout(unmountTimer);
         setRendering(entry.isIntersecting);
         if (entry.isIntersecting) setMounted(true);
-        else unmountTimer = setTimeout(() => setMounted(false), 1500);
+        else if (releaseOffscreen) unmountTimer = setTimeout(() => setMounted(false), 1500);
       },
       { rootMargin: "100% 0px 100% 0px" }
     );
@@ -297,17 +315,38 @@ function Journey({ env }) {
       clearTimeout(unmountTimer);
       io.disconnect();
     };
-  }, []);
+  }, [releaseOffscreen]);
 
   // Hero entrance (time-based, independent of scroll): the copy reveals.
   // (The beam's own load-in race runs in ForgeBeam, on the page clock.)
+  // (after the loader: once the camera has mostly arrived)
   useGSAP(
     () => {
-      gsap.from("[data-hero-line]", { yPercent: 110, duration: 1.4, stagger: 0.12, ease: "power4.out", delay: 0.3 });
-      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, stagger: 0.1, ease: "power3.out", delay: 0.7 });
+      if (!entered) return;
+      const lead = withLoader ? T.arriveDuration * 0.45 : 0;
+      gsap.from("[data-hero-line]", { yPercent: 110, duration: 1.4, stagger: 0.12, ease: "power4.out", delay: lead + 0.3 });
+      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, stagger: 0.1, ease: "power3.out", delay: lead + 0.7 });
     },
-    { scope: heroRef, dependencies: [J] }
+    { scope: heroRef, dependencies: [J, entered, withLoader] }
   );
+
+  // Behind the loader the page stays at the top, its scroll held; entering
+  // starts the beam's race and brings the scene in from far off, and the
+  // scroll is handed back as the camera settles.
+  useEffect(() => {
+    if (settled || !lenis) return;
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    lenis.scrollTo(0, { immediate: true, force: true });
+    lenis.stop();
+    return () => lenis.start();
+  }, [settled, lenis]);
+  const enter = useCallback(() => {
+    startJourney(J);
+    // (the click is the gesture the browser needs before sound can start)
+    if (!soundOn()) setSound(true);
+    setEntered(true);
+    gsap.delayedCall(T.arriveDuration * 0.6, () => setSettled(true));
+  }, [J]);
 
   const lenisRef = useRef(null);
   useEffect(() => {
@@ -341,7 +380,6 @@ function Journey({ env }) {
       const section = sectionRef.current;
       if (!section) return;
       const tl = buildMasterTimeline(J, { hero: heroRef.current });
-      const railItems = railItemRefs.current;
       const st = ScrollTrigger.create({ trigger: section, start: "top top", end: "bottom bottom" });
       const D = driver.current;
       D.auto = null;
@@ -357,8 +395,6 @@ function Journey({ env }) {
         deriveBreak(J);
         // the light of the cube outline filling the frame, between the worlds
         if (glowRef.current) glowRef.current.style.opacity = String(J.flash);
-        if (railFillRef.current) railFillRef.current.style.transform = `scaleX(${p})`;
-        railItems.forEach((el, i) => el && el.setAttribute("data-active", String(RAIL[i].at <= p + 0.002)));
         if (hudRef.current) {
           const state = STATES.find((s) => p < s.end) || STATES.at(-1);
           const mode = D.auto ? "auto (locked)" : D.review ? "review" : "free";
@@ -459,7 +495,7 @@ function Journey({ env }) {
         });
         // the portal: the screen fades smoothly to white, onto the site below
         if (portalRef.current) {
-          const w = Math.min(Math.max(J.portal, 0), 1);
+          const w = Math.min(Math.max(J.whiteout, 0), 1);
           portalRef.current.style.opacity = String(w * w * (3 - 2 * w));
         }
       };
@@ -515,7 +551,7 @@ function Journey({ env }) {
     { scope: sectionRef, dependencies: [J, resizeKey, pToY] }
   );
 
-  // Rail / panel jumps to a scroll fraction. A rail jump glides there and
+  // Panel jumps to a scroll fraction. A jump glides there and
   // the driver picks up where it lands (inside the event it plays on to the
   // forged logo); a panel scrub is held as a review frame.
   const jump = useCallback(
@@ -582,11 +618,11 @@ function Journey({ env }) {
         />
 
         {/* the portal at the end of the garden: white, onto the site */}
-        <div ref={portalRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-[#fff9f1] opacity-0" />
+        <div ref={portalRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-white opacity-0" />
 
+        {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
         <HeroOverlay ref={heroRef} />
         <GardenCopy blockRefs={copyRefs} />
-        <ProgressRail ref={railRef} fillRef={railFillRef} itemRefs={railItemRefs} onJump={jump} />
         <AssetBadge problem={asset?.problem} />
         {env?.stats && <TuningPanel onScrub={jump} />}
         {env?.debug && (
@@ -598,6 +634,13 @@ function Journey({ env }) {
       <span data-journey-end className="absolute bottom-0 left-0 h-px w-px" aria-hidden="true" />
     </section>
   );
+}
+
+// The visitor clicks in: the beam's race starts, and the scene comes in
+// from far off (Rig.jsx).
+function startJourney(J) {
+  J.enterAt = performance.now() / 1000;
+  gsap.to(J, { arrive: 1, duration: T.arriveDuration, ease: "none" });
 }
 
 function clamp01(v) {

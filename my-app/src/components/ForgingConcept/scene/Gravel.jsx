@@ -48,6 +48,7 @@ function patch(material, uniforms, pieces) {
         uniform float uFade;
         varying float vGvTint;
         varying float vGvHot;
+        varying float vGvStir;
         mat3 gvRot;
         vec3 gvPos;
         vec3 gvScale;`
@@ -58,6 +59,8 @@ function patch(material, uniforms, pieces) {
         {
           float g = breakupFlow(int(aGravel.x + 0.5), aLocal, aGravel.y, aDrift, gvPos);
           float s = aGravel.w;
+          float heat;
+          gvPos = breakupStir(gvPos, s, heat);
           // chips off at a little under full size, never seen growing from nothing
           float size = g < 0.0 ? 0.0 : aGravel.z * uGravelSize * uFade * mix(0.6, 1.0, smoothstep(0.0, 0.12, g));
           gvScale = size * vec3(1.0, 0.55 + 0.45 * fract(s * 3.17), 0.7 + 0.3 * fract(s * 5.71));
@@ -75,6 +78,7 @@ function patch(material, uniforms, pieces) {
           objectNormal = gvRot * objectNormal;
           vGvTint = fract(s * 13.7);
           vGvHot = g < 0.0 ? 0.0 : step(0.72, fract(s * 4.3)) * (1.0 - smoothstep(0.0, 0.5, g));
+          vGvStir = g < 0.0 ? 0.0 : heat;
         }`
       )
       .replace("#include <begin_vertex>", "vec3 transformed = gvRot * (position * gvScale) + gvPos;");
@@ -84,10 +88,11 @@ function patch(material, uniforms, pieces) {
         `#include <common>
         uniform vec3 uHotColor;
         varying float vGvTint;
-        varying float vGvHot;`
+        varying float vGvHot;
+        varying float vGvStir;`
       )
       .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.65, 1.3, vGvTint);")
-      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 2.2;");
+      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 2.2 + vec3(1.7, 1.5, 1.2) * vGvStir * 1.6;");
   };
   material.customProgramCacheKey = () => "forge-gravel";
 }
@@ -144,6 +149,7 @@ export default function Gravel({ J, tier, shared, forge }) {
     if (!on) return;
     const u = built.uniforms;
     u.uGravelSize.value = T.gravelSize;
+    u.uStirAmount.value = T.breakStirGravel;
     // shrinks away in the light before the worlds switch
     u.uFade.value = 1 - THREE.MathUtils.smoothstep(J.flash, 0.3, 0.9);
     u.uHotColor.value.set(T.crackColor);

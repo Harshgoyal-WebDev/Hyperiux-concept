@@ -395,6 +395,14 @@ export default function Forge({ J, shared, groundY, onReady }) {
   useLayoutEffect(() => {
     if (!built || forge.missing) return;
     const root = forge.object;
+    // (baked at rest, wherever the pieces are now: a reload mid-breakup)
+    const rest = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), scale: new THREE.Vector3() };
+    for (const c of forge.chunks) {
+      pieceFlight(forge, c, 0, rest);
+      c.mesh.position.copy(rest.position).sub(forge.object.position).divideScalar(forge.scale);
+      c.mesh.quaternion.copy(rest.quaternion);
+      c.mesh.scale.copy(rest.scale);
+    }
     root.updateMatrixWorld(true);
     const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
     const groups = new Map(); // material → geometries (in root space)
@@ -452,8 +460,12 @@ export default function Forge({ J, shared, groundY, onReady }) {
     if (!built || J.inGarden) return;
     const { U, stages, halo, point } = built;
     U.uCrackSpread.value = J.crackSpread * T.crackSpread;
+    // at night the core keeps its cracks but not its glow (the point, the
+    // halo, the light in the cube's openings) — back only as the camera
+    // flies into the cube's light on the way to the garden
+    const lit = 1 - shared.uNight.value * (1 - J.flash);
     // the light filling the cube outline's openings
-    const fill = J.innerGlow * T.innerGlow;
+    const fill = J.innerGlow * T.innerGlow * lit;
     built.fill.visible = fill > 0.001;
     built.fill.material.color.copy(built.fillColor).multiplyScalar(fill * 3);
     U.uFissureGlow.value = T.fissureGlow;
@@ -518,9 +530,9 @@ export default function Forge({ J, shared, groundY, onReady }) {
     point.scale.setScalar(r * (0.9 + 1.3 * Math.min(glow, 2.4) + 3 * J.pulse));
     // (kept at full strength as the camera comes close: on the way to the
     // garden it flies into this light)
-    point.material.opacity = Math.min(0.35 + glow * 0.5 + J.pulse, 1);
+    point.material.opacity = Math.min(0.35 + glow * 0.5 + J.pulse, 1) * lit;
     halo.scale.setScalar(r * (3 + 4 * Math.min(glow, 2.4) + 8 * J.pulse));
-    halo.material.opacity = Math.min(0.2 + glow * 0.45 + J.pulse * 0.8, 1);
+    halo.material.opacity = Math.min(0.2 + glow * 0.45 + J.pulse * 0.8, 1) * lit;
     halo.material.color.set(T.crackColor);
 
     // the impact: the shell bursts out and fades, the core flares
@@ -535,7 +547,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
       point.material.opacity = Math.min(point.material.opacity + burst, 1);
     }
     if (coreLight.current) {
-      coreLight.current.intensity = (40 + glow * glow * 520 + J.pulse * 1800 + J.innerGlow * 90 + burst * 4000 * T.breakImpact) * T.coreLight;
+      coreLight.current.intensity = ((40 + glow * glow * 520 + J.pulse * 1800 + J.innerGlow * 90) * (0.15 + 0.85 * lit) + burst * 4000 * T.breakImpact) * T.coreLight;
       coreLight.current.color.set(T.crackColor);
     }
   });

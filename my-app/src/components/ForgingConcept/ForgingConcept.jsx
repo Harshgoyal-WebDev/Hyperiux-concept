@@ -15,8 +15,8 @@ import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
-import { buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
-import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, eventAt, sectionAt } from "./config";
+import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
+import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, sectionAt } from "./config";
 import { GARDEN_SECTIONS } from "./content";
 import { CTA } from "./content";
 
@@ -286,6 +286,20 @@ function Journey({ env, onGarden }) {
     return () => window.removeEventListener(QUALITY_EVENT, sync);
   }, [env]);
   const [resizeKey, setResizeKey] = useState(0);
+
+  // Rebuild the timeline when the panel changes a value it is built from
+  useEffect(() => {
+    let t;
+    const retime = () => {
+      clearTimeout(t);
+      t = setTimeout(() => setResizeKey((k) => k + 1), 200);
+    };
+    window.addEventListener("forging-concept:retime", retime);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("forging-concept:retime", retime);
+    };
+  }, []);
 
   // Rebuild the timeline after resizes (the pinned section's length changes).
   useEffect(() => {
@@ -659,14 +673,6 @@ function Journey({ env, onGarden }) {
 function startJourney(J) {
   J.enterAt = performance.now() / 1000;
   gsap.to(J, { arrive: 1, duration: T.arriveDuration, ease: "none" });
-}
-
-// Where the broken rock has ground away into sand (the impact spent, the
-// pieces thrown out and worn to grains): the end of the auto-scrolled part
-// of the forging event.
-function brokenAt() {
-  const end = Math.max(T.breakEnd, T.breakStart + 0.02);
-  return eventAt(T.breakStart + Math.max(T.breakBurstEnd, T.breakBlastEnd, T.breakGrindEnd) * (end - T.breakStart));
 }
 
 function clamp01(v) {

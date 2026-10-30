@@ -655,7 +655,7 @@ export default function ParticleLogo({ J, tier, time }) {
     s.ndc.copy(s.core).add(GARDEN_ORIGIN);
     const depth = s.ndc.distanceTo(camera.position);
     s.ndc.project(camera);
-    const reach = 5.2 / Math.max(depth * u.uTanHalf.value, 1e-3); // the body's radius, in NDC heights
+    const reach = (5.2 * T.logoScale) / Math.max(depth * u.uTanHalf.value, 1e-3); // the body's radius, in NDC heights
     const off = Math.hypot((pointer.x - s.ndc.x) * u.uAspect.value, pointer.y - s.ndc.y);
     const over = s.ndc.z < 1 ? 1 - THREE.MathUtils.smoothstep(off, reach * 0.6, reach * 1.05) : 0;
     J.logoStir = over * Math.min(s.vel.length() * 1.6, 1) * u.uHover.value;
@@ -675,6 +675,9 @@ export default function ParticleLogo({ J, tier, time }) {
     yaw[3] = facing + s.lean * 0.5;
     yaw[4] = facing + s.lean * 0.5;
     u.uTilt.value = s.tilt;
+    // the mark at its size, standing on the same base over the pond
+    u.uScale.value[1] = T.logoScale;
+    u.uCentre.value[1].y = GARDEN.shapes.mark.y + (T.logoScale - 1) * 5.25;
     u.uScale.value[4] = 1 + J.portal * 1.8;
     // the forms that face the camera (the mark, the infinity, the torus)
     // turn with it as it revolves: the bubbles are carried round by the same

@@ -16,7 +16,9 @@ vec3 gardenSky(vec3 d, vec3 sunDir) {
   col = mix(col, vec3(0.42, 0.62, 0.86), smoothstep(0.0, -0.12, h));
   float sun = max(dot(d, sunDir), 0.0);
   col += vec3(1.0, 0.93, 0.8) * pow(sun, 7.0) * 0.18;
-  col += vec3(1.0, 0.96, 0.88) * smoothstep(0.9993, 0.9997, sun) * 8.0;
+  // the disc: round, its edge about a pixel wide
+  float sunA = acos(clamp(dot(d, sunDir), -1.0, 1.0));
+  col = mix(col, vec3(1.0, 0.97, 0.9) * 3.0, 1.0 - smoothstep(0.0288, 0.0312, sunA));
   return col;
 }
 `;

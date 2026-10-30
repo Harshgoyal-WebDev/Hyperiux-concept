@@ -119,6 +119,7 @@ export const T = {
   grassDensity: 1.0, // share of the blades drawn
   grassHeight: 2.19,
   grassWidth: 3.0,
+  grassBlend: 0.6, // the blades merging into one sward (0 = each blade distinct; 1 = one surface, tips still pointed)
   grassRoot: "#1f3a12",
   grassMid: "#3f6b22",
   grassTip: "#7fae3c",
@@ -179,6 +180,7 @@ export const T = {
   pondShallow: "#01520d",
   pondClarity: 0, // opacity over the shallows
   // the bubble logo
+  logoScale: 1.25, // the particle mark's size (1 = as modelled)
   logoParticleSize: 0.46, // bubble size
   logoParticleGlow: 1.12, // how bright they are
   logoSpecular: 0.61, // their glossy highlight
@@ -234,14 +236,33 @@ export const T = {
   grainOpacity: 3.0,
   grainSize: 3.0,
   grainColorDay: "#482100", // sand kicked up by the pointer, by day
-  grainColorNight: "#25262e", // ...and in moonlight
+  grainColorNight: "#3f3f58", // ...and in moonlight
 
   // Air
   dust: 3.0,
 
+  // The breakup on the scroll: vh of scrolling after the beam reaches the core
+  // (the event is SCROLL_VH.event = 200 vh long: 200 = the forged logo).
+  // These set the shares below every frame (timeline.js syncSequence).
+  seqBreak: 20, // the rock breaks (the impact)
+  seqImpactEnd: 41.6, // the impact's energy has dissipated
+  seqBlastEnd: 38, // the blast has thrown the pieces out
+  seqGatherStart: 48.8, // the pieces start to be drawn in towards the streams...
+  seqGatherEnd: 155, // ...and are riding them
+  seqSpinStart: 20, // the streams start to pick up speed...
+  seqSpinEnd: 133.4, // ...and are up to full speed
+  seqGrindStart: 20, // the pieces start to grind away into sand and gravel...
+  seqGrindEnd: 108.2, // ...and are all sand: the auto-scroll hands back to the visitor here
+  seqSandFlow: 108, // how long (vh) a grain takes to find its place in its stream
+  seqBreakEnd: 200, // the breakup is over
+
+  // The beam's run to the core
+  beamAccel: 0.35, // how much it speeds up into the core (0 = an even pace all the way; 0.9 = it rushes the last stretch)
+  cameraSettle: 0.12, // share of the run to the core the camera spends easing to a stop (lower = it keeps moving to the end)
+
   // Forging event: when the excess rock breaks away, as shares of the event
-  // (0 = the beam reaches the core, 1 = the forged logo); the crack glow
-  // fills in over roughly the first 0.15
+  // (0 = the beam reaches the core, 1 = the forged logo) — set from seqBreak
+  // / seqBreakEnd above
   breakStart: 0.1,
   breakEnd: 1.0,
   // the pointer stirring the broken rock's sand and gravel
@@ -263,6 +284,7 @@ export const T = {
   breakSpin: 0.6, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)
+  // — set from the seq values above
   breakBurstEnd: 0.12, // the impact's energy has dissipated
   breakBlastEnd: 0.1, // the blast has thrown the pieces out
   breakGatherStart: 0.16, // they start to be drawn in towards the streams...

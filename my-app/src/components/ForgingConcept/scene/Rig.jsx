@@ -176,7 +176,7 @@ export function Lights({ J, tier, shared }) {
   const { camera, scene, gl } = useThree();
   const focus = useMemo(() => new THREE.Vector3(), []);
   const fwd = useMemo(() => new THREE.Vector3(), []);
-  const shadow = useMemo(() => ({ key: "", forge: false }), []);
+  const shadow = useMemo(() => ({ key: "", eventT: -1, forge: false }), []);
   useEffect(() => {
     gl.shadowMap.autoUpdate = false;
     gl.shadowMap.needsUpdate = true;
@@ -199,8 +199,11 @@ export function Lights({ J, tier, shared }) {
       if (!J.inGarden) {
         const key = `${focus.x},${focus.z}`;
         // (and once the forge has arrived in the scene)
-        if (key !== shadow.key || (J.eventT > 0 && J.eventT < 1) || J.forgeReady !== shadow.forge) gl.shadowMap.needsUpdate = true;
+        // (and whenever the event's clock moves: the pieces' shadows go with
+        // them, back to the whole slab's when scrolled back past the core)
+        if (key !== shadow.key || J.eventT !== shadow.eventT || J.forgeReady !== shadow.forge) gl.shadowMap.needsUpdate = true;
         shadow.key = key;
+        shadow.eventT = J.eventT;
         shadow.forge = J.forgeReady;
       }
       s.target.position.copy(focus);

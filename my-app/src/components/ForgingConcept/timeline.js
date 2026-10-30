@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import { T } from "./tuning";
-import { OPENING_NOMINAL as O, P, afterAt, eventAt, sectionAt } from "./config";
+import { OPENING_NOMINAL as O, P, SCROLL_VH, afterAt, eventAt, sectionAt } from "./config";
 
 // Plain mutable state the master timeline writes and the 3D scene reads in
 // useFrame. Values here are the State 01 (monolith) pose.
@@ -93,15 +93,29 @@ const glide = (rise, settle) => {
   return (x) =>
     x < rise ? (v * x * x) / (2 * rise) : x <= 1 - settle ? v * (x - rise / 2) : 1 - (v * (1 - x) * (1 - x)) / (2 * settle);
 };
-const SHOTS = [
+// Where the broken rock has ground away into sand (the impact spent, the
+// pieces thrown out and worn to grains): the end of the auto-scrolled part
+// of the forging event (ForgingConcept), and where the camera sets off for
+// the logo — so the visitor's own scroll moves it straight away.
+export function brokenAt() {
+  const end = Math.max(T.breakEnd, T.breakStart + 0.02);
+  return eventAt(T.breakStart + Math.max(T.breakBurstEnd, T.breakBlastEnd, T.breakGrindEnd) * (end - T.breakStart));
+}
+
+// the run at the opening: under way from the first scroll (a steady share),
+// gathering pace into the opening
+const runIn = (x) => 0.4 * x + 0.6 * (1 - Math.cos((x * Math.PI) / 2));
+
+const shots = () => [
   [0, [0, 7, 155], [0, 26.9, 0], 45.9], // 01 the sand-dune hero: low, square on, sun to the right
   // 02–03 from the first scroll, one uninterrupted rise and push in to the
   // still shot as the beam reaches the core
-  [P.core, ...EVENT_SHOT, glide(0.08, 0.22)],
-  [P.forged, ...EVENT_SHOT], // 04–08 still
-  // 09–13: from the still shot, one straight run at the cube outline's
-  // opening — no swing, no stop — gathering pace into it and on through
-  [P.through, [O.x, O.y, 0.3], [O.x, O.y - 0.6, -40], 44, "sine.in"],
+  [P.core, ...EVENT_SHOT, glide(0.08, Math.min(Math.max(T.cameraSettle, 0.01), 0.6))],
+  [Math.min(brokenAt(), P.forged), ...EVENT_SHOT], // 04–06 still, through the impact and the grinding
+  // 07–13: as soon as the rock has ground to sand (the visitor scrolling
+  // again), one straight run at the cube outline's opening — no swing, no
+  // stop — gathering pace into it and on through
+  [P.through, [O.x, O.y, 0.3], [O.x, O.y - 0.6, -40], 44, runIn],
   // 14–20 the garden: one continuous path of composed shots round the pond
   // (world/gardenCamera.js, from the scroll), taken over by the CameraRig
 ];
@@ -111,7 +125,30 @@ const SHOTS = [
 // rock breaks away, the line on the stone goes with it, and the swirl it
 // turns into picks up speed. Called after every timeline update.
 const sineOut = (x) => Math.sin((Math.min(Math.max(x, 0), 1) * Math.PI) / 2);
+// The breakup's timing, set in the panel as vh of scroll after the core
+// (T.seq*), into the shares the breakup runs on (T.breakStart … T.breakSandFlow).
+const clamp01 = (x) => Math.min(Math.max(x, 0), 1);
+export function syncSequence() {
+  const E = SCROLL_VH.event;
+  const a = Math.min(Math.max(T.seqBreak, 0), E - 4);
+  const b = Math.min(Math.max(T.seqBreakEnd, a + 4), E);
+  const share = (vh) => clamp01((vh - a) / (b - a));
+  T.breakStart = a / E;
+  T.breakEnd = b / E;
+  T.breakBurstEnd = Math.max(share(T.seqImpactEnd), 0.01);
+  T.breakBlastEnd = Math.max(share(T.seqBlastEnd), 0.01);
+  T.breakGatherStart = share(T.seqGatherStart);
+  T.breakGatherEnd = Math.max(share(T.seqGatherEnd), T.breakGatherStart + 0.01);
+  T.breakSpinStart = share(T.seqSpinStart);
+  T.breakSpinEnd = Math.max(share(T.seqSpinEnd), T.breakSpinStart + 0.01);
+  T.breakGrindStart = share(T.seqGrindStart);
+  T.breakGrindEnd = Math.max(share(T.seqGrindEnd), T.breakGrindStart + 0.01);
+  T.breakSandFlow = Math.min(Math.max(T.seqSandFlow / (b - a), 0.01), 1);
+}
+syncSequence();
+
 export function deriveBreak(J) {
+  syncSequence();
   const start = T.breakStart;
   const end = Math.max(T.breakEnd, start + 0.02);
   const t = J.eventT;
@@ -135,7 +172,7 @@ export function buildMasterTimeline(J, dom) {
       tl,
       J,
       key,
-      SHOTS.map(([t, p, q, f, ease]) => [t, pick(p, q, f), ease])
+      shots().map(([t, p, q, f, ease]) => [t, pick(p, q, f), ease])
     );
   axis("camX", (p) => p[0]);
   axis("camY", (p) => p[1]);
@@ -175,17 +212,20 @@ export function buildMasterTimeline(J, dom) {
   ]);
 
   // ----- 02–03: the beam runs along the sand, then climbs into the core
-  // One continuous travel at a steady pace (by distance along the path) all
-  // the way into the core, after a short ease-in whose end speed matches
-  // that pace, so the beam never slows or stalls on the way.
+  // One continuous travel (by distance along the path) all the way into the
+  // core, speeding up into it by T.beamAccel (0: an even pace), after a short
+  // ease-in whose end speed matches the run's, so it never stalls on the way.
   {
     const t0 = P.hero * 0.6;
     const d1 = 0.015; // the ease-in
     const d2 = P.core - t0 - d1;
-    const k = (2 * d1) / (Math.PI * d2);
+    const acc = Math.min(Math.max(T.beamAccel, 0), 0.9);
+    // the run: speed (1 - acc) at its start rising to (1 + acc) at the core
+    const run = (u) => u + acc * (u * u - u);
+    const k = (2 * d1 * (1 - acc)) / (Math.PI * d2);
     const x1 = k / (1 + k); // distance covered by the ease-in (sine.in ends at π/2 × its mean speed)
     seg(tl, J, "beam", 0, x1, t0, t0 + d1, "sine.in");
-    seg(tl, J, "beam", x1, 1, t0 + d1, P.core, "none");
+    seg(tl, J, "beam", x1, 1, t0 + d1, P.core, run);
   }
   track(tl, J, "beamSparks", [
     [P.hero * 0.5, 0],

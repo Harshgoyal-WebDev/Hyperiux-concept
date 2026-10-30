@@ -35,6 +35,10 @@ const OBJECT_SCHEMA = {
     revealBlur: [0, 3, 0.01],
     revealChroma: [0, 3, 0.01],
   },
+  "Beam to the core": {
+    beamAccel: [0, 0.9, 0.01],
+    cameraSettle: [0.01, 0.6, 0.01],
+  },
   Beam: {
     trailIntensity: [0, 5, 0.01],
     beamFlow: [0, 4, 0.01],
@@ -81,6 +85,7 @@ const GARDEN_SCHEMA = {
     grassDensity: [0, 1, 0.01],
     grassHeight: [0.2, 3, 0.01],
     grassWidth: [0.2, 3, 0.01],
+    grassBlend: [0, 1, 0.01],
     grassRoot: "color",
     grassMid: "color",
     grassTip: "color",
@@ -143,6 +148,7 @@ const GARDEN_SCHEMA = {
     pondClarity: [0, 1, 0.01],
   },
   "Particle body": {
+    logoScale: [0.6, 2.5, 0.01],
     logoParticleSize: [0.2, 3, 0.01],
     logoParticleGlow: [0.2, 3, 0.01],
     logoSpecular: [0, 3, 0.01],
@@ -264,21 +270,19 @@ const WORLD_SCHEMA = {
 // The breakup, in a panel of its own: every stage's start and end, the
 // impact, the streams of sand, the sand and gravel.
 const BREAK_SCHEMA = {
-  "Timing (shares of the event)": {
-    breakStart: [0, 0.6, 0.005],
-    breakEnd: [0.2, 1, 0.005],
-  },
-  "Stages (start → end, shares of the breakup)": {
-    breakBurstEnd: [0.01, 0.5, 0.005],
-    breakBlastEnd: [0.01, 0.5, 0.005],
-    breakGatherStart: [0, 0.8, 0.005],
-    breakGatherEnd: [0.02, 1, 0.005],
+  "Sequence on the scroll (vh after the beam reaches the core; 200 = forged)": {
+    seqBreak: [0, 120, 0.5],
+    seqImpactEnd: [0, 200, 0.5],
+    seqBlastEnd: [0, 200, 0.5],
+    seqGatherStart: [0, 200, 0.5],
+    seqGatherEnd: [0, 200, 0.5],
+    seqSpinStart: [0, 200, 0.5],
+    seqSpinEnd: [0, 200, 0.5],
+    seqGrindStart: [0, 200, 0.5],
+    seqGrindEnd: [0, 200, 0.5],
+    seqSandFlow: [2, 200, 0.5],
+    seqBreakEnd: [10, 200, 0.5],
     breakGather: [0, 1, 0.01],
-    breakSpinStart: [0, 0.8, 0.005],
-    breakSpinEnd: [0.02, 1, 0.005],
-    breakGrindStart: [0, 0.95, 0.005],
-    breakGrindEnd: [0.05, 1, 0.005],
-    breakSandFlow: [0.01, 0.6, 0.005],
   },
   Impact: {
     breakImpact: [0, 3, 0.01],
@@ -320,6 +324,11 @@ const BREAK_SCHEMA = {
   },
 };
 
+// values the master timeline is built from (the beam's run, the camera's
+// keyframes): changing one rebuilds it (ForgingConcept)
+export const RETIME_EVENT = "forging-concept:retime";
+const RETIME = new Set(["beamAccel", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+
 // half as wide again as Leva's default (280 px), the extra all for the labels
 const PANEL_WIDTH = 420;
 const THEME = { sizes: { rootWidth: `${PANEL_WIDTH}px`, controlWidth: "190px" } };
@@ -336,6 +345,8 @@ function buildControls(schema) {
       }
       const onChange = (v) => {
         T[key] = v;
+        // (values the scroll timeline is built from: rebuild it)
+        if (RETIME.has(key)) window.dispatchEvent(new Event(RETIME_EVENT));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };

@@ -76,6 +76,7 @@ vGrassTint = aBlade.w;
 vGrassT = uv.y;
 vGrassAcross = uv.x * 2.0 - 1.0;
 vGrassSeed = aBlade.x;
+vGrassWorld = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xz;
 `;
 
 export default function GardenGrass({ tier, garden, sway }) {
@@ -105,7 +106,8 @@ export default function GardenGrass({ tier, garden, sway }) {
       // patches: taller, lusher drifts and shorter, drier ones
       const patch = noise(x * 0.07, z * 0.07);
       const tall = 0.32 + 0.38 * (patch * 0.5 + 0.5) + rng() * 0.18;
-      q.setFromAxisAngle(up, rng() * Math.PI * 2);
+      // (facing much as their neighbours do, so they lean together)
+      q.setFromAxisAngle(up, noise(x * 0.09 + 17, z * 0.09) * Math.PI + (rng() - 0.5) * 1.6);
       m.compose(p.set(x, h - 0.02, z), q, s.set(tall, tall, tall));
       const ring = rings[RINGS.findIndex(([outer]) => r < outer)];
       ring.matrices.push(m.clone());
@@ -117,6 +119,7 @@ export default function GardenGrass({ tier, garden, sway }) {
     const uniforms = {
       uGrassHeight: { value: 1 },
       uGrassWidth: { value: 1 },
+      uGrassBlend: { value: 0.6 },
       uGrassRoot: { value: new THREE.Color("#1f3a12") },
       uGrassMid: { value: new THREE.Color("#3f6b22") },
       uGrassTip: { value: new THREE.Color("#7fae3c") },
@@ -145,7 +148,9 @@ export default function GardenGrass({ tier, garden, sway }) {
             varying float vGrassTint;
             varying float vGrassT;
             varying float vGrassAcross;
-            varying float vGrassSeed;`
+            varying float vGrassSeed;
+            varying vec2 vGrassWorld;
+            uniform float uGrassBlend;`
           )
           .replace(
             "#include <color_fragment>",
@@ -155,11 +160,16 @@ export default function GardenGrass({ tier, garden, sway }) {
             // (clamped: interpolation can dip a hair below 0 at the root)
             float gT = clamp(vGrassT, 0.0, 1.0);
             vec3 gAlb = mix(uGrassRoot, uGrassMid, smoothstep(0.0, 0.55, gT));
-            gAlb = mix(gAlb, uGrassTip, smoothstep(0.4, 1.0, gT) * 0.85);
+            gAlb = mix(gAlb, uGrassTip, smoothstep(0.4, 1.0, gT) * mix(0.85, 0.45, uGrassBlend));
             gAlb = mix(gAlb, uGrassDry, vGrassTint * 0.75);
-            gAlb *= mix(0.68, 1.12, fract(vGrassSeed * 7.31));
-            gAlb *= 1.0 + 0.12 * (1.0 - smoothstep(0.0, 0.35, abs(vGrassAcross)));
-            gAlb *= mix(0.25, 1.0, smoothstep(0.0, 0.7, gT));
+            // Blended into one sward (uGrassBlend): neighbours share their
+            // shade (drifting with where they grow, not blade by blade), the
+            // roots darken less and the vein fades, so the tips stay pointed
+            // but the lawn doesn't read as separate spikes
+            float gPatch = 0.5 + 0.5 * sin(vGrassWorld.x * 0.31 + sin(vGrassWorld.y * 0.23) * 2.0) * sin(vGrassWorld.y * 0.27 + sin(vGrassWorld.x * 0.19) * 2.0);
+            gAlb *= mix(mix(0.68, 1.12, fract(vGrassSeed * 7.31)), mix(0.82, 1.06, gPatch) * mix(0.95, 1.03, fract(vGrassSeed * 7.31)), uGrassBlend);
+            gAlb *= 1.0 + 0.12 * (1.0 - uGrassBlend) * (1.0 - smoothstep(0.0, 0.35, abs(vGrassAcross)));
+            gAlb *= mix(mix(0.25, 0.6, uGrassBlend), 1.0, smoothstep(0.0, 0.7, gT));
             diffuseColor.rgb = gAlb;`
           )
           .replace(
@@ -178,16 +188,21 @@ export default function GardenGrass({ tier, garden, sway }) {
     const prev = material.onBeforeCompile;
     material.onBeforeCompile = (shader, renderer) => {
       prev(shader, renderer);
-      shader.vertexShader = shader.vertexShader.replace(
+      shader.vertexShader = shader.vertexShader
+        // (blended: every blade lit as the lawn's one surface, facing up)
+        .replace("#include <beginnormal_vertex>", "#include <beginnormal_vertex>\nobjectNormal = normalize(mix(objectNormal, vec3(0.0, 1.0, 0.0), uGrassBlend * 0.85));")
+        .replace(
         "#include <common>",
         `#include <common>
         attribute vec4 aBlade;
         uniform float uGrassHeight;
         uniform float uGrassWidth;
+        uniform float uGrassBlend;
         varying float vGrassTint;
         varying float vGrassT;
         varying float vGrassAcross;
-        varying float vGrassSeed;`
+        varying float vGrassSeed;
+        varying vec2 vGrassWorld;`
       );
     };
     // one instanced draw per ring, all sharing the material
@@ -228,6 +243,7 @@ export default function GardenGrass({ tier, garden, sway }) {
     const u = built.uniforms;
     u.uGrassHeight.value = T.grassHeight;
     u.uGrassWidth.value = T.grassWidth;
+    u.uGrassBlend.value = T.grassBlend;
     u.uGrassRoot.value.set(T.grassRoot);
     u.uGrassMid.value.set(T.grassMid);
     u.uGrassGlow.value = T.grassTranslucency;

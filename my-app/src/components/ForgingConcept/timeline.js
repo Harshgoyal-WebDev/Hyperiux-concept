@@ -49,6 +49,8 @@ export function createJourneyState() {
     logoStir: 0, // set by ParticleLogo: how hard the pointer is stirring the particle body (0..1)
     formT: 0, // set by ParticleLogo: the form as shown (past the mark it morphs on its own clock, not the scroll's)
     portal: 0, // through the ring into the light (1 = all light, onto the site)
+    footer: 0, // the footer showing (1: the particle body becomes the wordmark)
+    footerNear: 0, // ...or coming near (1: the garden is held behind the page for it)
     whiteout: 0, // the screen fading to white, onto the site (starts before the pass through the ring)
     shock: 0, // shockwave across the dunes as the beam merges into the core (0 → spent)
     jolt: 0, // the camera's jolt at that impact

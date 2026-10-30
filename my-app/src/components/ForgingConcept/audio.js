@@ -884,7 +884,8 @@ class AudioEngine {
 
     // out of the garden into the site: everything sinks well down through
     // the portal's light and stays down under the sections below
-    const toSite = smoothstep(J.progress, sectionAt("portal", 0), sectionAt("portal", 0.55));
+    // (and under the footer's garden too)
+    const toSite = Math.max(smoothstep(J.progress, sectionAt("portal", 0), sectionAt("portal", 0.55)), J.footerNear);
     smooth(this.master.gain, T.masterVolume * (1 - T.siteDuck * toSite), 0.3);
 
     // vanish: from the white-out to the end of the dissolve the music

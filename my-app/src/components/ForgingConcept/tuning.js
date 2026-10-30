@@ -27,6 +27,9 @@ export const T = {
   pondVolume: 0.7, // the water stirred by the pointer (subtle)
   swooshVolume: 0.8, // the rush of air as the pointer stirs the particle body
   logoVolume: 0.7, // the particle logo gathering and settling
+  footerP: 0.565, // the garden held behind the footer: the journey's frame at this scroll fraction
+  footerDim: 0.45, // how far the footer darkens it
+  footerMorph: 1.4, // how quickly the mark flows into the wordmark there
   siteDuck: 0.75, // how far all the sound drops going from the garden into the site's sections (0.75 = 75% quieter)
   vanishVolume: 0.6, // the score washing out at the end of the hero
   vanishStart: 0.97, // story time where the music starts to vanish
@@ -322,6 +325,12 @@ export const T = {
   // through into daylight by itself (or back out), in this many seconds
   gapStart: 0.72,
   gapDuration: 1.5,
+  // ...and coming out of it into the garden, a dolly zoom: the lens this
+  // many degrees wider to begin with (the camera as much closer), easing back
+  // over this share of the way out of the light
+  dollyFov: 38,
+  dollyLength: 1.2,
+  dollyTurn: 0, // ...and revolving in this many degrees, anticlockwise (0: straight in)
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

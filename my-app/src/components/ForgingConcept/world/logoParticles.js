@@ -245,3 +245,63 @@ export function sampleTorus(count, { radius = 4.6, tube = 1.25, seed = 53 } = {}
   }
   return out;
 }
+
+// Particle positions for the Hyperiux wordmark (the footer's form), from the
+// SVG's own shapes (public/assets/icons/hyperiux-wordmark.svg, parsed with
+// SVGLoader): area-weighted over the letters' faces with a share along their
+// outlines (so the letters read crisply), given a little depth. Logo-local
+// metres, centred, `width` wide. svgText: the file's contents.
+export function sampleWordmark(count, svgText, SVGLoader, { width = 24, thickness = 1.4, seed = 71 } = {}) {
+  const rng = mulberry32(seed);
+  const shapes = new SVGLoader().parse(svgText).paths.flatMap((p) => SVGLoader.createShapes(p));
+  const tris = [];
+  const edges = [];
+  const box = new THREE.Box2();
+  const area = (A, B, C) => Math.abs((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y)) / 2;
+  for (const shape of shapes) {
+    const { shape: outline, holes } = shape.extractPoints(8);
+    for (const v of outline) box.expandByPoint(v);
+    const contour = outline.slice();
+    for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
+      const all = contour.concat(...holes);
+      tris.push({ A: all[a], B: all[b], C: all[c], area: area(all[a], all[b], all[c]) });
+    }
+    for (const ring of [outline, ...holes]) {
+      for (let i = 0; i < ring.length; i++) {
+        const A = ring[i];
+        const B = ring[(i + 1) % ring.length];
+        edges.push({ A, B, len: A.distanceTo(B) });
+      }
+    }
+  }
+  const k = width / Math.max(box.max.x - box.min.x, 1e-6);
+  const cx = (box.min.x + box.max.x) / 2;
+  const cy = (box.min.y + box.max.y) / 2;
+  const pick = (list, key) => {
+    const total = list.reduce((s, t) => s + t[key], 0);
+    let r = rng() * total;
+    for (const t of list) if ((r -= t[key]) <= 0) return t;
+    return list[list.length - 1];
+  };
+  const positions = new Float32Array(count * 3);
+  const p = new THREE.Vector2();
+  for (let i = 0; i < count; i++) {
+    if (rng() < 0.3 && edges.length) {
+      const e = pick(edges, "len");
+      p.lerpVectors(e.A, e.B, rng());
+    } else {
+      const t = pick(tris, "area");
+      let u = rng();
+      let v = rng();
+      if (u + v > 1) {
+        u = 1 - u;
+        v = 1 - v;
+      }
+      p.set(t.A.x + (t.B.x - t.A.x) * u + (t.C.x - t.A.x) * v, t.A.y + (t.B.y - t.A.y) * u + (t.C.y - t.A.y) * v);
+    }
+    positions[i * 3] = (p.x - cx) * k;
+    positions[i * 3 + 1] = -(p.y - cy) * k; // SVG y runs down
+    positions[i * 3 + 2] = (rng() - 0.5) * thickness;
+  }
+  return positions;
+}

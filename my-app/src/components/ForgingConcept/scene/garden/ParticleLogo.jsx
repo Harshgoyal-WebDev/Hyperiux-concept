@@ -6,7 +6,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
 import { mulberry32 } from "../../world/layout";
-import { sampleCube, sampleLogo3D, sampleTorus } from "../../world/logoParticles";
+import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
+import { sampleCube, sampleLogo3D, sampleTorus, sampleWordmark } from "../../world/logoParticles";
 import { GARDEN, GARDEN_ORIGIN } from "../../config";
 import { pointer } from "../../pointer";
 import { T } from "../../tuning";
@@ -76,6 +77,8 @@ vec3 rotX(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(p.x, p.y 
 // where a bubble belongs in form i (garden metres)
 const FORMS_GLSL = /* glsl */ `
 uniform sampler2D tMark; // the mark (xyz), kind (w)
+uniform sampler2D tWord; // the wordmark (the footer's form, in the mark's place)
+uniform float uWord; // ...how far the mark has become it
 uniform sampler2D tCube;
 uniform sampler2D tCloud; // the infinity: place along it (0..1), round its tube (rad), how far out in the tube (0..1), pace
 uniform float uInfFlow; // how far round the infinity its particles have flowed (loops)
@@ -119,7 +122,8 @@ vec3 formPos(int i, vec2 uv) {
   }
   vec3 p;
   if (i == 3) p = infinityLocal(texture2D(tCloud, uv), uInfFlow);
-  else p = i == 1 ? texture2D(tMark, uv).xyz : i == 2 ? texture2D(tCube, uv).xyz : texture2D(tRing, uv).xyz;
+  else if (i == 1) p = mix(texture2D(tMark, uv).xyz, texture2D(tWord, uv).xyz, uWord);
+  else p = i == 2 ? texture2D(tCube, uv).xyz : texture2D(tRing, uv).xyz;
   return uCentre[i] + rotY(rotX(p * uScale[i], uTilt), uYaw[i]);
 }
 // how fast a bubble's place in the infinity is moving (m/s): the flow
@@ -486,6 +490,9 @@ function createSim(gl, data, time) {
   const S = GARDEN.shapes;
   const forms_ = {
     tMark: { value: dataTexture(size, forms.mark) },
+    // (the mark's own places until the wordmark's SVG has loaded)
+    tWord: { value: dataTexture(size, forms.mark) },
+    uWord: { value: 0 },
     tCube: { value: dataTexture(size, forms.cube) },
     tCloud: { value: dataTexture(size, forms.cloud) },
     tRing: { value: dataTexture(size, forms.ring) },
@@ -552,6 +559,7 @@ function createSim(gl, data, time) {
 // which forms turn to face the camera (the swirl, the mark, the cube, the
 // infinity, the torus)
 const FACES_CAMERA = [0, 1, 0, 1, 1];
+const WORDMARK_SVG = "/assets/icons/hyperiux-wordmark.svg";
 
 export default function ParticleLogo({ J, tier, time }) {
   const { gl, camera, size } = useThree();
@@ -565,9 +573,27 @@ export default function ParticleLogo({ J, tier, time }) {
       sim.current = null;
       if (!s) return;
       s.gpu.dispose();
-      for (const k of ["tMark", "tCube", "tCloud", "tRing", "tSwirl", "tSeed"]) s.simU[k].value.dispose();
+      for (const k of ["tMark", "tWord", "tCube", "tCloud", "tRing", "tSwirl", "tSeed"]) s.simU[k].value.dispose();
     };
   }, [gl, built, tier, time]);
+
+  // the footer's form: the Hyperiux wordmark, sampled from its SVG
+  useEffect(() => {
+    let live = true;
+    fetch(WORDMARK_SVG)
+      .then((r) => r.text())
+      .then((text) => {
+        const sm = sim.current;
+        if (!live || !sm) return;
+        const positions = sampleWordmark(built.count, text, SVGLoader, { width: 20 });
+        sm.simU.tWord.value.dispose();
+        sm.simU.tWord.value = dataTexture(built.size, pack(built.count, positions));
+      })
+      .catch((e) => console.warn("[forging-concept] wordmark", e));
+    return () => {
+      live = false;
+    };
+  }, [built, gl, tier, time]);
 
   useEffect(
     () => () => {
@@ -592,6 +618,7 @@ export default function ParticleLogo({ J, tier, time }) {
       core: new THREE.Vector3(),
       facing: null,
       age: 0,
+      word: 0,
     }),
     []
   );
@@ -615,6 +642,9 @@ export default function ParticleLogo({ J, tier, time }) {
     s.form += THREE.MathUtils.clamp(goal - s.form, -step, step);
     J.formT = s.form;
     u.uShapeT.value = s.form;
+    // in the footer the mark flows into the wordmark (and back out of it)
+    s.word += ((J.footer > 0.5 ? 1 : 0) - s.word) * (1 - Math.exp(-dt * T.footerMorph));
+    u.uWord.value = s.word;
     // (the gathering from the ground runs at its own pace, the bubbles
     // swept up a few at a time, like a gust)
     u.uStagger.value = s.form < 1 ? Math.max(T.logoMorphStagger, T.logoGatherStagger) : T.logoMorphStagger;

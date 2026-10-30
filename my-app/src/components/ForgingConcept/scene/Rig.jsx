@@ -42,6 +42,34 @@ export function CameraRig({ J, opening }) {
     let lens = J.fov;
     // in the garden: its own continuous path round the pond
     if (J.progress >= P.through) lens = gardenCamera(J.progress, v.p, v.t);
+    // Out of the cube's light into the garden: revolving in, and (if
+    // T.dollyFov) a dolly zoom — the lens starting wider and the camera that
+    // much closer, what it looks at holding its size, easing back to the
+    // shot (scroll-driven, so it reverses).
+    if (J.progress >= P.through && J.progress < P.out + (P.out - P.through) * 0.5 && !J.footerNear && (T.dollyFov > 0 || T.dollyTurn > 0)) {
+      const u = THREE.MathUtils.clamp((J.progress - P.through) / ((P.out - P.through) * Math.max(T.dollyLength, 0.1)), 0, 1);
+      // (power2.out: fast at first, settling slowly into the shot)
+      const e = 1 - u;
+      const wide = T.dollyFov * e * e;
+      // ...revolving in as it does: swung round what it looks at, turning
+      // anticlockwise (seen from above) into the shot
+      const turn = -THREE.MathUtils.degToRad(T.dollyTurn) * e * e;
+      if (turn !== 0) {
+        const dx = v.p.x - v.t.x;
+        const dz = v.p.z - v.t.z;
+        const c = Math.cos(turn);
+        const s = Math.sin(turn);
+        v.p.x = v.t.x + dx * c + dz * s;
+        v.p.z = v.t.z - dx * s + dz * c;
+      }
+      if (wide > 0.01) {
+        const d = v.p.distanceTo(v.t);
+        const toward = Math.tan(THREE.MathUtils.degToRad(lens) / 2) / Math.tan(THREE.MathUtils.degToRad(Math.min(lens + wide, 150)) / 2);
+        v.fwd.subVectors(v.t, v.p).normalize();
+        v.p.addScaledVector(v.fwd, d * (1 - Math.max(toward, 0.08)));
+        lens = Math.min(lens + wide, 150);
+      }
+    }
     // shots through the mark are composed on the nominal opening: move them
     // onto the real one (the slab's height depends on the sand under it)
     if (opening && J.align > 0) {

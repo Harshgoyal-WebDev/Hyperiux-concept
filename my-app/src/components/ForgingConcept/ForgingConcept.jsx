@@ -18,6 +18,7 @@ import { Q, QUALITY_EVENT } from "./quality";
 import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
 import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, sectionAt } from "./config";
 import { GARDEN_SECTIONS } from "./content";
+import { FOOTER } from "./footer";
 import { CTA } from "./content";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
@@ -72,6 +73,7 @@ const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
 // The site after the garden (the Hyperiux homepage sections): its own chunk,
 // loaded once the journey reaches the garden, not with the page.
 const HomeSections = dynamic(() => import("@/components/HyperiuxHome/HomeSections"), { ssr: false });
+const SiteFooter = dynamic(() => import("./SiteFooter"), { ssr: false });
 
 let clientEnv = null;
 const noopSubscribe = () => () => {};
@@ -123,6 +125,7 @@ export default function ForgingConcept() {
       <Header nightToggle />
       <Journey env={env} onGarden={openSite} />
       {siteOpen && <HomeSections />}
+      {siteOpen && <SiteFooter />}
     </main>
   );
 }
@@ -180,14 +183,16 @@ function SoundToggle() {
   );
 }
 
-// True once the header sits over the white site below the hero. The header
-// switches to dark type and the black logo there (no blend-mode trick).
+// True once the header sits over the white site below the hero (and not yet
+// over the footer's dark garden). The header switches to dark type and the
+// black logo there (no blend-mode trick).
 function useOverLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
     const check = () => {
       const site = document.querySelector("[data-white-site]");
-      setLight(!!site && site.getBoundingClientRect().top <= 80);
+      const footer = FOOTER.el;
+      setLight(!!site && site.getBoundingClientRect().top <= 80 && !(footer && footer.getBoundingClientRect().top <= 80));
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
@@ -280,6 +285,8 @@ function Journey({ env, onGarden }) {
 
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
+  // the footer near: the canvas pinned behind the page for it (footer.js)
+  const [footerOn, setFooterOn] = useState(false);
   const [dpr, setDpr] = useState(null);
   // the live quality's share of the device's pixel ratio (quality.js)
   useEffect(() => {
@@ -392,7 +399,7 @@ function Journey({ env, onGarden }) {
   //   auto   – the driver's own scroll ({ locked } while the event plays)
   //   guard  – a rail jump in flight (the driver waits for it to land)
   //   review – a ?p= / panel frame: held until the visitor scrolls
-  const driver = useRef({ auto: null, guard: false, review: false, resync: false, dir: 1, siteAsked: false });
+  const driver = useRef({ auto: null, guard: false, review: false, resync: false, dir: 1, siteAsked: false, footerNear: false });
 
   // Master timeline + scroll driver. The exact (fractional) Lenis scroll is
   // read every frame and followed with a short ease (not ScrollTrigger's
@@ -519,7 +526,22 @@ function Journey({ env, onGarden }) {
           if (Math.abs(diff) > 0.04 || Math.abs(diff) < 1e-6) current = goal;
           else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
         }
-        apply(current);
+        // The footer (footer.js): coming near (within two screens), the
+        // canvas is pinned behind the page — still covered by the sections —
+        // and holds the garden at T.footerP, settling while it's hidden;
+        // as it is uncovered the particle body becomes the wordmark.
+        const fe = FOOTER.el;
+        const top = fe && !releaseOffscreen ? fe.getBoundingClientRect().top : Infinity;
+        const near = top < window.innerHeight * 2;
+        if (near !== D.footerNear) {
+          D.footerNear = near;
+          setFooterOn(near);
+          // (its own dark ground until the garden is behind it)
+          if (fe) fe.dataset.live = near ? "1" : "";
+        }
+        J.footerNear = near ? 1 : 0;
+        J.footer = near && top < window.innerHeight * 0.98 ? 1 : 0;
+        apply(near ? T.footerP : current);
         // past the light before the garden has loaded (a deep link, a very
         // fast scroll): stay in the light until it is ready
         if (glowRef.current) glowRef.current.style.opacity = String(J.progress >= P.through && !J.gardenReady ? 1 : J.flash);
@@ -597,7 +619,7 @@ function Journey({ env, onGarden }) {
         tl.kill();
       };
     },
-    { scope: sectionRef, dependencies: [J, resizeKey, pToY, onGarden] }
+    { scope: sectionRef, dependencies: [J, resizeKey, pToY, onGarden, releaseOffscreen] }
   );
 
   // Panel jumps to a scroll fraction. A jump glides there and
@@ -638,10 +660,11 @@ function Journey({ env, onGarden }) {
   return (
     <section ref={sectionRef} data-journey className="relative w-full bg-[#0e0b09]" style={{ height: `${JOURNEY_VH}vh` }}>
       <div data-viewport className="sticky top-0 h-screen w-full overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-0">
+        {/* (pinned to the screen behind the page while the footer is near) */}
+        <div className={`pointer-events-none inset-0 z-0 ${footerOn ? "fixed" : "absolute"}`}>
           {env && tier && mounted && asset && (
             <Canvas
-              frameloop={rendering ? "always" : "never"}
+              frameloop={rendering || footerOn ? "always" : "never"}
               dpr={dpr ?? tier.dpr}
               shadows={tier.shadowMap > 0 ? "percentage" : false}
               gl={{ antialias: !tier.post, powerPreference: "high-performance", alpha: false }}

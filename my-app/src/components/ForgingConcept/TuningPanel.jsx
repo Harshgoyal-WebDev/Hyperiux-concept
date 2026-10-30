@@ -27,6 +27,9 @@ const OBJECT_SCHEMA = {
     forgeReverse: [0.5, 8, 0.1],
     gapStart: [0.3, 0.98, 0.01],
     gapDuration: [0.5, 8, 0.05],
+    dollyFov: [0, 80, 0.5],
+    dollyLength: [0.2, 1.5, 0.01],
+    dollyTurn: [0, 90, 0.5],
   },
   Entering: {
     arriveDuration: [0.5, 8, 0.05],
@@ -79,6 +82,11 @@ const GARDEN_SCHEMA = {
     gardenFovOffset: [-15, 20, 0.5],
     gardenOrbitRadius: [0.6, 1.6, 0.01],
     gardenOrbitHeight: [-2, 8, 0.05],
+  },
+  Footer: {
+    footerP: [0.45, 0.99, 0.001],
+    footerDim: [0, 0.9, 0.01],
+    footerMorph: [0.2, 5, 0.05],
   },
   Air: {
     gardenAir: [0, 2, 0.01],

@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { mulberry32 } from "../../world/layout";
 import { POINTER_WIND_GLSL, SWAY_DECLS } from "../../world/gardenAsset";
 import { T } from "../../tuning";
+import { Q } from "../../quality";
 import { GARDEN_SUN } from "./sky";
 
 // Blossom on the trees: small five-petalled flowers dotted over the
@@ -175,7 +176,9 @@ function scatter(garden, count, seed) {
   const rng = mulberry32(seed);
   const meshes = [];
   garden.root.traverse((o) => o.isInstancedMesh && o.name === "PlacedTrees:M_Foliage" && meshes.push(o));
-  if (!meshes.length || !count) return null;
+  // (the trees' data is let go once on the GPU: a remount after that — a hot
+  // reload — goes without blossom)
+  if (!meshes.length || !count || meshes.some((mesh) => !mesh.geometry.attributes.position.array)) return null;
   const opacity = opacityOf(meshes[0].material.map);
 
   // each tree: its turn to flower and its colour
@@ -198,7 +201,7 @@ function scatter(garden, count, seed) {
     return trees[best];
   };
 
-  // every leaf cluster on every tree, picked by its leaf area
+  // every tree's leaves (each variant's clusters merged), picked by leaf area
   const tris = new Map();
   const clusters = [];
   let total = 0;
@@ -226,6 +229,7 @@ function scatter(garden, count, seed) {
   const p = new THREE.Vector3();
   const n = new THREE.Vector3();
   const out = new THREE.Vector3();
+  const piv = new THREE.Vector3();
   let k = 0;
   for (let tries = 0; k < count && tries < count * 8; tries++) {
     const cl = clusters[pick(clusterRun, rng() * total)];
@@ -250,14 +254,17 @@ function scatter(garden, count, seed) {
     c.fromBufferAttribute(pos, i2);
     p.copy(a).multiplyScalar(w).addScaledVector(b, u).addScaledVector(c, v).applyMatrix4(cl.matrix);
     n.subVectors(b, a).cross(c.sub(a)).transformDirection(cl.matrix);
+    // its leaf cluster's own origin (the trees are merged: carried per vertex)
+    const ap = cl.geometry.attributes.aPivot;
+    const pv = ap ? piv.fromBufferAttribute(ap, i0).applyMatrix4(cl.matrix) : cl.pivot;
     // facing out of the canopy, stood a little off the leaves
-    out.subVectors(p, cl.pivot).normalize();
+    out.subVectors(p, pv).normalize();
     if (n.dot(out) < 0) n.negate();
     p.addScaledVector(n, 0.05);
     n.multiplyScalar(0.4).addScaledVector(out, 0.6).add(a.set(0, 0.2, 0)).normalize();
     position.set([p.x, p.y, p.z], k * 3);
     normal.set([n.x, n.y, n.z], k * 3);
-    pivots.set([cl.pivot.x, cl.pivot.y, cl.pivot.z], k * 3);
+    pivots.set([pv.x, pv.y, pv.z], k * 3);
     seeds.set([cl.tree.turn, rng(), cl.tree.colour, 0.7 + rng() * 0.6], k * 4);
     k++;
   }
@@ -318,7 +325,7 @@ export default function GardenBlossoms({ tier, garden, sway }) {
     if (!built) return;
     const u = built.material.uniforms;
     u.uShare.value = T.treeBlossomShare;
-    u.uDensity.value = T.treeBlossomDensity;
+    u.uDensity.value = T.treeBlossomDensity * Q.density;
     u.uSize.value = 0.24 * T.treeBlossomSize;
     u.uSun.value = T.gardenSun;
     const pal = palette();

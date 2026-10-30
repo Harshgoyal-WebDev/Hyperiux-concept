@@ -13,6 +13,7 @@ import { createWindField } from "../../world/windField";
 import { setGardenGround } from "../../world/gardenCamera";
 import { pointer } from "../../pointer";
 import { T } from "../../tuning";
+import { Q } from "../../quality";
 import { GARDEN_SUN, createGardenEnvironment, createSkyMaterial } from "./sky";
 import ParticleLogo from "./ParticleLogo";
 import GardenGrass, { LAWN_RADIUS } from "./GardenGrass";
@@ -107,7 +108,7 @@ function buildMountains({ radius, depth, low, high, colour, haze, seed, freq }) 
 
 export default function Garden({ J, tier, worlds }) {
   const { gl, camera } = useThree();
-  const gltf = useGLTF(ASSETS.gardenGlb);
+  const gltf = useGLTF(ASSETS.gardenGlb, ASSETS.draco);
   const group = useRef();
   const sun = useRef();
   const time = useMemo(() => ({ value: 0 }), []);
@@ -130,8 +131,9 @@ export default function Garden({ J, tier, worlds }) {
   const pondAxes = useMemo(() => GARDEN.pondGlbAxes.map((a) => a * ground.pond), [ground]);
   const sky = useMemo(() => createSkyMaterial(), []);
   const env = useMemo(() => createGardenEnvironment(gl), [gl]);
-  // daylight haze: soft on the far trees, hiding the terrain's far edge
-  const fog = useMemo(() => new THREE.FogExp2("#b7cde0", 0.0045), []);
+  // daylight haze: a clear blue, light on the far trees, hiding the
+  // terrain's far edge
+  const fog = useMemo(() => new THREE.FogExp2("#9dc2ec", 0.0034), []);
   const extras = useMemo(() => {
     const mountains = new THREE.Group();
     const mountainMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
@@ -193,6 +195,7 @@ export default function Garden({ J, tier, worlds }) {
       garden.terrain.geometry.dispose();
       garden.materials.forEach((m) => m.dispose());
       garden.root.traverse((o) => o.isInstancedMesh && o.dispose());
+      garden.geometries?.forEach((g) => g.dispose());
     },
     [garden]
   );
@@ -272,6 +275,7 @@ export default function Garden({ J, tier, worlds }) {
     time.value += dt;
     sky.uniforms.uTime.value = time.value;
     sky.uniforms.uCover.value = T.skyCloudCover;
+    sky.uniforms.uOctaves.value = Q.clouds;
     sky.uniforms.uSpeed.value = T.skyCloudSpeed;
 
     const now = performance.now();

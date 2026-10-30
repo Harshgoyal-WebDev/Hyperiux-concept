@@ -8,6 +8,7 @@ import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import { GARDEN, GARDEN_ORIGIN } from "../../config";
 import { pointer } from "../../pointer";
 import { T } from "../../tuning";
+import { Q } from "../../quality";
 import { GARDEN_SUN, SKY_GLSL } from "./sky";
 
 // The pond: a real mirror of the garden (a planar reflection — the trees, the
@@ -191,6 +192,22 @@ export default function GardenPond({ J, tier, time, axes }) {
         const rc = get(cam);
         rc.layers.set(0);
         return rc;
+      };
+      // with the camera at rest (the visitor reading) the mirror is redrawn
+      // every other frame — only the breeze moves in it then; while the
+      // camera moves it is redrawn every frame, so it never lags behind
+      const draw = water.onBeforeRender;
+      const last = new THREE.Matrix4();
+      let skip = false;
+      water.onBeforeRender = function (renderer, scene, camera) {
+        // (the live quality can turn the mirror off: the water then
+        // reflects the sky alone, quality.js)
+        this.material.uniforms.uHasReflection.value = Q.reflection ? 1 : 0;
+        if (!Q.reflection) return;
+        const still = last.elements.every((v, i) => Math.abs(v - camera.matrixWorld.elements[i]) < 1e-4);
+        last.copy(camera.matrixWorld);
+        skip = still && !skip;
+        if (!skip) draw.call(this, renderer, scene, camera);
       };
     } else {
       water = new THREE.Mesh(geometry, new THREE.ShaderMaterial({ ...shader, uniforms: shader.uniforms }));

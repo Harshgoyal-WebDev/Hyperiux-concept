@@ -29,9 +29,8 @@ export default function WorldSwitch({ J, worlds, desertRef }) {
     if (scene.environment !== garden.env) state.desertEnv = scene.environment;
 
     // the garden's shadows never move (its sway is vertex-only): drawn once
-    // on the way in, not every frame like the desert's falling rock
+    // on the way in (the desert's are drawn as they change: Lights, Rig.jsx)
     if (inGarden !== state.wasGarden) {
-      gl.shadowMap.autoUpdate = !inGarden;
       gl.shadowMap.needsUpdate = true;
       state.wasGarden = inGarden;
     }

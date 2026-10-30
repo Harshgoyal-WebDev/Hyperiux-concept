@@ -8,12 +8,12 @@ export const GARDEN_SUN = new THREE.Vector3(0.5, 0.57, 0.65).normalize();
 export const SKY_GLSL = /* glsl */ `
 vec3 gardenSky(vec3 d, vec3 sunDir) {
   float h = d.y;
-  // a bright, clear blue, paling to the horizon
-  vec3 zenith = vec3(0.07, 0.3, 0.82);
-  vec3 horizon = vec3(0.6, 0.79, 0.98);
-  vec3 col = mix(horizon, zenith, pow(smoothstep(0.0, 0.62, h), 0.75));
-  // below the horizon: a soft haze (only seen past the far hills)
-  col = mix(col, vec3(0.62, 0.7, 0.72), smoothstep(0.0, -0.12, h));
+  // a crystal-clear deep blue, only just paling at the horizon
+  vec3 zenith = vec3(0.02, 0.25, 0.86);
+  vec3 horizon = vec3(0.36, 0.64, 0.98);
+  vec3 col = mix(horizon, zenith, pow(smoothstep(0.0, 0.42, h), 0.6));
+  // below the horizon: a clear blue haze (only seen past the far hills)
+  col = mix(col, vec3(0.42, 0.62, 0.86), smoothstep(0.0, -0.12, h));
   float sun = max(dot(d, sunDir), 0.0);
   col += vec3(1.0, 0.93, 0.8) * pow(sun, 7.0) * 0.18;
   col += vec3(1.0, 0.96, 0.88) * smoothstep(0.9993, 0.9997, sun) * 8.0;
@@ -29,10 +29,12 @@ float gsNoise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(gsHash(i), gsHash(i + vec2(1.0, 0.0)), u.x), mix(gsHash(i + vec2(0.0, 1.0)), gsHash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
+uniform float uOctaves; // the live quality's cloud detail (quality.js)
 float gsFbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
   for (int i = 0; i < 5; i++) {
+    if (float(i) >= uOctaves) break;
     v += a * gsNoise(p);
     p = p * 2.03 + 11.7;
     a *= 0.5;
@@ -54,7 +56,8 @@ float gardenClouds(vec3 d, float t, vec3 sunDir, out float shade) {
   vec2 q = uv * 1.25 + wind + warp * 0.7;
   float c = gsFbm(q);
   float th = mix(0.78, 0.44, uCover);
-  float dens = smoothstep(th, th + 0.22, c);
+  // (crisp-edged: clear blue between them)
+  float dens = smoothstep(th, th + 0.13, c);
   // the side towards the sun is thinner: lit; deep inside, shaded
   float toward = gsFbm(q + normalize(sunDir.xz + 1e-4) * 0.08);
   shade = clamp(0.86 + (c - toward) * 3.0 - smoothstep(th + 0.1, th + 0.4, c) * 0.18, 0.6, 1.08);
@@ -64,7 +67,7 @@ float gardenClouds(vec3 d, float t, vec3 sunDir, out float shade) {
 
 export function createSkyMaterial({ clouds = true } = {}) {
   return new THREE.ShaderMaterial({
-    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 }, uCover: { value: 0.55 }, uSpeed: { value: 1 } },
+    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 }, uCover: { value: 0.55 }, uSpeed: { value: 1 }, uOctaves: { value: 5 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {

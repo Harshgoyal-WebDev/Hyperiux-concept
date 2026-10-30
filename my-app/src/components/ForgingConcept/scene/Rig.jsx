@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
-import { Effect, ToneMappingMode } from "postprocessing";
+import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
 import { OPENING_NOMINAL, P, SUN_DIR } from "../config";
 import { gardenCamera } from "../world/gardenCamera";
 import { T } from "../tuning";
@@ -161,14 +161,26 @@ function hexColor(hex) {
 const NIGHT_SKY = new THREE.Color("#1d2a4d");
 const NIGHT_GROUND = new THREE.Color("#0b0a12");
 
-export function Lights({ tier, shared }) {
+// The desert's shadows are drawn only when they can change: the sun (and its
+// shadow area) follows the camera, snapped to a SHADOW_GRID m grid, so it
+// moves now and then rather than every frame; and through the forging event,
+// where the rock breaks and flies, every frame. (The garden draws its own
+// once, on the way in: WorldSwitch.)
+const SHADOW_GRID = 8;
+
+export function Lights({ J, tier, shared }) {
   const sun = useRef();
   const hemi = useRef();
   const fill = useRef();
   const ambient = useRef();
-  const { camera, scene } = useThree();
+  const { camera, scene, gl } = useThree();
   const focus = useMemo(() => new THREE.Vector3(), []);
   const fwd = useMemo(() => new THREE.Vector3(), []);
+  const shadow = useMemo(() => ({ key: "", forge: false }), []);
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+    gl.shadowMap.needsUpdate = true;
+  }, [gl]);
 
   useEffect(() => {
     const target = sun.current?.target;
@@ -183,7 +195,14 @@ export function Lights({ tier, shared }) {
     if (s) {
       camera.getWorldDirection(fwd);
       focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
-      focus.y = 0;
+      focus.set(Math.round(focus.x / SHADOW_GRID) * SHADOW_GRID, 0, Math.round(focus.z / SHADOW_GRID) * SHADOW_GRID);
+      if (!J.inGarden) {
+        const key = `${focus.x},${focus.z}`;
+        // (and once the forge has arrived in the scene)
+        if (key !== shadow.key || (J.eventT > 0 && J.eventT < 1) || J.forgeReady !== shadow.forge) gl.shadowMap.needsUpdate = true;
+        shadow.key = key;
+        shadow.forge = J.forgeReady;
+      }
       s.target.position.copy(focus);
       s.position.copy(focus).addScaledVector(SUN_DIR, 320);
       s.target.updateMatrixWorld();
@@ -390,6 +409,36 @@ class EdgeFxEffect extends Effect {
 }
 
 // ---------------------------------------------------------------------------
+// The rendered frame made safe before the effects read it: a pixel that came
+// out NaN (a degenerate normal or view vector somewhere) becomes black, and
+// one that overflowed the half-float buffer (infinite) is capped. Otherwise
+// the bloom's blur would spread that one pixel over the whole frame — a
+// black flash, at the breakup's brightest moment.
+// ---------------------------------------------------------------------------
+function createSanitizePass() {
+  const material = new THREE.ShaderMaterial({
+    uniforms: { inputBuffer: { value: null } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = position.xy * 0.5 + 0.5;
+        gl_Position = vec4(position.xy, 1.0, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D inputBuffer;
+      varying vec2 vUv;
+      void main() {
+        vec4 c = texture2D(inputBuffer, vUv);
+        c = mix(c, vec4(0.0, 0.0, 0.0, 1.0), vec4(any(isnan(c)) ? 1.0 : 0.0));
+        gl_FragColor = clamp(c, 0.0, 4096.0);
+      }`,
+    depthTest: false,
+    depthWrite: false,
+  });
+  return new ShaderPass(material, "inputBuffer");
+}
+
+// ---------------------------------------------------------------------------
 // Post: restrained bloom for the core and the lit cracks, ACES, vignette.
 // (The portal at the end of the garden is a plain fade to white over the
 // page: ForgingConcept.)
@@ -400,6 +449,8 @@ export function Post({ J, tier }) {
   const { size } = useThree();
   const edgeFx = useMemo(() => new EdgeFxEffect(), []);
   useEffect(() => () => edgeFx.dispose(), [edgeFx]);
+  const sanitize = useMemo(() => createSanitizePass(), []);
+  useEffect(() => () => sanitize.dispose(), [sanitize]);
   useFrame(() => {
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
@@ -422,6 +473,7 @@ export function Post({ J, tier }) {
   });
   return (
     <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
+      <primitive object={sanitize} dispose={null} />
       <primitive object={edgeFx} dispose={null} />
       <Bloom ref={bloom} mipmapBlur intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

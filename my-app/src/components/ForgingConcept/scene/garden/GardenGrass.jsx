@@ -7,12 +7,13 @@ import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
 import { GARDEN } from "../../config";
 import { mulberry32 } from "../../world/layout";
-import { GRASS_LAYER, patchSway } from "../../world/gardenAsset";
+import { GRASS_LAYER, patchSway, releaseAfterUpload } from "../../world/gardenAsset";
 import { GARDEN_SUN } from "./sky";
 import { T } from "../../tuning";
+import { Q } from "../../quality";
 
 // A lawn of real grass over the whole clearing: individual blades (one
-// instanced draw), planted on the terrain's height grid everywhere but the
+// instanced draw per ring), planted on the terrain's height grid everywhere but the
 // water — thick round the pond and the camera's path, thinning towards the
 // trees. Each blade is a tapered, curved strip: dark at the root, through a
 // mid green to a sunlit tip, warmer and drier in drifting patches, each its
@@ -26,9 +27,19 @@ import { T } from "../../tuning";
 // take over beyond it.
 export const LAWN_RADIUS = 50;
 
-// one blade: 4 rows up a tapered strip, 1 m tall, 1 unit wide at the root
-function bladeGeometry() {
-  const rows = 4;
+// The lawn in rings out from the pond, each with lighter blades: 6 triangles
+// within 24 m (the camera's orbit passes over them), 4 to 34 m, 2 beyond
+// (never nearer the camera than ~10 m). [outer radius (m), rows]
+const RINGS = [
+  [24, 4],
+  [34, 3],
+  [Infinity, 2],
+];
+
+// one blade: rows up a tapered strip, 1 m tall, 1 unit wide at the root
+// (4 rows near the pond, where the camera comes close; fewer further out,
+// where a blade is a few pixels tall — see RINGS)
+function bladeGeometry(rows) {
   const pos = [];
   const uv = [];
   const normal = [];
@@ -73,9 +84,8 @@ export default function GardenGrass({ tier, garden, sway }) {
     const count = tier.gardenBlades;
     const rng = mulberry32(9090);
     const noise = createNoise2D(mulberry32(31));
-    const geometry = bladeGeometry();
-    const blade = new Float32Array(count * 4);
-    const mesh = new THREE.InstancedMesh(geometry, null, count);
+    // per ring: its blades' matrices and data (seed, width, lean, tint)
+    const rings = RINGS.map(() => ({ matrices: [], blade: [] }));
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -97,14 +107,13 @@ export default function GardenGrass({ tier, garden, sway }) {
       const tall = 0.32 + 0.38 * (patch * 0.5 + 0.5) + rng() * 0.18;
       q.setFromAxisAngle(up, rng() * Math.PI * 2);
       m.compose(p.set(x, h - 0.02, z), q, s.set(tall, tall, tall));
-      mesh.setMatrixAt(n, m);
+      const ring = rings[RINGS.findIndex(([outer]) => r < outer)];
+      ring.matrices.push(m.clone());
       // seed, width, lean, tint (0 lush → 1 dry)
       const dry = THREE.MathUtils.clamp(noise(x * 0.05 + 40, z * 0.05) * 0.6 + 0.15 + (rng() < 0.08 ? 0.5 : 0), 0, 1);
-      blade.set([rng(), (0.05 + rng() * 0.05) * (1 + Math.max(r - 25, 0) / 30), (rng() - 0.3) * 1.2, dry], n * 4);
+      ring.blade.push(rng(), (0.05 + rng() * 0.05) * (1 + Math.max(r - 25, 0) / 30), (rng() - 0.3) * 1.2, dry);
       n++;
     }
-    mesh.count = n;
-    geometry.setAttribute("aBlade", new THREE.InstancedBufferAttribute(blade, 4));
     const uniforms = {
       uGrassHeight: { value: 1 },
       uGrassWidth: { value: 1 },
@@ -181,18 +190,36 @@ export default function GardenGrass({ tier, garden, sway }) {
         varying float vGrassSeed;`
       );
     };
-    mesh.material = material;
-    mesh.frustumCulled = false;
-    // (no shadow lookups per blade: the roots are shaded by hand instead)
-    mesh.layers.set(GRASS_LAYER);
-    return { mesh, geometry, material, uniforms, planted: n };
+    // one instanced draw per ring, all sharing the material
+    const group = new THREE.Group();
+    const meshes = RINGS.map(([, rows], i) => {
+      const { matrices, blade } = rings[i];
+      const geometry = bladeGeometry(rows);
+      geometry.setAttribute("aBlade", new THREE.InstancedBufferAttribute(new Float32Array(blade), 4));
+      const mesh = new THREE.InstancedMesh(geometry, material, Math.max(matrices.length, 1));
+      matrices.forEach((mm, j) => mesh.setMatrixAt(j, mm));
+      mesh.count = matrices.length;
+      mesh.userData.planted = matrices.length;
+      // (never read or changed again: let the JS copies go once uploaded —
+      // the renderer's depth sort reads the bounds, so they're found first)
+      mesh.computeBoundingSphere();
+      releaseAfterUpload(mesh.instanceMatrix, geometry.attributes.aBlade);
+      mesh.frustumCulled = false;
+      // (no shadow lookups per blade: the roots are shaded by hand instead)
+      mesh.layers.set(GRASS_LAYER);
+      group.add(mesh);
+      return mesh;
+    });
+    return { group, meshes, material, uniforms, planted: n };
   }, [tier, garden, sway]);
 
   useEffect(
     () => () => {
-      built.geometry.dispose();
+      built.meshes.forEach((mesh) => {
+        mesh.geometry.dispose();
+        mesh.dispose();
+      });
       built.material.dispose();
-      built.mesh.dispose();
     },
     [built]
   );
@@ -206,8 +233,8 @@ export default function GardenGrass({ tier, garden, sway }) {
     u.uGrassGlow.value = T.grassTranslucency;
     u.uGrassTip.value.set(T.grassTip);
     u.uGrassDry.value.set(T.grassDry);
-    built.mesh.count = Math.min(Math.round(built.planted * T.grassDensity), built.planted);
+    for (const mesh of built.meshes) mesh.count = Math.min(Math.round(mesh.userData.planted * T.grassDensity * Q.density), mesh.userData.planted);
   });
 
-  return <primitive ref={ref} object={built.mesh} />;
+  return <primitive ref={ref} object={built.group} />;
 }

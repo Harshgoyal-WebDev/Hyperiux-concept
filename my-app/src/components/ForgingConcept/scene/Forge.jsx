@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ASSETS } from "../config";
 import { T } from "../tuning";
 import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
@@ -213,7 +214,7 @@ function glowTexture() {
 }
 
 export default function Forge({ J, shared, groundY, onReady }) {
-  const gltf = useGLTF(ASSETS.forgeGlb);
+  const gltf = useGLTF(ASSETS.forgeGlb, ASSETS.draco);
   const forge = useMemo(() => prepareForge(gltf.scene, groundY), [gltf, groundY]);
 
   const built = useMemo(() => {
@@ -297,8 +298,8 @@ export default function Forge({ J, shared, groundY, onReady }) {
           varying vec3 vV;
           void main() {
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            vN = normalize(normalMatrix * normal);
-            vV = normalize(-mv.xyz);
+            vN = normalMatrix * normal;
+            vV = -mv.xyz;
             gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: /* glsl */ `
@@ -307,7 +308,13 @@ export default function Forge({ J, shared, groundY, onReady }) {
           varying vec3 vN;
           varying vec3 vV;
           void main() {
-            float rim = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+            // (as the shell sweeps past the camera its surface comes right
+            // up to it, where the view vector is nearly zero: normalised
+            // carelessly that is NaN, which the bloom spreads over the whole
+            // frame as a black flash)
+            vec3 n = vN / max(length(vN), 1e-4);
+            vec3 v = vV / max(length(vV), 1e-4);
+            float rim = clamp(1.0 - abs(dot(n, v)), 0.0, 1.0);
             float a = (pow(rim, 3.0) * 1.6 + 0.04) * uLevel;
             gl_FragColor = vec4(uColor * a * 2.2, a);
           }`,
@@ -380,6 +387,58 @@ export default function Forge({ J, shared, groundY, onReady }) {
     [built]
   );
 
+  // The slab whole: until the rock breaks, its ~66 chunks and their crack
+  // strips are drawn as one mesh per material (merged in the forge's own
+  // space, with the same per-vertex aRest / aPiece the stone shader reads),
+  // not one draw each; the pieces themselves take over as it fractures.
+  const whole = useRef(null);
+  useLayoutEffect(() => {
+    if (!built || forge.missing) return;
+    const root = forge.object;
+    root.updateMatrixWorld(true);
+    const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const groups = new Map(); // material → geometries (in root space)
+    const take = (mesh) => {
+      const g = mesh.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld));
+      if (!groups.has(mesh.material)) groups.set(mesh.material, []);
+      groups.get(mesh.material).push(g);
+    };
+    for (const c of forge.chunks) {
+      take(c.mesh);
+      for (const child of c.mesh.children) if (child.isMesh) take(child);
+    }
+    const meshes = [];
+    let ok = true;
+    for (const [material, geoms] of groups) {
+      const merged = mergeGeometries(geoms, false);
+      geoms.forEach((g) => g.dispose());
+      if (!merged) {
+        ok = false;
+        break;
+      }
+      const m = new THREE.Mesh(merged, material);
+      const crack = !built.stoneMaterials.includes(material);
+      m.castShadow = !crack;
+      m.receiveShadow = true;
+      if (crack) m.renderOrder = 1;
+      meshes.push(m);
+    }
+    if (!ok) {
+      // (parts that don't merge: the pieces are drawn as they are)
+      meshes.forEach((m) => m.geometry.dispose());
+      return;
+    }
+    const group = new THREE.Group();
+    meshes.forEach((m) => group.add(m));
+    root.add(group);
+    whole.current = group;
+    return () => {
+      root.remove(group);
+      meshes.forEach((m) => m.geometry.dispose());
+      whole.current = null;
+    };
+  }, [built, forge]);
+
   const coreLight = useRef();
   const pose = useMemo(() => ({ position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), scale: new THREE.Vector3(), visible: true }), []);
   const lastFracture = useRef(-1);
@@ -445,6 +504,12 @@ export default function Forge({ J, shared, groundY, onReady }) {
         src[i].set(pose.position.x, pose.position.y, pose.position.z, erode);
         quat[i].set(pose.quaternion.x, pose.quaternion.y, pose.quaternion.z, pose.quaternion.w);
       });
+    }
+    // the slab whole until it fractures (see above)
+    if (whole.current) {
+      const intact = f <= 0;
+      whole.current.visible = intact;
+      if (intact) for (const c of forge.chunks) c.mesh.visible = false;
     }
 
     const glow = J.sphere * T.sphereGlow;

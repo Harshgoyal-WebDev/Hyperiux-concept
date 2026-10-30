@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { GARDEN } from "../config";
 import { mulberry32 } from "./layout";
 import { buildHeightGrid, createRidges, reshapeTerrain, widenPond } from "./gardenTerrain";
@@ -113,7 +114,12 @@ const swayGlsl = (kind) => /* glsl */ `
 #ifdef USE_INSTANCING
 {
   mat4 swM = modelMatrix * instanceMatrix;
+  #ifdef SW_PIVOT
+  // (merged plants: each part's own origin, carried per vertex)
+  vec3 swPivot = (swM * vec4(aPivot, 1.0)).xyz;
+  #else
   vec3 swPivot = (swM * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  #endif
   vec3 swWorld = (swM * vec4(transformed, 1.0)).xyz;
   ${
     kind === 0
@@ -148,7 +154,7 @@ export function patchSway(material, uniforms, kind, { before = "", fragment = nu
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n${SWAY_DECLS}\n${POINTER_WIND_GLSL}`)
+      .replace("#include <common>", `#include <common>\n#ifdef SW_PIVOT\nattribute vec3 aPivot;\n#endif\n${SWAY_DECLS}\n${POINTER_WIND_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${before}\nvSwGlow = 0.0;\n${swayGlsl(kind)}`);
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <common>",
@@ -175,6 +181,50 @@ const kindOf = (group, materialName) => {
   if ((group === "PlacedBushes" || group === "PlacedPlants") && materialName === "M_Foliage") return 2;
   return -1;
 };
+
+// Lets a buffer's JS copy go once it is on the GPU (for data that is never
+// read or changed again: the merged plants, the lawn's blades). Anything that
+// reads them must do so before the first frame they're drawn in.
+const releaseArray = function () {
+  this.array = null;
+};
+export function releaseAfterUpload(...attributes) {
+  for (const a of attributes) a?.onUpload(releaseArray);
+}
+
+// One plant variant's parts (same material) as a single geometry in the
+// plant's own space, each vertex carrying its part's origin (aPivot). Parts
+// whose attributes don't line up are given what they lack, so they merge.
+function mergeParts(parts) {
+  const geoms = parts.map(({ mesh, rel }) => {
+    const g = mesh.geometry.clone();
+    for (const k of Object.keys(g.attributes)) if (!["position", "normal", "uv", "color"].includes(k)) g.deleteAttribute(k);
+    g.applyMatrix4(rel);
+    const o = new THREE.Vector3().setFromMatrixPosition(rel);
+    const n = g.attributes.position.count;
+    const pivot = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) pivot.set([o.x, o.y, o.z], i * 3);
+    g.setAttribute("aPivot", new THREE.BufferAttribute(pivot, 3));
+    return g;
+  });
+  // the same attributes everywhere (a part without vertex colours gets white,
+  // without uvs zeros), all indexed
+  const want = new Set(geoms.flatMap((g) => Object.keys(g.attributes)));
+  const colorSize = geoms.find((g) => g.attributes.color)?.attributes.color.itemSize || 4;
+  for (const g of geoms) {
+    const n = g.attributes.position.count;
+    if (want.has("color") && !g.attributes.color) g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * colorSize).fill(1), colorSize));
+    if (want.has("uv") && !g.attributes.uv) g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+    if (want.has("normal") && !g.attributes.normal) g.computeVertexNormals();
+    if (!g.index) g.setIndex([...Array(n).keys()]);
+  }
+  const out = mergeGeometries(geoms, false);
+  geoms.forEach((g) => g.dispose());
+  if (!out) throw new Error("[forging-concept] garden: a plant's parts could not be merged");
+  out.computeBoundingSphere();
+  out.computeBoundingBox();
+  return out;
+}
 
 // gltf scene → { root, terrain, height, materials, anchors, textures }
 // lawnRadius: inside it the lawn's own blades cover the ground, so the GLB's
@@ -210,6 +260,9 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
       m.side = THREE.DoubleSide;
     } else if (m.name === "M_Grass") m.side = THREE.DoubleSide;
     if (kind >= 0) patchSway(m, sway, kind);
+    // (the trees', bushes' and plants' leaves are merged: their sway pivots
+    // come per vertex)
+    if (kind >= 1) m.defines = { ...m.defines, SW_PIVOT: "" };
     materials.set(key, m);
     return m;
   };
@@ -224,7 +277,11 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   terrain.name = "Terrain";
   const height = buildHeightGrid(terrain);
 
-  // gather placements: (mesh, material) → matrices (garden space)
+  // gather placements: (mesh, material) → matrices (garden space). The
+  // trees, bushes, rocks and plants are planted whole: each variant's parts
+  // that share a material are merged into one geometry (its parts' origins
+  // kept per vertex, aPivot, for the sway), instanced once per plant — a
+  // tree is a couple of draws, not one per leaf cluster.
   const rng = mulberry32(4711);
   const batches = new Map();
   const add = (groupName, mesh, matrix) => {
@@ -233,6 +290,24 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
     if (!batches.has(key)) batches.set(key, { geometry: mesh.geometry, material: mesh.material, kind, group: groupName, matrices: [] });
     batches.get(key).matrices.push(matrix);
   };
+  const r3 = (v) => Math.round(v * 1000);
+  const addWhole = (groupName, parts, base) => {
+    // the variant: its parts, where they sit, what they're made of
+    const variant = parts.map((p) => `${p.mesh.geometry.uuid}:${p.mesh.material.uuid}:${p.rel.elements.map(r3).join(",")}`).join("/");
+    const byMaterial = new Map();
+    for (const p of parts) {
+      const kind = kindOf(groupName, p.mesh.material.name);
+      const mk = `${p.mesh.material.uuid}|${kind}`;
+      if (!byMaterial.has(mk)) byMaterial.set(mk, { material: p.mesh.material, kind, parts: [] });
+      byMaterial.get(mk).parts.push(p);
+    }
+    for (const [mk, b] of byMaterial) {
+      const key = `${variant}|${mk}`;
+      if (!batches.has(key)) batches.set(key, { parts: b.parts, material: b.material, kind: b.kind, group: groupName, matrices: [] });
+      batches.get(key).matrices.push(base.clone());
+    }
+  };
+  const rootM = new THREE.Matrix4();
   const m4 = new THREE.Matrix4();
   const pos = new THREE.Vector3();
   const stood = new THREE.Vector3();
@@ -255,9 +330,11 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
       const lift = ridgeAt(moved.x, moved.z);
       shift.makeTranslation(moved.x - stood.x, lift, moved.z - stood.z);
       if (groupName === "PlacedTrees") trunks.push(new THREE.Vector3(moved.x, stood.y + lift, moved.z));
-      // each placed variant's parts relative to it (to plant more of them)
-      const parts = templates[groupName] ? [] : null;
-      const rootInv = parts ? new THREE.Matrix4().copy(placed.matrixWorld).invert() : null;
+      // each placed plant's parts relative to it (planted whole; and kept as
+      // a template, to plant more of them)
+      const whole = groupName !== "GrassPatches";
+      const parts = whole ? [] : null;
+      const rootInv = whole ? new THREE.Matrix4().copy(placed.matrixWorld).invert() : null;
       leafBox.makeEmpty();
       placed.traverse((o) => {
         if (!o.isMesh) return;
@@ -273,9 +350,12 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
           if (Math.hypot(pos.x, pos.z - 2) < lawnRadius) return;
           if (grassShare < 1 && rng() > grassShare) return;
         }
-        add(groupName, o, m4.clone());
+        if (!whole) add(groupName, o, m4.clone());
       });
-      if (parts?.length) templates[groupName].push(parts);
+      if (parts?.length) {
+        addWhole(groupName, parts, rootM.multiplyMatrices(toLocal, placed.matrixWorld).premultiply(shift));
+        templates[groupName]?.push(parts);
+      }
       if (!leafBox.isEmpty()) {
         const c = leafBox.getCenter(new THREE.Vector3());
         const r = leafBox.getSize(new THREE.Vector3()).multiplyScalar(0.5);
@@ -299,7 +379,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
       new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rng() * Math.PI * 2),
       new THREE.Vector3(scale, scale, scale)
     );
-    for (const { mesh, rel } of parts) add(groupName, mesh, new THREE.Matrix4().multiplyMatrices(base, rel));
+    addWhole(groupName, parts, base);
   };
   for (let n = 0, tries = 0; n < extraBushes && tries < extraBushes * 20; tries++) {
     const a = rng() * Math.PI * 2;
@@ -317,11 +397,19 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   const root = new THREE.Group();
   root.name = "Garden";
   root.add(terrain);
+  const merged = [];
   for (const b of batches.values()) {
+    if (b.parts) {
+      b.geometry = mergeParts(b.parts);
+      merged.push(b.geometry);
+    }
     const mesh = new THREE.InstancedMesh(b.geometry, material(b.material, b.kind), b.matrices.length);
     b.matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
+    // (the merged plants' data is read once, by the blossoms, as the garden
+    // is built: on the GPU it can go)
+    if (b.parts) releaseAfterUpload(...Object.values(b.geometry.attributes), b.geometry.index);
     // trees, bushes and rocks throw shadows; everything takes them
     mesh.castShadow = b.group === "PlacedTrees" || b.group === "PlacedBushes" || b.group === "PlacedRocks";
     mesh.receiveShadow = true;
@@ -333,5 +421,5 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   const textures = new Set();
   for (const m of materials.values()) for (const k of ["map", "normalMap", "roughnessMap", "aoMap", "alphaMap"]) if (m[k]) textures.add(m[k]);
 
-  return { root, terrain, height, trunks, canopies, materials: [...materials.values()], textures: [...textures], anchors };
+  return { root, terrain, height, trunks, canopies, geometries: merged, materials: [...materials.values()], textures: [...textures], anchors };
 }

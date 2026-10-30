@@ -9,6 +9,7 @@ import { GARDEN } from "../../config";
 import { mulberry32 } from "../../world/layout";
 import { GRASS_LAYER, POINTER_WIND_GLSL, SWAY_DECLS } from "../../world/gardenAsset";
 import { T } from "../../tuning";
+import { Q } from "../../quality";
 import { GARDEN_SUN } from "./sky";
 
 // Flowers through the lawn, three kinds, one instanced draw each, all
@@ -24,8 +25,10 @@ import { GARDEN_SUN } from "./sky";
 // smaller share than the grass takes), keeping its length; heads nod on
 // their own; blooms glow where the pointer passes.
 
-// aPart: 0 stem, 1 tulip cup, 2 tulip leaf, 3 daisy head, 4 spire florets
-function geometry(kind) {
+// aPart: 0 stem, 1 tulip cup, 2 tulip leaf, 3 daisy head, 4 spire florets.
+// lite: the tulips far from the pond (see LITE_FROM), where a cup is a few
+// pixels: 6 round and 3 rings up (44 triangles a flower, not 116)
+function geometry(kind, lite = false) {
   const pos = [];
   const nrm = [];
   const part = [];
@@ -55,16 +58,16 @@ function geometry(kind) {
   }
   if (kind === "tulip") {
     // the cup: a lathe of 12 round, 5 rings up; the rim rises to six points
-    const seg = 12;
-    const rings = 5;
-    const profile = [0.18, 0.4, 0.5, 0.48, 0.38];
+    const seg = lite ? 6 : 12;
+    const rings = lite ? 3 : 5;
+    const profile = lite ? [0.18, 0.5, 0.38] : [0.18, 0.4, 0.5, 0.48, 0.38];
     const cup = pos.length / 3;
     for (let j = 0; j < rings; j++) {
       const t = j / (rings - 1);
       const top = j === rings - 1;
       for (let i = 0; i < seg; i++) {
         const a = (i / seg) * Math.PI * 2;
-        const point = top && i % 2 === 0;
+        const point = top && (lite || i % 2 === 0);
         const r = profile[j] * (point ? 1.05 : 1);
         const y = t * 1.35 + (top ? (point ? 0.16 : -0.02) : 0);
         vert([Math.cos(a) * r, y, Math.sin(a) * r], [Math.cos(a), 0.25 - t * 0.3, Math.sin(a)], 1, t, i / seg);
@@ -290,6 +293,9 @@ const palette = (kind) =>
       ? [T.daisyColor]
       : [T.spireLavender, T.spireRose];
 
+// tulips this far from the pond (m) or more take the lite cup
+const LITE_FROM = 22;
+
 function plant(kind, tier, garden, seed) {
   const spec = KINDS[kind];
   const count = tier[spec.count];
@@ -300,6 +306,7 @@ function plant(kind, tier, garden, seed) {
   const iColor = new Float32Array(count * 3);
   const iRand = new Float32Array(count * 4);
   const colourOf = new Uint8Array(count);
+  const far = new Uint8Array(count);
   const range = (a) => a[0] + rng() * (a[1] - a[0]);
   let n = 0;
   for (let tries = 0; n < count && tries < count * 6; tries++) {
@@ -323,16 +330,28 @@ function plant(kind, tier, garden, seed) {
       iShape.set([rng() * Math.PI * 2, range(spec.stem), range(spec.head), range(spec.face)], n * 4);
       iRand.set([rng(), rng(), 0.6 + rng() * 0.8, (rng() - 0.5) * spec.lean], n * 4);
       colourOf[n] = colour;
+      far[n] = r >= LITE_FROM ? 1 : 0;
       n++;
     }
   }
-  const geo = geometry(kind);
-  geo.setAttribute("iPos", new THREE.InstancedBufferAttribute(iPos, 3));
-  geo.setAttribute("iShape", new THREE.InstancedBufferAttribute(iShape, 4));
-  geo.setAttribute("iColor", new THREE.InstancedBufferAttribute(iColor, 3));
-  geo.setAttribute("iRand", new THREE.InstancedBufferAttribute(iRand, 4));
-  geo.instanceCount = n;
-  return { kind, geo, planted: n, colourOf, key: "" };
+  // (tulips: near and far, each its own draw; the others need no lighter form)
+  const sets = kind === "tulip" ? [0, 1] : [null];
+  return sets.map((lite) => {
+    const pick = [];
+    for (let i = 0; i < n; i++) if (lite === null || far[i] === lite) pick.push(i);
+    const take = (src, size) => {
+      const out = new Float32Array(Math.max(pick.length, 1) * size);
+      pick.forEach((i, j) => out.set(src.subarray(i * size, i * size + size), j * size));
+      return out;
+    };
+    const geo = geometry(kind, lite === 1);
+    geo.setAttribute("iPos", new THREE.InstancedBufferAttribute(take(iPos, 3), 3));
+    geo.setAttribute("iShape", new THREE.InstancedBufferAttribute(take(iShape, 4), 4));
+    geo.setAttribute("iColor", new THREE.InstancedBufferAttribute(take(iColor, 3), 3));
+    geo.setAttribute("iRand", new THREE.InstancedBufferAttribute(take(iRand, 4), 4));
+    geo.instanceCount = pick.length;
+    return { kind, geo, planted: pick.length, colourOf: Uint8Array.from(pick, (i) => colourOf[i]), key: "" };
+  });
 }
 
 export default function GardenFlowers({ tier, garden, sway }) {
@@ -358,7 +377,7 @@ export default function GardenFlowers({ tier, garden, sway }) {
       side: THREE.DoubleSide,
       fog: true,
     });
-    const kinds = [plant("tulip", tier, garden, 7171), plant("daisy", tier, garden, 8181), plant("spire", tier, garden, 9191)];
+    const kinds = [...plant("tulip", tier, garden, 7171), ...plant("daisy", tier, garden, 8181), ...plant("spire", tier, garden, 9191)];
     const meshes = kinds.map((k) => {
       const m = new THREE.Mesh(k.geo, material);
       m.frustumCulled = false;
@@ -386,7 +405,7 @@ export default function GardenFlowers({ tier, garden, sway }) {
     u.uSun.value = T.gardenSun;
     for (const k of built.kinds) {
       const kindShare = k.kind === "tulip" ? T.tulipDensity : k.kind === "daisy" ? T.daisyDensity : T.spireDensity;
-      k.geo.instanceCount = Math.min(Math.round(k.planted * T.flowerDensity * kindShare), k.planted);
+      k.geo.instanceCount = Math.min(Math.round(k.planted * T.flowerDensity * kindShare * Q.density), k.planted);
       // the colours (live from the panel)
       const pal = palette(k.kind);
       const key = pal.join();

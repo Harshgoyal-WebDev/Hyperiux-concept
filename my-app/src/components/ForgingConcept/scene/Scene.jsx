@@ -19,6 +19,8 @@ import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
 import WorldSwitch from "./WorldSwitch";
 import Garden from "./garden/Garden";
 import { getAudio } from "../audio";
+import { Q, QUALITY_EVENT } from "../quality";
+import Governor from "./Governor";
 import { gardenFetched } from "../loading";
 
 // Feeds the journey state to the score and sound effects every frame.
@@ -36,7 +38,7 @@ function useGardenGate(J, forgeReady) {
   const readyAt = useRef(0);
   useEffect(() => {
     if (!forgeReady) return;
-    useGLTF.preload(ASSETS.gardenGlb);
+    useGLTF.preload(ASSETS.gardenGlb, ASSETS.draco);
     readyAt.current = performance.now();
   }, [forgeReady]);
   useFrame(() => {
@@ -63,7 +65,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
   const terrain = useMemo(() => createTerrainSampler(), []);
   const envSky = useMemo(() => ({ uNight: { value: 0 } }), []);
   const terrainGeometry = useMemo(() => buildTerrainGeometry(terrain, tier.terrainSegments), [terrain, tier]);
-  const heightField = useMemo(() => buildHeightField(terrainGeometry, tier.terrainSegments), [terrainGeometry, tier]);
+  const heightField = useMemo(() => buildHeightField(terrain, tier.terrainSegments), [terrain, tier]);
   const groundY = useMemo(() => footprintGround(terrain), [terrain]);
   const rockSet = useMemo(() => {
     const shards = buildShards();
@@ -78,6 +80,13 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
   );
 
   const [forge, setForge] = useState(null);
+  // the post passes, while the live quality keeps them (quality.js)
+  const [post, setPost] = useState(Q.post);
+  useEffect(() => {
+    const sync = () => setPost(Q.post);
+    window.addEventListener(QUALITY_EVENT, sync);
+    return () => window.removeEventListener(QUALITY_EVENT, sync);
+  }, []);
   const onReady = useCallback(
     (f, missing) => {
       setForge(f);
@@ -111,7 +120,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
           </Suspense>
         )}
 
-        <Lights tier={tier} shared={shared} />
+        <Lights J={J} tier={tier} shared={shared} />
         {forge && (
           <>
             <ForgeBeam terrain={terrain} forge={forge} J={J} shared={shared} />
@@ -127,6 +136,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
       {/* camera and shared state first: the world switch reads both */}
       <UniformSync J={J} shared={shared} shockCenter={forge?.world.origin} />
       <SoundDriver J={J} />
+      <Governor />
       <CameraRig J={J} opening={forge?.world.opening} />
 
       {forge && gardenOpen && (
@@ -136,7 +146,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         </Suspense>
       )}
 
-      {tier.post && <Post J={J} tier={tier} />}
+      {tier.post && post && <Post J={J} tier={tier} />}
     </>
   );
 }

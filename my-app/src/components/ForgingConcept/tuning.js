@@ -108,8 +108,8 @@ export const T = {
   // The garden
   innerGlow: 1.81, // the cube outline's inner light the camera flies into
   // the sky: clouds drifting across it
-  skyCloudCover: 0.55, // how much of the sky they cover
-  skyCloudSpeed: 1.0, // how fast they drift
+  skyCloudCover: 0.8, // how much of the sky they cover
+  skyCloudSpeed: 1.8, // how fast they drift
   gardenSun: 2.76,
   // the garden camera's lens, relative to its composed shots (degrees)
   gardenFovOffset: 6.5,
@@ -265,8 +265,8 @@ export const T = {
   // when each stage runs, as shares of the breakup (a piece's own progress)
   breakBurstEnd: 0.12, // the impact's energy has dissipated
   breakBlastEnd: 0.1, // the blast has thrown the pieces out
-  breakGatherStart: 0.2, // they start to be drawn in towards the streams...
-  breakGatherEnd: 0.62, // ...and are riding them
+  breakGatherStart: 0.16, // they start to be drawn in towards the streams...
+  breakGatherEnd: 0.75, // ...and are riding them
   breakGather: 0.44, // how far the rocks themselves are drawn in (0 = they stay out where the blast threw them and grind away there; 1 = they ride the streams)
   breakSpinStart: 0, // the streams start to pick up speed...
   breakSpinEnd: 0.63, // ...and are up to full speed
@@ -284,8 +284,8 @@ export const T = {
   streamLoose: 0.16, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
-  forgeDuration: 7.0,
-  forgeReverse: 4.5,
+  forgeDuration: 8.0,
+  forgeReverse: 5.0,
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

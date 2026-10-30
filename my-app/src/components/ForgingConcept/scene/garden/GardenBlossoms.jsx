@@ -277,7 +277,7 @@ function scatter(garden, count, seed) {
   return geometry;
 }
 
-export default function GardenBlossoms({ tier, garden, sway }) {
+export default function GardenBlossoms({ tier, garden, sway, light }) {
   const built = useMemo(() => {
     const geometry = scatter(garden, tier.gardenBlossoms || 0, 5150);
     if (!geometry) return null;
@@ -296,6 +296,8 @@ export default function GardenBlossoms({ tier, garden, sway }) {
         uSunColor: { value: new THREE.Color("#fff0d8") },
         uSky: { value: new THREE.Color("#bcd5ee") },
         uGround: { value: new THREE.Color("#5d6b3e") },
+        // (the garden's light, by day and night: Garden.jsx)
+        ...light,
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
@@ -311,7 +313,7 @@ export default function GardenBlossoms({ tier, garden, sway }) {
       material.uniformsNeedUpdate = true;
     };
     return { geometry, material, points, key: "" };
-  }, [tier, garden, sway]);
+  }, [tier, garden, sway, light]);
 
   useEffect(
     () => () => {
@@ -327,7 +329,6 @@ export default function GardenBlossoms({ tier, garden, sway }) {
     u.uShare.value = T.treeBlossomShare;
     u.uDensity.value = T.treeBlossomDensity * Q.density;
     u.uSize.value = 0.24 * T.treeBlossomSize;
-    u.uSun.value = T.gardenSun;
     const pal = palette();
     const key = pal.join();
     if (key !== built.key) {

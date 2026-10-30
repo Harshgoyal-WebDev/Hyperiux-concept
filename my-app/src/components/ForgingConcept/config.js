@@ -171,8 +171,6 @@ export const TIERS = {
     maxCrumble: 60000, // sand the broken rock turns into
     maxGravel: 4000, // ...and gravel
     sandGrains: 16000,
-    gardenGrass: 1, // share of the garden's grass clumps drawn
-    gardenBlades: 150000, // the lawn's blades
     gardenBushes: 40, // bushes planted beyond the GLB's own
     gardenTulips: 4200, // flowers through the lawn: tulips,
     gardenDaisies: 4800, // ...daisies
@@ -192,8 +190,6 @@ export const TIERS = {
     maxCrumble: 30000,
     maxGravel: 2000,
     sandGrains: 10000,
-    gardenGrass: 0.6,
-    gardenBlades: 85000,
     gardenBushes: 28,
     gardenTulips: 2400,
     gardenDaisies: 2700,
@@ -213,8 +209,6 @@ export const TIERS = {
     maxCrumble: 10000,
     maxGravel: 600,
     sandGrains: 0, // no hover on touch
-    gardenGrass: 0.3,
-    gardenBlades: 36000,
     gardenBushes: 12,
     gardenTulips: 950,
     gardenDaisies: 1100,

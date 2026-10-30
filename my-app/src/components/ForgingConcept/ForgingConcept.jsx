@@ -246,6 +246,9 @@ const TRAVEL_VH = JOURNEY_VH - 100; // scroll travel of the pinned section
 // Keys that scroll the page natively; ignored while the event auto-scrolls.
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 const linear = (t) => t;
+// a whoosh: under way from the start (the visitor was already scrolling),
+// rushing through the middle, settling to land
+const whoosh = (t) => 0.15 * t + 0.85 * (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 // The loader (Loader.jsx) holds the page until the scene is in; a review
 // frame (?p=) skips it.
@@ -401,6 +404,8 @@ function Journey({ env, onGarden }) {
   //     pace, then hands back — the visitor scrolls the breakup themselves;
   //   scrolling back up before that point – it scrolls (locked) back to
   //     just short of the core.
+  //   in the cube outline's opening – carried (locked) on through into the
+  //     garden's daylight, or back out (T.gapStart, T.gapDuration).
   useGSAP(
     () => {
       const section = sectionRef.current;
@@ -489,6 +494,17 @@ function Journey({ env, onGarden }) {
           const to = forward ? freeAt : P.core - 2 * EPS;
           const vhPerSecond = SCROLL_VH.event / (forward ? T.forgeDuration : T.forgeReverse);
           run(to, (Math.abs(to - goal) * TRAVEL_VH) / vhPerSecond, true, linear);
+          return;
+        }
+        // the cube outline's opening: once the camera is in it, carried
+        // through into the garden's daylight (or, scrolling back, out of it)
+        // — never left hanging in the gap
+        const gapIn = P.held + (P.pass - P.held) * Math.min(Math.max(T.gapStart, 0), 0.99);
+        const gapOut = P.out;
+        if (goal > gapIn + EPS && goal < gapOut - EPS) {
+          const forward = D.dir >= 0;
+          const to = forward ? gapOut : gapIn;
+          run(to, (Math.max(T.gapDuration, 0.2) * Math.abs(to - goal)) / (gapOut - gapIn), true, whoosh);
         }
       };
 

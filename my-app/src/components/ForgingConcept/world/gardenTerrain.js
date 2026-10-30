@@ -17,6 +17,10 @@ import { mulberry32 } from "./layout";
 //              height is T.gardenRidges), leaving a shallow valley open on
 //              the way in; the lawn grows over them, and the trees on them
 //              are lifted with them.
+//   hummocks – and over all of it, from just past the shore, the ground
+//              rolls in soft, irregular mounds (rounded noise at two scales;
+//              their height is T.gardenHummocks), like turf over buried
+//              stones.
 const BANK = 1.45;
 const FADE = 3.8;
 const smooth = (a, b, x) => {
@@ -38,10 +42,20 @@ export function widenPond(x, z, scale, out) {
 
 // the ridges' height at (x, z) (garden metres), their crests up to height,
 // round the pond widened by pondScale
-export function createRidges(height, pondScale, seed = 2024) {
+export function createRidges(height, pondScale, seed = 2024, hummocks = 0) {
   const noise = createNoise2D(mulberry32(seed));
+  const lumps = createNoise2D(mulberry32(seed + 1));
+  // broad, rounded swells with soft hollows between (gentle: a lawn that
+  // rolls, not rough ground)
+  const mound = (x, z) => {
+    const a = lumps(x / 12, z / 12) * 0.5 + 0.5;
+    const b = lumps(x / 7 + 31, z / 7 - 12) * 0.5 + 0.5;
+    return a * a * (3 - 2 * a) * 0.82 + b * b * (3 - 2 * b) * 0.18;
+  };
+  // (rounded crests: a smooth roll over the top, no sharp crease)
   const ridge = (x, z, f, o) => {
-    const v = 1 - Math.abs(noise(x * f + o, z * f - o));
+    const n = noise(x * f + o, z * f - o);
+    const v = 1 - n * n;
     return v * v;
   };
   const ax = GARDEN.pondGlbAxes[0] * pondScale;
@@ -49,15 +63,17 @@ export function createRidges(height, pondScale, seed = 2024) {
   return (x, z) => {
     const dx = x - GARDEN.pond.x;
     const dz = z - GARDEN.pond.z;
-    let m = smooth(1.2, 1.9, Math.hypot(dx / ax, dz / az));
-    if (m <= 0) return 0;
+    const rho = Math.hypot(dx / ax, dz / az);
+    const bumps = hummocks > 0 ? hummocks * smooth(1.04, 1.4, rho) * mound(x, z) : 0;
+    let m = smooth(1.2, 1.9, rho);
+    if (m <= 0) return bumps;
     // the way in (from +z) stays a shallow valley
     m *= 1 - 0.8 * smooth(0.9, 1.4, dz / az) * (1 - smooth(4, 12, Math.abs(dx)));
     // crests along the lines where the noise crosses zero, a smaller set
     // across them, and broad swells and saddles along their length
     const crest = ridge(x, z, 1 / 24, 0) * 0.65 + ridge(x, z, 1 / 10, 17) * 0.25 + (noise(x / 6, z / 6) * 0.5 + 0.5) * 0.1;
     const swell = 0.6 + 0.4 * noise(x * 0.02 + 7, z * 0.02);
-    return height * m * swell * crest;
+    return height * m * swell * crest + bumps;
   };
 }
 

@@ -13,7 +13,7 @@ import { T } from "../tuning";
 // frame all light — the desert is hidden and the garden shown, with its own
 // fog and sky light. The light then fades to the garden. It reverses
 // exactly scrolling back.
-export default function WorldSwitch({ J, worlds, desertRef }) {
+export default function WorldSwitch({ J, worlds, desertRef, shared }) {
   const { scene, gl } = useThree();
   const state = useMemo(() => ({ desertFog: null, desertEnv: null, wasGarden: false }), []);
 
@@ -39,7 +39,8 @@ export default function WorldSwitch({ J, worlds, desertRef }) {
     if (inGarden) {
       scene.fog = garden.fog;
       scene.environment = garden.env;
-      scene.environmentIntensity = T.gardenEnvIntensity;
+      // (the captured daylight sky: dimmed right down at night)
+      scene.environmentIntensity = T.gardenEnvIntensity * (1 - shared.uNight.value * 0.55);
     } else {
       scene.fog = state.desertFog;
       scene.environment = state.desertEnv;

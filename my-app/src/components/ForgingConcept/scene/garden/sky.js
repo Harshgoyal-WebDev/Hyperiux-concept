@@ -5,8 +5,38 @@ import * as THREE from "three";
 // warm sun from camera-right and behind, ~35° up (the garden metadata's light)
 export const GARDEN_SUN = new THREE.Vector3(0.5, 0.57, 0.65).normalize();
 
+// At night (uGardenNight) the same sky turns deep navy, with stars and a
+// pale moon where the sun was.
 export const SKY_GLSL = /* glsl */ `
+uniform float uGardenNight;
+float gnHash3(vec3 p) {
+  p = fract(p * 0.3183099 + 0.1);
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+vec3 gardenNight(vec3 d, vec3 moonDir) {
+  float h = d.y;
+  float moon = max(dot(d, moonDir), 0.0);
+  vec3 col = mix(vec3(0.06, 0.085, 0.15), vec3(0.015, 0.025, 0.065), smoothstep(-0.01, 0.5, h));
+  // a bright full moon: a wide pale glow round it lighting the sky, a
+  // tighter halo, and the disc
+  col += vec3(0.3, 0.38, 0.6) * pow(moon, 8.0) * 0.45;
+  col += vec3(0.6, 0.68, 0.9) * pow(moon, 120.0) * 0.8;
+  float moonA = acos(clamp(dot(d, moonDir), -1.0, 1.0));
+  col = mix(col, vec3(0.95, 0.96, 1.0) * 2.4, 1.0 - smoothstep(0.0288, 0.0312, moonA));
+  // stars: one candidate per cell of a direction grid
+  vec3 g = d * 160.0;
+  vec3 cell = floor(g);
+  vec3 o = vec3(gnHash3(cell + 1.7), gnHash3(cell + 3.1), gnHash3(cell + 5.3)) - 0.5;
+  float dist = length(fract(g) - 0.5 - o * 0.6);
+  float star = step(0.975, gnHash3(cell)) * (1.0 - smoothstep(0.0, 0.11, dist));
+  star *= mix(0.4, 2.2, gnHash3(cell + 9.0)) * smoothstep(0.03, 0.3, h) * (1.0 - pow(moon, 40.0));
+  col += vec3(0.85, 0.9, 1.0) * star;
+  if (h < 0.0) col = mix(col, vec3(0.05, 0.07, 0.12), smoothstep(0.0, -0.12, h));
+  return col;
+}
 vec3 gardenSky(vec3 d, vec3 sunDir) {
+  if (uGardenNight > 0.999) return gardenNight(d, sunDir);
   float h = d.y;
   // a crystal-clear deep blue, only just paling at the horizon
   vec3 zenith = vec3(0.02, 0.25, 0.86);
@@ -19,6 +49,7 @@ vec3 gardenSky(vec3 d, vec3 sunDir) {
   // the disc: round, its edge about a pixel wide
   float sunA = acos(clamp(dot(d, sunDir), -1.0, 1.0));
   col = mix(col, vec3(1.0, 0.97, 0.9) * 3.0, 1.0 - smoothstep(0.0288, 0.0312, sunA));
+  if (uGardenNight > 0.001) col = mix(col, gardenNight(d, sunDir), uGardenNight);
   return col;
 }
 `;
@@ -69,7 +100,7 @@ float gardenClouds(vec3 d, float t, vec3 sunDir, out float shade) {
 
 export function createSkyMaterial({ clouds = true } = {}) {
   return new THREE.ShaderMaterial({
-    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 }, uCover: { value: 0.55 }, uSpeed: { value: 1 }, uOctaves: { value: 5 } },
+    uniforms: { uSunDir: { value: GARDEN_SUN.clone() }, uTime: { value: 0 }, uCover: { value: 0.55 }, uSpeed: { value: 1 }, uOctaves: { value: 5 }, uGardenNight: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -94,7 +125,9 @@ export function createSkyMaterial({ clouds = true } = {}) {
         // white in the sun, cool grey in their own shade, warmer towards the sun
         vec3 cloud = mix(vec3(0.7, 0.76, 0.86), vec3(1.08, 1.06, 1.02), smoothstep(0.6, 1.05, shade));
         cloud *= 0.92 + 0.12 * smoothstep(-0.2, 0.6, dot(d, uSunDir));
-        col = mix(col, cloud, c * 0.95);`
+        // (by night: dark, moonlit at their edges, the stars hidden behind)
+        cloud = mix(cloud, vec3(0.05, 0.065, 0.1) * (0.7 + 0.6 * smoothstep(0.85, 1.05, shade)), uGardenNight);
+        col = mix(col, cloud, c * mix(0.95, 0.85, uGardenNight));`
             : ""
         }
         gl_FragColor = vec4(col, 1.0);

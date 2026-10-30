@@ -168,6 +168,7 @@ export default function Loader({ J, problem, onEnter, onGone }) {
     // background simply fades)
     if (opening.current) {
       opening.current.draw(0, 0);
+      canvasRef.current.style.visibility = "visible";
       root.current.style.background = "transparent";
     }
     const draw = () => {
@@ -192,11 +193,13 @@ export default function Loader({ J, problem, onEnter, onGone }) {
   };
 
   if (gone) return null;
-  // (on the body: over the header, out of the journey's sticky frame)
+  // (out of <main>: over the header, out of the journey's sticky frame)
   return createPortal(
     <div ref={root} className="fixed inset-0 z-[100] select-none bg-[#111111]" role="dialog" aria-label="Loading the experience" aria-busy={!ready}>
       {/* the ground (#111), drawn by the shader so it can open */}
-      <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full bg-transparent" />
+      {/* (hidden until it opens: an undrawn WebGL canvas can flash black as
+          the page repaints round it — on the button's hover) */}
+      <canvas ref={canvasRef} aria-hidden="true" className="invisible absolute inset-0 h-full w-full bg-transparent" />
       <div ref={contentRef} className="absolute inset-0 flex flex-col items-center justify-center">
         <Face barRef={barRef} />
         <button
@@ -204,20 +207,26 @@ export default function Loader({ J, problem, onEnter, onGone }) {
           onClick={enter}
           disabled={!ready}
           tabIndex={ready ? 0 : -1}
-          className={`${ENTER_TYPE} cursor-pointer text-white transition-all duration-1000 ease-out ${
-            ready ? "translate-y-0 opacity-80 hover:opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+          className={`${ENTER_TYPE} cursor-pointer text-white hover:border-[#ff5f00] hover:bg-[#ff5f00] hover:text-black focus-visible:border-[#ff5f00] focus-visible:bg-[#ff5f00] focus-visible:text-black focus-visible:outline-none ${
+            ready ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
           }`}
+          // (it rises in slowly once ready; its hover is quick)
+          style={{ transition: "opacity 1s ease-out, transform 1s ease-out, background-color 0.3s, border-color 0.3s, color 0.3s" }}
         >
-          Enter the experience
+          Enter the Experience
         </button>
       </div>
     </div>,
-    document.body
+    // (beside the page's <main>, inside the layout that carries the site's
+    // fonts: on <body> it would fall back to Arial)
+    document.querySelector("main")?.parentElement ?? document.body
   );
 }
 
 // the wordmark and the bar (shared with the cover below)
-const ENTER_TYPE = "mt-[2vw] font-[family-name:var(--font-aeonikpro)] text-[0.85vw] uppercase tracking-[0.32em] max-[64rem]:mt-6 max-[64rem]:text-xs";
+// (a button: a white outline, filling orange on hover)
+const ENTER_TYPE =
+  "mt-[2vw] border border-white/60 px-[1.6vw] py-[0.65vw] font-[family-name:var(--font-aeonikpro)] text-[0.95vw] max-[64rem]:mt-6 max-[64rem]:px-5 max-[64rem]:py-2.5 max-[64rem]:text-sm";
 function Face({ barRef }) {
   return (
     <>
@@ -238,7 +247,7 @@ export function LoaderCover() {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#111111]" aria-hidden="true">
       <Face />
-      <span className={`${ENTER_TYPE} invisible`}>Enter the experience</span>
+      <span className={`${ENTER_TYPE} invisible`}>Enter the Experience</span>
     </div>
   );
 }

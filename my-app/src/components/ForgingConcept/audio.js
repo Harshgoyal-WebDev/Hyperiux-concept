@@ -1,5 +1,5 @@
 import { T } from "./tuning";
-import { P } from "./config";
+import { P, sectionAt } from "./config";
 import { pointer } from "./pointer";
 
 // Generative score and sound effects, synthesised live with Web Audio (no
@@ -882,7 +882,10 @@ class AudioEngine {
     const dt = Math.max(delta, 1e-3);
     const smooth = (param, value, tc = 0.12) => param.setTargetAtTime(value, t, tc);
 
-    smooth(this.master.gain, T.masterVolume, 0.3);
+    // out of the garden into the site: everything sinks well down through
+    // the portal's light and stays down under the sections below
+    const toSite = smoothstep(J.progress, sectionAt("portal", 0), sectionAt("portal", 0.55));
+    smooth(this.master.gain, T.masterVolume * (1 - T.siteDuck * toSite), 0.3);
 
     // vanish: from the white-out to the end of the dissolve the music
     // sinks, darkens and washes out into the reverb, then is gone

@@ -230,7 +230,7 @@ function mergeParts(parts) {
 // lawnRadius: inside it the lawn's own blades cover the ground, so the GLB's
 // grass clumps there are left out. pondScale widens the pond; ridges is the
 // height of the ridges' crests (m).
-export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawnRadius = 0, pondScale = 1, ridges = 0, sway }) {
+export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawnRadius = 0, pondScale = 1, ridges = 0, hummocks = 0, sway }) {
   const scene = gltfScene;
   const top = scene.getObjectByName("HyperiuxGarden");
   const missing = top ? GROUPS.filter((n) => !top.getObjectByName(n)) : ["HyperiuxGarden"];
@@ -271,7 +271,7 @@ export function prepareGarden(gltfScene, { grassShare = 1, extraBushes = 0, lawn
   const terrainSrc = top.getObjectByName("GardenTerrain").getObjectByProperty("isMesh", true);
   const terrain = new THREE.Mesh(terrainSrc.geometry, material(terrainSrc.material, -1));
   terrain.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toLocal, terrainSrc.matrixWorld));
-  const ridgeAt = createRidges(ridges, pondScale);
+  const ridgeAt = createRidges(ridges, pondScale, 2024, hummocks);
   reshapeTerrain(terrain, pondScale, ridgeAt);
   terrain.receiveShadow = true;
   terrain.name = "Terrain";

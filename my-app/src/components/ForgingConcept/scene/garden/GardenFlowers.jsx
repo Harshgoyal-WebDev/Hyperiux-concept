@@ -27,7 +27,7 @@ import { GARDEN_SUN } from "./sky";
 
 // aPart: 0 stem, 1 tulip cup, 2 tulip leaf, 3 daisy head, 4 spire florets.
 // lite: the tulips far from the pond (see LITE_FROM), where a cup is a few
-// pixels: 6 round and 3 rings up (44 triangles a flower, not 116)
+// pixels: 6 round and 4 rings up (56 triangles a flower, not 116)
 function geometry(kind, lite = false) {
   const pos = [];
   const nrm = [];
@@ -59,15 +59,17 @@ function geometry(kind, lite = false) {
   if (kind === "tulip") {
     // the cup: a lathe of 12 round, 5 rings up; the rim rises to six points
     const seg = lite ? 6 : 12;
-    const rings = lite ? 3 : 5;
-    const profile = lite ? [0.18, 0.5, 0.38] : [0.18, 0.4, 0.5, 0.48, 0.38];
+    const rings = lite ? 4 : 5;
+    // (lite: drawn in to a closed bud with six points, not left an open
+    // six-sided cup — which looked like a glass)
+    const profile = lite ? [0.18, 0.47, 0.42, 0.22] : [0.18, 0.4, 0.5, 0.48, 0.38];
     const cup = pos.length / 3;
     for (let j = 0; j < rings; j++) {
       const t = j / (rings - 1);
       const top = j === rings - 1;
       for (let i = 0; i < seg; i++) {
         const a = (i / seg) * Math.PI * 2;
-        const point = top && (lite || i % 2 === 0);
+        const point = top && i % 2 === 0;
         const r = profile[j] * (point ? 1.05 : 1);
         const y = t * 1.35 + (top ? (point ? 0.16 : -0.02) : 0);
         vert([Math.cos(a) * r, y, Math.sin(a) * r], [Math.cos(a), 0.25 - t * 0.3, Math.sin(a)], 1, t, i / seg);
@@ -270,6 +272,9 @@ void main() {
   // light through the bloom from behind
   col += albedo * sun * trans * pow(max(dot(-V, uSunDir), 0.0), 2.0) * 0.8;
   col += sun * gloss * pow(max(dot(N, normalize(uSunDir + V)), 0.0), 48.0) * 0.3;
+  // kept under the bloom's threshold (white daisies in the sun would glow
+  // like lamps), so only the pointer's glow makes them shine
+  col *= min(0.6 / max(dot(col, vec3(0.2126, 0.7152, 0.0722)), 1e-4), 1.0);
   // lit from within where the pointer passes
   col += (albedo * 2.4 + uGlowColor * 0.9) * vSwGlow * uGlowStrength;
   gl_FragColor = vec4(col, 1.0);
@@ -354,7 +359,7 @@ function plant(kind, tier, garden, seed) {
   });
 }
 
-export default function GardenFlowers({ tier, garden, sway }) {
+export default function GardenFlowers({ tier, garden, sway, light }) {
   const built = useMemo(() => {
     const material = new THREE.ShaderMaterial({
       uniforms: {
@@ -368,6 +373,8 @@ export default function GardenFlowers({ tier, garden, sway }) {
         uSunColor: { value: new THREE.Color("#fff0d8") },
         uSky: { value: new THREE.Color("#bcd5ee") },
         uGround: { value: new THREE.Color("#5d6b3e") },
+        // (the garden's light, by day and night: Garden.jsx)
+        ...light,
         uStem: { value: new THREE.Color("#4a7428") },
         uLeaf: { value: new THREE.Color("#4d7a5a") },
         uCentre: { value: new THREE.Color("#f2b81e") },
@@ -385,7 +392,7 @@ export default function GardenFlowers({ tier, garden, sway }) {
       return m;
     });
     return { material, kinds, meshes };
-  }, [tier, garden, sway]);
+  }, [tier, garden, sway, light]);
 
   useEffect(
     () => () => {
@@ -400,9 +407,9 @@ export default function GardenFlowers({ tier, garden, sway }) {
     const u = built.material.uniforms;
     u.uCamera.value.copy(camera.position);
     // stems keep pace with the lawn, so the blooms stand just above it
-    u.uHeight.value = T.flowerHeight * T.grassHeight * 0.9;
-    u.uSize.value = T.flowerSize * Math.sqrt(T.grassHeight);
-    u.uSun.value = T.gardenSun;
+    // (sized as they were among the old lawn's blades, 2.19 m)
+    u.uHeight.value = T.flowerHeight * 2.19 * 0.9;
+    u.uSize.value = T.flowerSize * Math.sqrt(2.19);
     for (const k of built.kinds) {
       const kindShare = k.kind === "tulip" ? T.tulipDensity : k.kind === "daisy" ? T.daisyDensity : T.spireDensity;
       k.geo.instanceCount = Math.min(Math.round(k.planted * T.flowerDensity * kindShare * Q.density), k.planted);

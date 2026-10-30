@@ -172,7 +172,12 @@ export function pieceFlight(forge, c, u, out) {
   // (the blast throws it there from the slab)
   out.position.lerpVectors(rest, onStream, b);
   out.quaternion.setFromAxisAngle(c.axis, c.spin * (5 * b + U.uBreakAngle.value * 2 * T.breakTumble) * Math.max(T.breakTumble, 0.2));
-  return THREE.MathUtils.clamp((u - T.breakGrindStart) / Math.max(T.breakGrindEnd - T.breakGrindStart, 0.01), 0, 1);
+  // (only so much of it grinds away — each piece its own share round
+  // T.breakSandShare — the rest rides on round the mark as a ragged chunk)
+  const ground = THREE.MathUtils.clamp((u - T.breakGrindStart) / Math.max(T.breakGrindEnd - T.breakGrindStart, 0.01), 0, 1);
+  if (T.breakSandShare >= 0.999) return ground;
+  const own = THREE.MathUtils.clamp(T.breakSandShare + (c.seed - 0.5) * 0.5, 0.05, 1);
+  return ground * own;
 }
 
 // count points, area-weighted over every piece's triangles, in the piece's

@@ -16,7 +16,7 @@ import { T } from "../../tuning";
 import { Q } from "../../quality";
 import { GARDEN_SUN, createGardenEnvironment, createSkyMaterial } from "./sky";
 import ParticleLogo from "./ParticleLogo";
-import GardenGrass, { LAWN_RADIUS } from "./GardenGrass";
+import GardenLawn, { LAWN_RADIUS } from "./GardenLawn";
 import GardenFlowers from "./GardenFlowers";
 import GardenBlossoms from "./GardenBlossoms";
 import GardenPond from "./GardenPond";
@@ -106,8 +106,26 @@ function buildMountains({ radius, depth, low, high, colour, haze, seed, freq }) 
   return g;
 }
 
-export default function Garden({ J, tier, worlds }) {
+// day → night: the sun becomes the moon, the sky light a cool dark blue,
+// the haze night-blue (lerped by the shared uNight)
+const DAY = { sun: new THREE.Color("#fff0d8"), sky: new THREE.Color("#bcd5ee"), ground: new THREE.Color("#5d6b3e"), fog: new THREE.Color("#9dc2ec") };
+const NIGHT = { sun: new THREE.Color("#c2d2f6"), sky: new THREE.Color("#4a6196"), ground: new THREE.Color("#25332a"), fog: new THREE.Color("#16213a") };
+const MOUNTAINS_NIGHT = new THREE.Color("#2a3756");
+
+export default function Garden({ J, tier, worlds, shared }) {
   const { gl, camera } = useThree();
+  const hemi = useRef();
+  // the garden's light, shared with the flowers', blossom's and pond's own shaders
+  const light = useMemo(
+    () => ({
+      uSun: { value: 3 },
+      uSunColor: { value: DAY.sun.clone() },
+      uSky: { value: DAY.sky.clone() },
+      uGround: { value: DAY.ground.clone() },
+      uGardenNight: { value: 0 },
+    }),
+    []
+  );
   const gltf = useGLTF(ASSETS.gardenGlb, ASSETS.draco);
   const group = useRef();
   const sun = useRef();
@@ -115,15 +133,17 @@ export default function Garden({ J, tier, worlds }) {
   const sway = useMemo(() => createSwayUniforms(time), [time]);
   // the ground's shape (the pond's size, the ridges) is built into the
   // garden: changed in the panel, it is rebuilt once the slider settles
-  const [ground, setGround] = useState(() => ({ pond: T.pondSize, ridges: T.gardenRidges }));
+  const [ground, setGround] = useState(() => ({ pond: T.pondSize, ridges: T.gardenRidges, hummocks: T.gardenHummocks }));
   const garden = useMemo(
     () =>
       prepareGarden(gltf.scene, {
-        grassShare: tier.gardenGrass,
+        // (the lawn covers the ground: none of the GLB's grass clumps)
+        grassShare: 0,
         extraBushes: tier.gardenBushes,
         lawnRadius: LAWN_RADIUS,
         pondScale: ground.pond,
         ridges: ground.ridges,
+        hummocks: ground.hummocks,
         sway,
       }),
     [gltf, tier, sway, ground]
@@ -278,6 +298,26 @@ export default function Garden({ J, tier, worlds }) {
     sky.uniforms.uOctaves.value = Q.clouds;
     sky.uniforms.uSpeed.value = T.skyCloudSpeed;
 
+    // day or night
+    const night = shared.uNight.value;
+    light.uGardenNight.value = night;
+    sky.uniforms.uGardenNight.value = night;
+    light.uSun.value = THREE.MathUtils.lerp(T.gardenSun, T.gardenMoon, night);
+    light.uSunColor.value.copy(DAY.sun).lerp(NIGHT.sun, night);
+    light.uSky.value.copy(DAY.sky).lerp(NIGHT.sky, night);
+    light.uGround.value.copy(DAY.ground).lerp(NIGHT.ground, night);
+    fog.color.copy(DAY.fog).lerp(NIGHT.fog, night);
+    extras.mountainMaterial.color.setRGB(1, 1, 1).lerp(MOUNTAINS_NIGHT, night);
+    if (sun.current) {
+      sun.current.intensity = light.uSun.value;
+      sun.current.color.copy(light.uSunColor.value);
+    }
+    if (hemi.current) {
+      hemi.current.intensity = THREE.MathUtils.lerp(0.7, T.gardenNightAmbient, night);
+      hemi.current.color.copy(light.uSky.value);
+      hemi.current.groundColor.copy(light.uGround.value);
+    }
+
     const now = performance.now();
     s.ndc.set(pointer.x, pointer.y);
     s.ray.setFromCamera(s.ndc, camera);
@@ -335,17 +375,16 @@ export default function Garden({ J, tier, worlds }) {
     sway.uWindAmount.value = T.gardenWind;
     sway.uGlowStrength.value = T.gardenGlow;
     sway.uGlowColor.value.set(T.gardenGlowColor);
-    if (sun.current) sun.current.intensity = T.gardenSun;
     extras.mountains.scale.y = T.gardenMountains;
 
     // the ground's shape from the panel: rebuilt once it has held still a moment
-    const want = `${T.pondSize}|${T.gardenRidges}`;
+    const want = `${T.pondSize}|${T.gardenRidges}|${T.gardenHummocks}`;
     if (want !== s.ground) {
       s.ground = want;
       s.groundAt = now;
-    } else if (want !== `${ground.pond}|${ground.ridges}` && want !== s.groundAsked && now - s.groundAt > 400) {
+    } else if (want !== `${ground.pond}|${ground.ridges}|${ground.hummocks}` && want !== s.groundAsked && now - s.groundAt > 400) {
       s.groundAsked = want;
-      setGround({ pond: T.pondSize, ridges: T.gardenRidges });
+      setGround({ pond: T.pondSize, ridges: T.gardenRidges, hummocks: T.gardenHummocks });
     }
   });
 
@@ -359,10 +398,10 @@ export default function Garden({ J, tier, worlds }) {
       </mesh>
       <group position={GARDEN_ORIGIN}>
         <primitive object={garden.root} />
-        <GardenGrass tier={tier} garden={garden} sway={sway} />
-        <GardenFlowers tier={tier} garden={garden} sway={sway} />
-        <GardenBlossoms tier={tier} garden={garden} sway={sway} />
-        <GardenPond J={J} tier={tier} time={time} axes={pondAxes} />
+        <GardenLawn garden={garden} sway={sway} light={light} />
+        <GardenFlowers tier={tier} garden={garden} sway={sway} light={light} />
+        <GardenBlossoms tier={tier} garden={garden} sway={sway} light={light} />
+        <GardenPond J={J} tier={tier} time={time} axes={pondAxes} light={light} />
         <primitive object={extras.mountains} />
         <primitive object={extras.sunTarget} />
         <directionalLight
@@ -381,7 +420,7 @@ export default function Garden({ J, tier, worlds }) {
           shadow-camera-near={10}
           shadow-camera-far={260}
         />
-        <hemisphereLight args={["#bcd5ee", "#5d6b3e", 0.7]} />
+        <hemisphereLight ref={hemi} args={["#bcd5ee", "#5d6b3e", 0.7]} />
         <ParticleLogo J={J} tier={tier} time={time} />
         <GardenAir time={time} />
       </group>

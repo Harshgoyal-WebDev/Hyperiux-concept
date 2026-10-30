@@ -141,8 +141,8 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
 
       {forge && gardenOpen && (
         <Suspense fallback={null}>
-          <Garden J={J} tier={tier} worlds={worlds} />
-          <WorldSwitch J={J} worlds={worlds} desertRef={desert} />
+          <Garden J={J} tier={tier} worlds={worlds} shared={shared} />
+          <WorldSwitch J={J} worlds={worlds} desertRef={desert} shared={shared} />
         </Suspense>
       )}
 

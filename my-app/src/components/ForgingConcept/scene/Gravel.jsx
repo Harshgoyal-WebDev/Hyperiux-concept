@@ -46,6 +46,8 @@ function patch(material, uniforms, pieces) {
         attribute vec4 aDrift; // puff direction, seed
         uniform float uGravelSize;
         uniform float uFade;
+        uniform float uEmbers;
+        uniform float uEmberGlow;
         varying float vGvTint;
         varying float vGvHot;
         varying float vGvStir;
@@ -77,7 +79,11 @@ function patch(material, uniforms, pieces) {
           );
           objectNormal = gvRot * objectNormal;
           vGvTint = fract(s * 13.7);
-          vGvHot = g < 0.0 ? 0.0 : step(0.72, fract(s * 4.3)) * (1.0 - smoothstep(0.0, 0.5, g));
+          // hot as they break off; and a share of them (uEmbers) stay embers,
+          // glowing and flickering as they go round
+          float ember = step(1.0 - uEmbers, fract(s * 4.3));
+          float flicker = 0.75 + 0.25 * sin(uTime * (3.0 + 4.0 * fract(s * 7.7)) + s * 50.0);
+          vGvHot = g < 0.0 ? 0.0 : max(step(0.72, fract(s * 4.3)) * (1.0 - smoothstep(0.0, 0.5, g)), ember * uEmberGlow * flicker);
           vGvStir = g < 0.0 ? 0.0 : heat;
         }`
       )
@@ -92,7 +98,7 @@ function patch(material, uniforms, pieces) {
         varying float vGvStir;`
       )
       .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.65, 1.3, vGvTint);")
-      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 2.2 + vec3(1.7, 1.5, 1.2) * vGvStir * 1.6;");
+      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 1.5 + vec3(1.7, 1.5, 1.2) * vGvStir * 1.6;");
   };
   material.customProgramCacheKey = () => "forge-gravel";
 }
@@ -128,6 +134,8 @@ export default function Gravel({ J, tier, shared, forge }) {
       uGravelSize: { value: 1 },
       uFade: { value: 1 },
       uHotColor: { value: new THREE.Color("#ff6a14") },
+      uEmbers: { value: 0.3 },
+      uEmberGlow: { value: 0.6 },
     };
     const material = new THREE.MeshStandardMaterial({ color: PALETTE.basalt, roughness: 0.88, metalness: 0, flatShading: true });
     patch(material, uniforms, forge.chunks.length);
@@ -153,6 +161,8 @@ export default function Gravel({ J, tier, shared, forge }) {
     // shrinks away in the light before the worlds switch
     u.uFade.value = 1 - THREE.MathUtils.smoothstep(J.flash, 0.3, 0.9);
     u.uHotColor.value.set(T.crackColor);
+    u.uEmbers.value = T.gravelEmbers;
+    u.uEmberGlow.value = T.gravelEmberGlow;
     built.geometry.instanceCount = Math.min(Math.round(T.gravelCount), tier.maxGravel);
   });
 

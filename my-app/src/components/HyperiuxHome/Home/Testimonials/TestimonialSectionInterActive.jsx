@@ -158,6 +158,8 @@ const TestimonialSectionInterActive = () => {
     splitParaRef.current?.revert();
     splitNameRef.current?.revert();
     splitDesigRef.current?.revert();
+    // (a fade-out finishing after the section has unmounted)
+    if (!paraContainerRef.current || !nameRef.current || !desigRef.current) return;
 
     paraContainerRef.current.textContent = data[i].para;
     nameRef.current.textContent = data[i].name;

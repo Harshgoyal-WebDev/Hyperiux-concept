@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useLenis } from "lenis/react";
+import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import Blogs from "./Home/BlogActive";
 import ClientsGrid from "./Home/ClientsGrid";
 import Industries from "./Home/Industries";
@@ -14,8 +17,34 @@ import WorkMobile from "./Home/Work/WorkMobile";
 // where the journey comes out of the garden's light. The blogs use their
 // own sample posts (the site reads them from Sanity).
 export default function HomeSections() {
+  // Mounted below the journey once the garden is reached, so the page grows
+  // by the whole site: the smooth scroll must measure it again (or it stays
+  // capped at the journey's end), and again as the sections settle (images,
+  // fonts, their own pinned scenes).
+  const root = useRef(null);
+  const lenis = useLenis();
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    let frame = 0;
+    const remeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        lenis?.resize();
+        ScrollTrigger.refresh();
+      });
+    };
+    remeasure();
+    const observer = new ResizeObserver(remeasure);
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [lenis]);
+
   return (
-    <div data-white-site data-hyperiux-home className="relative z-10  text-[#111] mt-[-100vh]">
+    <div ref={root} data-white-site data-hyperiux-home className="relative z-10  text-[#111] mt-[-100vh]">
       <WorkWithContent />
       <WorkMobile />
       {/* <SectionBreak /> */}

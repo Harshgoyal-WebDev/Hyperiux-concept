@@ -25,6 +25,8 @@ const OBJECT_SCHEMA = {
   "Scroll sequence": {
     forgeDuration: [2, 14, 0.1],
     forgeReverse: [0.5, 8, 0.1],
+    gapStart: [0.3, 0.98, 0.01],
+    gapDuration: [0.5, 8, 0.05],
   },
   Entering: {
     arriveDuration: [0.5, 8, 0.05],
@@ -66,6 +68,8 @@ const GARDEN_SCHEMA = {
     innerGlow: [0, 3, 0.01],
     gardenEnvIntensity: [0, 2, 0.01],
     gardenSun: [0, 8, 0.01],
+    gardenMoon: [0, 4, 0.01],
+    gardenNightAmbient: [0, 2, 0.01],
   },
   Sky: {
     skyCloudCover: [0, 1, 0.01],
@@ -82,15 +86,17 @@ const GARDEN_SCHEMA = {
     gardenMoteSize: [0.2, 3, 0.01],
   },
   Grass: {
-    grassDensity: [0, 1, 0.01],
-    grassHeight: [0.2, 3, 0.01],
-    grassWidth: [0.2, 3, 0.01],
-    grassBlend: [0, 1, 0.01],
-    grassRoot: "color",
-    grassMid: "color",
-    grassTip: "color",
-    grassDry: "color",
-    grassTranslucency: [0, 3, 0.01],
+    grassDensity: [0.1, 1, 0.01],
+    grassHeight: [0.05, 1.5, 0.01],
+    grassWidth: [0.005, 0.12, 0.001],
+    grassWind: [0, 2, 0.01],
+    grassWindSpeed: [0, 3, 0.01],
+    grassWake: [0, 3, 0.01],
+    grassBrightness: [0.2, 3, 0.01],
+    grassShadow: "color",
+    grassColor: "color",
+    grassHighlight: "color",
+    grassGround: "color",
   },
   Flowers: {
     flowerDensity: [0, 1, 0.01],
@@ -121,6 +127,7 @@ const GARDEN_SCHEMA = {
   Landscape: {
     pondSize: [1, 2.4, 0.01],
     gardenRidges: [0, 16, 0.1],
+    gardenHummocks: [0, 6, 0.05],
     gardenMountains: [0, 3, 0.01],
   },
   "Hover · flowers & bushes": {
@@ -207,6 +214,7 @@ const WORLD_SCHEMA = {
     pondVolume: [0, 2, 0.01],
     swooshVolume: [0, 2, 0.01],
     logoVolume: [0, 2, 0.01],
+    siteDuck: [0, 1, 0.01],
     vanishVolume: [0, 2, 0.01],
     vanishStart: [0.6, 1, 0.001],
     vanishEnd: [0.6, 1, 0.001],
@@ -287,6 +295,7 @@ const BREAK_SCHEMA = {
   Impact: {
     breakImpact: [0, 3, 0.01],
     breakSpread: [0.2, 3, 0.01],
+    breakSandShare: [0.05, 1, 0.01],
     breakShrink: [0.2, 1, 0.01],
     breakTumble: [0, 3, 0.01],
   },
@@ -321,6 +330,8 @@ const BREAK_SCHEMA = {
     crumbleOpacity: [0, 1, 0.01],
     gravelCount: [0, 4000, 10],
     gravelSize: [0.2, 3, 0.01],
+    gravelEmbers: [0, 1, 0.01],
+    gravelEmberGlow: [0, 3, 0.01],
   },
 };
 

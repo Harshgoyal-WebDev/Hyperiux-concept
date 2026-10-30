@@ -137,10 +137,11 @@ void main() {
   vec4 r = vReflect;
   r.xy += n.xz * uDistort * r.w;
   vec3 refl = uHasReflection > 0.5 ? texture2DProj(tDiffuse, r).rgb : gardenSky(reflect(-v, n), uSunDir);
-  vec3 body = mix(uDeep, uShallow, smoothstep(0.45, 1.0, shore));
+  vec3 body = mix(uDeep, uShallow, smoothstep(0.45, 1.0, shore)) * mix(1.0, 0.2, uGardenNight);
   vec3 col = mix(body, refl, clamp(mix(0.35, 1.0, fresnel) * uReflect, 0.0, 1.0));
   // the sun glinting on the ripples
-  col += vec3(1.0, 0.95, 0.85) * pow(max(dot(reflect(-uSunDir, n), v), 0.0), 220.0) * 1.6;
+  // (the sun glinting on the ripples; at night, the moon, fainter and cooler)
+  col += mix(vec3(1.0, 0.95, 0.85) * 1.6, vec3(0.7, 0.78, 1.0) * 0.6, uGardenNight) * pow(max(dot(reflect(-uSunDir, n), v), 0.0), 220.0);
   // clear over the shallows (the bed shows through), denser in the middle
   float a = mix(0.96, uClarity, smoothstep(0.75, 1.08, shore));
   gl_FragColor = vec4(col, a);
@@ -159,6 +160,7 @@ const WATER_UNIFORMS = (axes, half) => ({
   uAxes: { value: new THREE.Vector2(...axes) },
   uTime: { value: 0 },
   uSunDir: { value: GARDEN_SUN.clone() },
+  uGardenNight: { value: 0 },
   uReflect: { value: 1 },
   uDistort: { value: 0.04 },
   uCurrentSpeed: { value: 1 },
@@ -171,7 +173,7 @@ const WATER_UNIFORMS = (axes, half) => ({
 });
 
 // axes: the pond's semi-axes (x, z), as widened
-export default function GardenPond({ J, tier, time, axes }) {
+export default function GardenPond({ J, tier, time, axes, light }) {
   // (it works only while the garden is on screen, and its ripples only
   // while they are still running: a few seconds after the last drop)
   const { gl, camera, size } = useThree();
@@ -274,6 +276,7 @@ export default function GardenPond({ J, tier, time, axes }) {
       return;
     }
     const u = built.water.material.uniforms;
+    u.uGardenNight.value = light.uGardenNight.value;
     u.uTime.value = time.value;
     u.uReflect.value = T.pondReflect;
     u.uDistort.value = T.pondDistortion;

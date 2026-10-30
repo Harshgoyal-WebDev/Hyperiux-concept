@@ -27,6 +27,7 @@ export const T = {
   pondVolume: 0.7, // the water stirred by the pointer (subtle)
   swooshVolume: 0.8, // the rush of air as the pointer stirs the particle body
   logoVolume: 0.7, // the particle logo gathering and settling
+  siteDuck: 0.75, // how far all the sound drops going from the garden into the site's sections (0.75 = 75% quieter)
   vanishVolume: 0.6, // the score washing out at the end of the hero
   vanishStart: 0.97, // story time where the music starts to vanish
   vanishEnd: 1.0, // ...and is gone
@@ -103,34 +104,40 @@ export const T = {
   crumbleOpacity: 1.0,
   gravelCount: 4000, // gravel it turns into (capped by the quality tier)
   gravelSize: 1.47,
+  gravelEmbers: 0.02, // share of the gravel that stays glowing embers
+  gravelEmberGlow: 2.0, // ...how bright they glow
   sandBrightness: 0.19,
 
   // The garden
   innerGlow: 1.81, // the cube outline's inner light the camera flies into
   // the sky: clouds drifting across it
-  skyCloudCover: 0.8, // how much of the sky they cover
-  skyCloudSpeed: 1.8, // how fast they drift
-  gardenSun: 2.76,
+  skyCloudCover: 0.4, // how much of the sky they cover
+  skyCloudSpeed: 0.4, // how fast they drift
+  gardenSun: 5.0,
+  gardenMoon: 1.9, // the moon's light on the garden at night
+  gardenNightAmbient: 0.95, // ...and the cool sky light that keeps it readable
   // the garden camera's lens, relative to its composed shots (degrees)
   gardenFovOffset: 6.5,
   gardenOrbitRadius: 1.15, // the revolution round the pond: its radius (× the composed one)
   gardenOrbitHeight: 1.35, // ...and the camera's height on it (m, added)
-  // the lawn
-  grassDensity: 1.0, // share of the blades drawn
-  grassHeight: 2.19,
-  grassWidth: 3.0,
-  grassBlend: 0.6, // the blades merging into one sward (0 = each blade distinct; 1 = one surface, tips still pointed)
-  grassRoot: "#1f3a12",
-  grassMid: "#3f6b22",
-  grassTip: "#7fae3c",
-  grassDry: "#b5a35a",
-  grassTranslucency: 1.0, // the sun glowing through the blades when looking towards it
+  // the lawn: fine grass over the whole garden
+  grassDensity: 1.0, // share of its blades drawn
+  grassHeight: 0.62, // metres
+  grassWidth: 0.01, // metres, at the root
+  grassWind: 0.43, // how far the wind's waves bend it
+  grassWindSpeed: 0.83, // ...and how fast they run
+  grassWake: 0.94, // how hard the pointer pushes it over
+  grassBrightness: 0.96,
+  grassShadow: "#1f3814", // in the hollows and at the roots
+  grassColor: "#446f22",
+  grassHighlight: "#b4ec5a", // the slopes towards the light, the gusts' sheen
+  grassGround: "#3f6a22", // the ground between the blades
   // flowers through the lawn: tulips, daisies, spires
   flowerDensity: 0.5, // share of them drawn (all three kinds)
   tulipDensity: 1.0, // ...and of each kind
   daisyDensity: 0.7,
   spireDensity: 0.44,
-  flowerHeight: 1.25, // stem length (scaled with the grass's height too)
+  flowerHeight: 0.75, // stem length (scaled with the grass's height too)
   flowerSize: 3.42, // bloom size
   tulipRed: "#d8242f",
   tulipPink: "#f06aa0",
@@ -155,6 +162,7 @@ export const T = {
   // (their height)
   pondSize: 2.22,
   gardenRidges: 9.6,
+  gardenHummocks: 1.1, // metres: the soft mounds the ground rolls in
   gardenMountains: 1.21,
   // the pointer in the garden: grass and leaves part along its path,
   // bushes, plants and flowers glow where it passes
@@ -280,6 +288,7 @@ export const T = {
   breakStirGlow: 0, // how much a stirred grain lights up (0 = not at all)
   breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
   breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
+  breakSandShare: 0.55, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
   breakShrink: 0.43, // the pieces' size once broken off
   breakSpin: 0.6, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
@@ -308,6 +317,11 @@ export const T = {
   // (core → forged logo), and back
   forgeDuration: 8.0,
   forgeReverse: 5.0,
+  // through the cube outline's opening into the garden: from this far
+  // along the run at the opening (share of it) the page carries the camera
+  // through into daylight by itself (or back out), in this many seconds
+  gapStart: 0.72,
+  gapDuration: 1.5,
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

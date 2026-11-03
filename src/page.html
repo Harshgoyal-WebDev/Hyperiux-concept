@@ -1,0 +1,472 @@
+<title>Hyperiux Scroll Journey</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: an architectural drawing set. Each section is a sheet with a sheet number (A-00…A-99);
+   storyboard chapters are sheets of ten frames. One committed light "drafting paper" look. */
+:root{
+  --paper:#E6E5E1; --sheet:#F2F1ED; --ink:#141413; --graphite:#5D5B56; --rule:#C6C3BC;
+  --or:#FF6A13; --or-ink:#B9440A; --night:#0C0C0D;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Instrument Sans','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+.wrap{max-width:1360px;margin:0 auto;padding-block:20px 64px}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--or);outline-offset:3px}
+.mono,.eyebrow,.sheetno{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.025em;line-height:.98;text-wrap:balance;margin:0}
+
+/* title bar */
+.tb{display:flex;align-items:center;gap:16px;border:1px solid var(--ink);background:var(--sheet);padding:10px 14px}
+.tb svg{width:26px;height:26px;flex:none}
+.tb .mono{color:var(--ink)}
+.tb .sp{flex:1}
+.tb .muted{color:var(--graphite)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(20px,3vw,48px);padding-block:clamp(28px,5vw,64px) 36px;align-items:end}
+.hero h1{font-size:clamp(40px,5.6vw,84px);font-stretch:96%}
+.hero h1 em{font-style:normal;color:var(--or)}
+.lede{max-width:56ch;color:var(--ink);font-size:18px;margin:22px 0 0}
+.eyebrow{color:var(--or-ink);margin:0 0 18px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{font:600 13px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ink);background:var(--ink);color:var(--sheet);padding:15px 20px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:10px}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn .dot{width:9px;height:9px;background:var(--or);display:inline-block}
+.btn:hover{background:var(--or);border-color:var(--or);color:#fff}
+.stage{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--paper);border:1px solid var(--ink);overflow:hidden}
+.stage svg,.fr-img svg{display:block;width:100%;height:100%}
+.grain::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+figure{margin:0}
+figcaption{display:flex;justify-content:space-between;gap:12px;margin-top:10px;color:var(--graphite)}
+
+/* frame text classes (inside the SVG frames) */
+.hxf .h{font-family:var(--display);font-weight:640;letter-spacing:-.02em}
+.hxf .m{font-family:var(--mono);letter-spacing:.06em}
+.hxf .b{font-family:var(--body)}
+
+/* sheets */
+.sheet{border-top:1px solid var(--ink);padding-block:28px 56px}
+.sheet-head{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;margin-bottom:32px}
+.sheetno{color:var(--or-ink);padding-top:6px}
+.sheet-head h2{font-size:clamp(30px,3.6vw,52px)}
+.sheet-head p{margin:0;max-width:60ch;color:var(--graphite)}
+
+/* logo study */
+.logo-study{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px}
+.logo-dia{background:var(--sheet);border:1px solid var(--ink);padding:16px}
+.logo-dia svg{width:100%;height:auto;display:block}
+.rules{display:grid;gap:0;border:1px solid var(--ink);background:var(--sheet);align-content:start}
+.rule{display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:18px;border-bottom:1px solid var(--rule)}
+.rule:last-child{border-bottom:0}
+.rule .mono{color:var(--or-ink);padding-top:3px}
+.rule p{margin:0}
+.rule b{font-weight:700}
+.cubes{margin-top:24px;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:1px solid var(--ink);background:var(--sheet)}
+.cubes div{padding:12px 8px 10px;border-right:1px solid var(--rule);text-align:center;min-width:0}
+.cubes div:last-child{border-right:0}
+.cubes svg{width:100%;max-width:64px;height:auto;display:block;margin:0 auto 6px}
+.cubes span{font:500 10px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--graphite);display:block}
+
+/* references */
+.refs{border:1px solid var(--ink);background:var(--sheet)}
+.ref{display:grid;grid-template-columns:200px minmax(0,1fr) minmax(0,1fr) 150px;gap:24px;padding:20px;border-bottom:1px solid var(--rule)}
+.ref:last-child{border-bottom:0}
+.ref h3{font-size:22px;letter-spacing:-.01em;line-height:1.1}
+.ref h3 a{text-decoration:none;border-bottom:1px solid var(--rule)}
+.ref h3 a:hover{border-color:var(--or)}
+.ref .k{display:block;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--graphite);margin-bottom:8px}
+.ref p{margin:0;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-content:start}
+.chip{font:500 11px/1 var(--mono);letter-spacing:.06em;border:1px solid var(--ink);padding:5px 7px;white-space:nowrap}
+.chip.or{border-color:var(--or);color:var(--or-ink)}
+
+/* journey */
+.light{height:14px;border:1px solid var(--ink);background:linear-gradient(90deg,#E7E6E2 0%,#E7E6E2 44%,#3A332E 50%,#0C0C0D 56%,#0C0C0D 77%,#B86A40 83%,#E7E6E2 90%,#E7E6E2 100%)}
+.journey{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:1px solid var(--ink);border-top:0;background:var(--sheet)}
+.jc{padding:14px 12px 18px;border-right:1px solid var(--rule);min-width:0;display:flex;flex-direction:column;gap:8px;text-decoration:none}
+.jc:last-child{border-right:0}
+.jc:hover{background:#fff}
+.jc .n{font:700 34px/1 var(--display);letter-spacing:-.03em}
+.jc .t{font:700 16px/1.1 var(--display)}
+.jc .mt{font:500 10.5px/1.35 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--or-ink)}
+.jc p{margin:0;font-size:13px;line-height:1.4;color:var(--graphite)}
+.lt{font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;align-self:flex-start;border:1px solid var(--ink)}
+.lt.dk{background:var(--night);color:#EDEBE6;border-color:var(--night)}
+
+/* storyboard */
+.chap{border-top:1px solid var(--ink);padding-block:28px 40px}
+.chap-head{display:grid;grid-template-columns:120px minmax(0,1.1fr) minmax(0,1.4fr);gap:24px;margin-bottom:20px}
+.chap-head .cn{font:700 64px/.85 var(--display);letter-spacing:-.04em}
+.chap-head h3{font-size:clamp(28px,3vw,40px)}
+.chap-head .meta{margin:10px 0 0;color:var(--or-ink)}
+.chap-head .thesis{font:500 19px/1.4 var(--body);margin:0 0 14px;max-width:52ch}
+.spec{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px 16px;margin:0;font-size:14px}
+.spec dt{font:500 11px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--graphite)}
+.spec dd{margin:0}
+.frames{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 12px}
+.fr{all:unset;cursor:zoom-in;display:flex;flex-direction:column;gap:8px;min-width:0}
+.fr-img{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--paper);border:1px solid var(--ink);overflow:hidden;transition:transform .2s}
+.fr:hover .fr-img{transform:translateY(-2px);box-shadow:0 6px 0 -2px var(--or)}
+.fr:focus-visible .fr-img{outline:2px solid var(--or);outline-offset:2px}
+.fr-cap{font-size:13px;line-height:1.35;color:var(--ink)}
+.fr-cap b{display:block;font:600 10.5px/1.4 var(--mono);letter-spacing:.08em;color:var(--or-ink);margin-bottom:2px}
+
+/* build notes */
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--ink);background:var(--sheet)}
+.note{padding:20px;border-right:1px solid var(--rule);min-width:0}
+.note:last-child{border-right:0}
+.note h3{font-size:20px;letter-spacing:-.01em;margin-bottom:12px}
+.note ul,.note ol{margin:0;padding-left:18px;font-size:14.5px;display:grid;gap:8px}
+.foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;border:1px solid var(--ink);border-top:0;padding:12px 14px;color:var(--graphite)}
+
+/* lightbox + player overlays */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(12,12,13,.94);color:#EDEBE6;display:flex;flex-direction:column;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ov-bar{display:flex;align-items:center;gap:12px;min-height:40px}
+.ov-bar .sp{flex:1}
+.ov .mono{color:#EDEBE6}
+.ib{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;background:transparent;color:#EDEBE6;border:1px solid #57575c;padding:10px 12px;cursor:pointer}
+.ib:hover{border-color:var(--or);color:var(--or)}
+.lb-main{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.lb-stage{width:min(100%,calc((100vh - 190px) * 16 / 9));aspect-ratio:16/9;position:relative;border:1px solid #333;overflow:hidden;background:var(--paper)}
+.lb-foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:center;padding-top:12px}
+.lb-foot p{margin:0;font-size:15px}
+.scrub{display:flex;align-items:center;gap:12px}
+.scrub input{flex:1;accent-color:var(--or)}
+.pl-scroll{flex:1;overflow-y:auto;position:relative;margin-top:8px;overscroll-behavior:contain}
+.pl-sticky{position:sticky;top:0;height:100%;display:flex;align-items:center;justify-content:center}
+.pl-stage{width:min(100%,calc((100vh - 120px) * 16 / 9));aspect-ratio:16/9;position:relative;overflow:hidden;border:1px solid #333}
+.pl-spacer{height:1300vh}
+.pl-hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:500 11px/1 var(--mono);letter-spacing:.1em;color:#EDEBE6;background:rgba(12,12,13,.7);padding:8px 10px;pointer-events:none}
+
+@media (max-width:1100px){
+  .hero{grid-template-columns:1fr}
+  .sheet-head,.chap-head{grid-template-columns:1fr}
+  .logo-study{grid-template-columns:1fr}
+  .ref{grid-template-columns:1fr 1fr}
+  .journey{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .jc{border-bottom:1px solid var(--rule)}
+  .frames{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .notes{grid-template-columns:1fr}
+  .note{border-right:0;border-bottom:1px solid var(--rule)}
+  .cubes{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .tb .hide-s{display:none}
+  .ref{grid-template-columns:1fr}
+  .journey{grid-template-columns:1fr 1fr}
+  .frames{grid-template-columns:1fr 1fr}
+  .rule{grid-template-columns:1fr;gap:6px}
+  .cubes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lb-foot{grid-template-columns:1fr}
+  .chap-head .cn{font-size:48px}
+}
+@media (prefers-reduced-motion:reduce){.fr-img{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="tb">
+    <svg viewBox="0 0 240 240" aria-hidden="true" id="tbLogo"></svg>
+    <span class="mono">Hyperiux</span>
+    <span class="mono muted hide-s">Website concept 01 · Scroll journey</span>
+    <span class="sp"></span>
+    <span class="mono muted hide-s">Sheet A-00</span>
+    <span class="mono">03.11.2026</span>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Concept 01 · 9 chapters · 90 storyboard frames</p>
+      <h1>Your brand is the cube. <em>We build the world around&nbsp;it.</em></h1>
+      <p class="lede">A scroll journey for hyperiux.com that explains how Hyperiux works the way an architect would. The visitor watches a site get surveyed, a plan get drawn, a structure go up, the client's identity become its facade, the systems get wired, and a finished district handed over. It is one continuous 3D world with no hard cuts, built around the Hyperiux logo.</p>
+      <div class="actions">
+        <button class="btn" id="playBtn" type="button"><span class="dot"></span>Play the scroll journey</button>
+        <a class="btn ghost" href="https://claude.ai/artifact/K3GwwUp27AXdM95YPWt37X" target="_blank" rel="noopener">Arrival · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/3AcUcNBmLDw5zAMmHwCa7d" target="_blank" rel="noopener">Blueprint · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/TpeTZwsrA4BJvSFpmqrRG8" target="_blank" rel="noopener">Material · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/QP9BHwBydEopRA8yiRsm8g" target="_blank" rel="noopener">District · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="#storyboard">Storyboard ↓</a>
+      </div>
+    </div>
+    <figure>
+      <div class="stage grain" id="heroStage" role="img" aria-label="Chapter 01, Arrival: the Hyperiux logo assembles in 3D around a floating cube"></div>
+      <figcaption><span class="mono">01 / Arrival · live render</span><span class="mono" id="heroPct">—</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="sheet" id="logo">
+    <div class="sheet-head">
+      <span class="sheetno">A-01</span>
+      <h2>The logo is already a building.</h2>
+      <p>Two columns, a beam that climbs left to right, and a cube in the joint. Read as architecture, the mark gives us the whole story. Hyperiux is the structure, and the client's brand is the module it carries.</p>
+    </div>
+    <div class="logo-study">
+      <div class="logo-dia"><svg viewBox="0 0 640 330" id="logoDia" role="img" aria-label="Hyperiux logo annotated as columns, a 12 degree beam and a module"></svg></div>
+      <div class="rules">
+        <div class="rule"><span class="mono">Module</span><p><b>The cube is the client's brand.</b> It appears in every chapter: it floats on the empty site, unfolds into six brand facets, becomes the atrium in the plan, takes each client's colours, and finally rises in the central plaza.</p></div>
+        <div class="rule"><span class="mono">Columns + beam</span><p><b>The H is Hyperiux.</b> It is the frame that holds the brand up: strategy, design system and engineering. The cube has its own story, and the H is built around it.</p></div>
+        <div class="rule"><span class="mono">12° rise</span><p><b>The beam climbs at about 12°, left to right.</b> That is the scroll direction of the story, concept to conversion. The same diagonal becomes the user flow in the plan and the road through the project district.</p></div>
+        <div class="rule"><span class="mono">One orange</span><p><b>#FF6A13 marks Hyperiux, and nothing else.</b> It is used for the structure, markers, risers and highlights. Client colours only ever appear on the cube and the facade.</p></div>
+      </div>
+    </div>
+    <div class="cubes" id="cubes"></div>
+  </section>
+
+  <section class="sheet" id="refs">
+    <div class="sheet-head">
+      <span class="sheetno">A-02</span>
+      <h2>What we took from the five references.</h2>
+      <p>Each reference gave one technique. Together they make a single world that moves from drawing to building to city, and from day to night and back to day.</p>
+    </div>
+    <div class="refs" id="refList"></div>
+  </section>
+
+  <section class="sheet" id="journey">
+    <div class="sheet-head">
+      <span class="sheetno">A-03</span>
+      <h2>Nine chapters, one camera, one day.</h2>
+      <p>Light carries the pacing: drafting-paper daylight for thinking and planning, dusk for identity, night for technology and work, dawn for growth and handover. Every chapter ends on the frame the next one starts from.</p>
+    </div>
+    <div class="light" aria-hidden="true"></div>
+    <div class="journey" id="journeyList"></div>
+  </section>
+
+  <section class="sheet" id="storyboard">
+    <div class="sheet-head">
+      <span class="sheetno">A-10 → A-90</span>
+      <h2>Storyboard: ten frames per chapter.</h2>
+      <p>Each frame is a still from the same scroll timeline, sampled every ~11% through its chapter. Open any frame to scrub between them, or play the whole journey as a scroll prototype.</p>
+    </div>
+    <div id="chapters"></div>
+  </section>
+
+  <section class="sheet" id="build">
+    <div class="sheet-head">
+      <span class="sheetno">A-99</span>
+      <h2>How it gets built.</h2>
+      <p>The storyboard engine already works the way the site should: every chapter is a camera path plus scene state driven by one scroll value. Production swaps these SVG frames for a WebGL scene.</p>
+    </div>
+    <div class="notes">
+      <div class="note">
+        <h3>Stack</h3>
+        <ul>
+          <li>Next.js with React Three Fiber and drei for the single persistent 3D scene.</li>
+          <li>GSAP ScrollTrigger and Lenis for scroll, with one master timeline split into nine labelled chapters.</li>
+          <li>Logo geometry built from the real logo SVG paths with ExtrudeGeometry. The cube mesh never unmounts.</li>
+          <li>Headlines, cards and nav stay as DOM over the canvas, for SEO, accessibility and crisp type.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h3>Look</h3>
+        <ul>
+          <li>Hidden-line drawing style: EdgesGeometry over polygon-offset fills (Heron, Enpower).</li>
+          <li>Night chapters switch to emissive edge materials on black (Zeggo) and instanced ribs with a physical material (Composites).</li>
+          <li>One post pass for paper grain, vignette and the day-to-night colour grade.</li>
+          <li>Instanced fins, buildings and particles keep draw calls low.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h3>Next steps</h3>
+        <ol>
+          <li>Approve the storyline and chapter order.</li>
+          <li>High-fidelity style frames for the remaining chapters (Arrival, Blueprint, Material and District are linked above).</li>
+          <li>Prototype chapters 01–03 in R3F to test performance on mid-range Android.</li>
+          <li>Collect project captures for the District facades and real client metrics for Occupancy.</li>
+          <li>Ship these stills as the reduced-motion and low-power fallback.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="foot"><span class="mono">Hyperiux Immersion Labs · Noida</span><span class="mono">Placeholder palettes in chapter 05 stand in for real client brands</span></div>
+  </section>
+</div>
+
+<div class="ov" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
+  <div class="ov-bar">
+    <span class="mono" id="lbTitle">—</span><span class="sp"></span>
+    <button class="ib" id="lbPrev" type="button" aria-label="Previous frame">← Prev</button>
+    <button class="ib" id="lbNext" type="button" aria-label="Next frame">Next →</button>
+    <button class="ib" id="lbClose" type="button">Close</button>
+  </div>
+  <div class="lb-main"><div class="lb-stage grain" id="lbStage"></div></div>
+  <div class="lb-foot">
+    <p id="lbCap">—</p>
+    <div class="scrub"><label class="mono" for="lbScrub">Scrub</label><input type="range" id="lbScrub" min="0" max="900" value="0"><span class="mono" id="lbPct">0%</span></div>
+  </div>
+</div>
+
+<div class="ov" id="pl" hidden role="dialog" aria-modal="true" aria-label="Scroll journey player">
+  <div class="ov-bar">
+    <span class="mono" id="plTitle">Scroll to play</span><span class="sp"></span>
+    <button class="ib" id="plClose" type="button">Close</button>
+  </div>
+  <div class="pl-scroll" id="plScroll" tabindex="0">
+    <div class="pl-sticky"><div class="pl-stage grain" id="plStage"><span class="pl-hint" id="plHint">SCROLL ↓</span></div></div>
+    <div class="pl-spacer"></div>
+  </div>
+</div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+(function(){
+const HXg = window.HX;
+const CH = [
+ {n:'Arrival', m:'The site', light:'Day', thesis:'A single module floats over an empty site. The H assembles around it: Hyperiux builds the structure that carries your brand.',
+  carries:'Loader (00→100), hero, "Digital Experience Design Agency" positioning', refs:['Heron','Composites'], build:'Loader counter bound to real asset loading. Logo extruded from SVG; pieces fly in on separate eases.',
+  caps:['Blank sheet. One module floats; the loader counts from 00.','Survey grid fades in under the module.','Survey pegs and dimension strings are set out.','Counter hits 100. The module stops spinning.','The logo is set out as an orange drawing in the air.','Columns and beam fly in from three directions.','The structure locks around the module: the H stands.','Headline reveals line by line beside the monument.','Camera orbits; concrete turns Hyperiux orange.','Camera dives into the module: "Your brand is the cube."']},
+ {n:'Survey', m:'Reading the land', light:'Day', thesis:'Before anything is drawn, the brand is studied. The module unfolds into six facets and audience data settles into the four Hyperiux lenses.',
+  carries:'"We are Hyperiux" intro, the four lenses (emotion, design, technology, neuromarketing), bionic-reading block', refs:['Mkebsi','Heron'], build:'Cube faces are hinged groups. Contours use a draw-on line shader; particles are Points with a morph target per cluster.',
+  caps:['Inside the module, looking down on its lid.','The module unfolds, hinge by hinge.','Flat net: six faces become six brand facets.','Contour lines ripple out like a site survey.','Audience data lands as a field of points.','Points cluster into the four Hyperiux lenses.','Code-style callouts pin insights to facets.','"Before we draw a line, we read the land."','Bionic-reading paragraph carries the research copy.','Camera returns overhead; net lines become plan lines.']},
+ {n:'Blueprint', m:'The floor plan', light:'Day', thesis:'Strategy before pixels. The H is drawn as a floor plan, its rooms are the six strategy services, and the user flow runs up the beam to conversion.',
+  carries:'"From concept to conversion", Explore our solutions → the six strategy services', refs:['Heron'], build:'Orthographic camera. Walls draw with stroke-dashoffset, then fill to solid. Markers and the spec card are DOM so they stay clickable.',
+  caps:['Ghost of the net; construction lines frame the sheet.','Wall outlines start drawing themselves.','The full plan reads: the H as a floor plan.','Walls fill in solid.','Dimension strings measure every room.','Room areas appear; the user flow climbs the beam.','Six orange markers pin the six strategy services.','Marker 01 opens a spec card; its room fills orange.','"Strategy is the floor plan."','The sheet tilts from plan to axonometric.']},
+ {n:'Structure', m:'Load-bearing system', light:'Day', thesis:'The plan rises into three masses. Grid, columns, slabs and core map one-to-one onto the design system.',
+  carries:'UI/UX design, design systems, process', refs:['Heron','Enpower'], build:'Floors are instanced per mass. The exploded view is one uniform driven by scroll.',
+  caps:['The plan in axonometric, ready to build.','Structural grid A–E / 1–4 with bubbles.','Columns rise on the grid.','Ground floors go up around the columns.','Floors stack at different rates per mass.','Full massing: three towers from one logo.','Annotations map structure to the design system.','"Design systems are load-bearing."','Exploded view: tokens, components, patterns, pages.','Layers close; the module lands on the roof.']},
+ {n:'Material', m:'The facade', light:'Dusk → Night', thesis:'The client\'s identity becomes the facade. Same structure, different skin: the fins and the module recolour brand by brand.',
+  carries:'Branding, "We don\'t just offer solutions, we craft impact"', refs:['Composites'], build:'Instanced fins with per-instance colour; palettes swap by uniform. Dark composite uses a physical material with clearcoat.',
+  caps:['Dusk. The module on a plinth; the facade traced on the ground.','Fins grow in a wave around the module.','"Your identity becomes the facade."','Material spec chips: concrete, glass, composite.','Fins and module take Brand A\'s palette.','Same structure, Brand B.','Same structure, Brand C.','Night falls; camera rises through dark composite ribs.','Statement with the four lenses highlighted.','Surfaces dissolve to wireframe.']},
+ {n:'Systems', m:'Services & risers', light:'Night', thesis:'What you don\'t see holds everything up. Risers, flows and nodes inside the building stand for motion, performance, CMS and organic growth.',
+  carries:'Development, performance, CMS, SEO / organic growth', refs:['Zeggo'], build:'Edge-only render on black with depth-tested fills. Flow lines use an animated dash-offset shader.',
+  caps:['Wireframe building draws in on black.','Camera moves closer; ground grid appears.','Orange risers light up through every core.','Data flows run along each floor.','01 Motion & WebGL; a wire module spins in the core.','02 Performance budget readout.','03 Headless CMS nodes connect to the risers.','04 Organic growth lines run to the horizon.','"What you don\'t see holds everything up."','Pull back: more wire buildings appear. A district.']},
+ {n:'District', m:'Streets of projects', light:'Night', thesis:'Selected work as a district. The beam becomes a road and the camera stops at each project like a station, with its live site on the facade.',
+  carries:'Work: Montra, Yellow, Patronum, Montra App, Monielink', refs:['Enpower','Zeggo'], build:'Camera on a CatmullRom spline with eased stops. Facades use real site captures as video textures.',
+  caps:['Aerial over the district; five projects labelled.','Camera drops to the road.','01 Montra: project card slides in.','Montra\'s facade becomes its live site.','02 Yellow.','03 Patronum.','04 Montra App.','05 Monielink.','Rise: all five labelled. View all projects.','First light at the horizon.']},
+ {n:'Occupancy', m:'People move in', light:'Dawn', thesis:'Dawn. The district fills up: industry zones light in turn, people flow along the roads, and proof arrives.',
+  carries:'Industries we work in, results, Clients love us', refs:['Enpower','Heron'], build:'Zones as projected decals; people as instanced points along road curves; window lights as an emissive mask.',
+  caps:['Dawn. The district turns back into a drawing.','01 Electronics zone highlighted.','02 Fintech.','03 Education.','04 Technology.','05 Banking.','People flow along the roads; windows light up.','Growth bars rise like towers.','Client quote on the sheet.','Camera climbs to a high aerial.']},
+ {n:'Handover', m:'The skyline', light:'Day', thesis:'From above, the streets spell the H and the module rises in the central plaza. The contact section works as a drawing title block, and the page loops back to the first sheet.',
+  carries:'CTA, Say Hi, contact details, footer', refs:['Heron'], build:'Same city instanced; the logo is the negative space between lots. Camera ends at 90°, then crossfades to the 2D logo.',
+  caps:['High aerial over the city.','Higher; the street pattern starts to read.','Top-down: the streets form the H.','The H fills orange.','The module rises in the central plaza.','The city fades to line; the logo stays.','"Let\'s bring your ideas to life."','Say Hi, email and phone.','Footer as a drawing title block.','Back to the blank sheet and one module. Loop.']}
+];
+const REFS = [
+ ['Heron AI','https://heronaiapp.com/','Drafting paper, an elevation drawing, then a floor plan that draws its own walls, fills them solid, adds dimension strings and pins orange markers that open spec cards. One-line statements sit alone on blank sheets between scenes.','The drawing language for Survey, Blueprint and Structure; orange markers with spec cards; the title-block footer; statement sheets between chapters.',['02','03','04','09']],
+ ['Composites.archi','https://www.composites.archi/','Starts with line strokes on black, then sculptural ribbed forms under hard light. Huge caps headlines reveal line by line, with key words in orange, and chapters are numbered 01/02/03.','The ribbed facade in Material, the dusk-to-night grade, and the line-by-line headline reveal with orange highlight words.',['01','05']],
+ ['Zeggo','https://www.zeggo.com.sg/','A wireframe city rendered edges-only on black. The camera flies in, and a numbered benefit list steps diagonally down the page with orange keywords.','The edge-only night world for Systems and District, and the stepped numbered list for the four technology services.',['06','07']],
+ ['Mkebsi','https://mkebsi.com/','Grainy grey ground, particle clouds that form shapes, topographic contour lines, a vertical dot progress rail and a radial dial for projects.','Contours and particle clusters in Survey, and paper grain over every frame.',['02']],
+ ['Enpower Trading','https://enpowertrading.co.za/','A white line-drawn 3D world on a grid terrain. The camera travels station to station, with a chapter progress bar along the bottom and an info card bottom-right.','The bottom chapter bar on every frame, station stops in District, and the project info card.',['07','08','All']]
+];
+const pad = n => String(n).padStart(2,'0');
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* title-bar logo + logo diagram */
+document.getElementById('tbLogo').innerHTML = HXg.logo2D({cube:'#F2F1ED'});
+(function(){
+  const s = 1.05, ox = 40, oy = 38, P = (u,v) => [ox+u*s, oy+v*s];
+  const lab = (from, to, t1, t2) => { const [x1,y1]=from; return `<path d="M${x1} ${y1}L${to[0]-14} ${to[1]-5}L${to[0]-4} ${to[1]-5}" fill="none" stroke="#FF6A13" stroke-width="1.2"/><circle cx="${x1}" cy="${y1}" r="4" fill="#FF6A13"/><text x="${to[0]}" y="${to[1]}" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" letter-spacing="1" fill="#141413">${t1}</text><text x="${to[0]}" y="${to[1]+20}" font-family="Instrument Sans,Arial,sans-serif" font-size="14" fill="#5D5B56">${t2}</text>`; };
+  let g = `<g transform="translate(${ox},${oy}) scale(${s})">${HXg.logo2D({cube:'#F2F1ED'})}</g>`;
+  const a = P(15,-14), b = P(225,-14);
+  g += `<g stroke="#141413" stroke-width="1"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line x1="${a[0]-5}" y1="${a[1]+5}" x2="${a[0]+5}" y2="${a[1]-5}"/><line x1="${b[0]-5}" y1="${b[1]+5}" x2="${b[0]+5}" y2="${b[1]-5}"/></g><text x="${(a[0]+b[0])/2}" y="${a[1]-7}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5D5B56">210</text>`;
+  const s0 = P(47,137), s1 = P(160,112.7);
+  g += `<path d="M${s0[0]} ${s0[1]+26} A 120 120 0 0 0 ${s0[0]+70} ${s0[1]+10}" fill="none" stroke="#141413" stroke-dasharray="3 3"/><text x="${s0[0]+76}" y="${s0[1]+24}" font-family="IBM Plex Mono,monospace" font-size="11" fill="#141413">12°</text>`;
+  g += lab(P(31,40), [360,70], 'COLUMN', 'Suspended mass, top left');
+  g += lab(P(185,93), [360,140], 'BEAM · 12°', 'Concept → conversion');
+  g += lab(P(120,101), [360,210], 'MODULE', 'The client’s brand');
+  g += lab(P(208,190), [360,280], 'COLUMN', 'Grounded mass, bottom right');
+  document.getElementById('logoDia').innerHTML = g;
+})();
+
+/* the module through the journey */
+(function(){
+  const st = [['#FFFFFF','#FF6A13','#E7E6E2','Floats'],['#FFFFFF','#FF6A13','#E7E6E2','Unfolds'],['none','#FF6A13','#E7E6E2','Atrium'],['#FF6A13','#B5470D','#E7E6E2','Lands'],['#1E3DFF','#FF6A13','#3A332E','Brand skin'],['none','#FF6A13','#0C0C0D','Wireframe'],['#17120F','#FF6A13','#0C0C0D','Live site'],['#FFFFFF','#141413','#E7E6E2','Occupied'],['#FF6A13','#7a2c03','#E7E6E2','Rises']];
+  document.getElementById('cubes').innerHTML = st.map((s,i)=>`<div><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="${s[2]}"/>${HXg.isoCubeSVG(32,32,17,{fill:s[0],stroke:s[1],sw:2})}</svg><span>${pad(i+1)} ${s[3]}</span></div>`).join('');
+})();
+
+/* references */
+document.getElementById('refList').innerHTML = REFS.map(r => `<div class="ref"><div><h3><a href="${r[1]}" target="_blank" rel="noopener">${r[0]} ↗</a></h3></div><div><span class="k">What it does</span><p>${esc(r[2])}</p></div><div><span class="k">What Hyperiux takes</span><p>${esc(r[3])}</p></div><div><span class="k">Used in</span><div class="chips">${r[4].map(c=>`<span class="chip or">${c==='All'?'All frames':'Ch '+c}</span>`).join('')}</div></div></div>`).join('');
+
+/* journey */
+document.getElementById('journeyList').innerHTML = CH.map((c,i)=>`<a class="jc" href="#ch-${i+1}"><span class="n">${pad(i+1)}</span><span class="t">${c.n}</span><span class="mt">${c.m}</span><span class="lt${/Night|Dusk/.test(c.light)?' dk':''}">${c.light}</span><p>${esc(c.carries)}</p></a>`).join('');
+
+/* storyboard */
+document.getElementById('chapters').innerHTML = CH.map((c,i)=>`
+<article class="chap" id="ch-${i+1}">
+  <div class="chap-head">
+    <div><div class="cn">${pad(i+1)}</div><p class="meta mono">Sheet A-${i+1}0</p></div>
+    <div><h3>${c.n}</h3><p class="meta mono">${c.m} · ${c.light}</p></div>
+    <div><p class="thesis">${esc(c.thesis)}</p>
+      <dl class="spec"><dt>Carries</dt><dd>${esc(c.carries)}</dd><dt>References</dt><dd>${c.refs.join(', ')}</dd><dt>Build</dt><dd>${esc(c.build)}</dd></dl></div>
+  </div>
+  <div class="frames">${c.caps.map((cap,j)=>`<button class="fr" type="button" data-ch="${i}" data-i="${j}" aria-label="Chapter ${i+1}, frame ${j+1}: ${esc(cap)}"><div class="fr-img grain" data-ch="${i}" data-t="${j/9}"></div><span class="fr-cap"><b>F${pad(j+1)} · ${Math.round(j/9*100)}%</b>${esc(cap)}</span></button>`).join('')}</div>
+</article>`).join('');
+
+const draw = (el, ch, t) => { el.innerHTML = HXg.frame(ch, t); };
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const el = e.target; draw(el, +el.dataset.ch, +el.dataset.t); io.unobserve(el); } }), {rootMargin:'400px 0px'}) : null;
+document.querySelectorAll('.fr-img').forEach(el => io ? io.observe(el) : draw(el, +el.dataset.ch, +el.dataset.t));
+
+/* hero: chapter 01 rendered live */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hero = document.getElementById('heroStage'), heroPct = document.getElementById('heroPct');
+let heroOn = true, last = 0;
+const heroT = ms => { const L = 12000, x = (ms % L) / L; return .3 + .7 * Math.min(1, x / .88); };
+function heroLoop(ms){
+  if (heroOn && ms - last > 33) { last = ms; const t = heroT(ms); draw(hero, 0, t); heroPct.textContent = Math.round(t*100) + '% of chapter'; }
+  requestAnimationFrame(heroLoop);
+}
+if (reduce) { draw(hero, 0, 8/9); heroPct.textContent = 'F09'; }
+else {
+  draw(hero, 0, .55);
+  if (io) new IntersectionObserver(es => { heroOn = es[0].isIntersecting && !document.hidden; }).observe(hero);
+  requestAnimationFrame(heroLoop);
+}
+
+/* lightbox */
+const lb = document.getElementById('lb'), lbStage = document.getElementById('lbStage'), lbScrub = document.getElementById('lbScrub');
+const lbTitle = document.getElementById('lbTitle'), lbCap = document.getElementById('lbCap'), lbPct = document.getElementById('lbPct');
+let cur = {ch:0, i:0}, opener = null;
+function lbShow(ch, i){
+  cur = {ch, i}; lbScrub.value = i * 100; lbRender(i/9);
+}
+function lbRender(t){
+  const j = Math.round(t * 9);
+  draw(lbStage, cur.ch, t);
+  lbTitle.textContent = `${pad(cur.ch+1)} / ${CH[cur.ch].n} · F${pad(j+1)}`;
+  lbCap.textContent = CH[cur.ch].caps[j];
+  lbPct.textContent = Math.round(t*100) + '%';
+}
+document.getElementById('chapters').addEventListener('click', e => {
+  const b = e.target.closest('.fr'); if (!b) return;
+  opener = b; lb.hidden = false; document.body.style.overflow = 'hidden';
+  lbShow(+b.dataset.ch, +b.dataset.i); document.getElementById('lbClose').focus();
+});
+lbScrub.addEventListener('input', () => lbRender(lbScrub.value / 900));
+const step = d => { let {ch, i} = cur; i += d; if (i > 9) { i = 0; ch = (ch + 1) % 9; } if (i < 0) { i = 9; ch = (ch + 8) % 9; } lbShow(ch, i); };
+document.getElementById('lbPrev').onclick = () => step(-1);
+document.getElementById('lbNext').onclick = () => step(1);
+function lbClose(){ lb.hidden = true; document.body.style.overflow = ''; if (opener) opener.focus(); }
+document.getElementById('lbClose').onclick = lbClose;
+
+/* scroll player */
+const pl = document.getElementById('pl'), plScroll = document.getElementById('plScroll'), plStage = document.getElementById('plStage'), plTitle = document.getElementById('plTitle'), plHint = document.getElementById('plHint');
+let plQueued = false;
+function plRender(){
+  plQueued = false;
+  const max = plScroll.scrollHeight - plScroll.clientHeight, T = max > 0 ? plScroll.scrollTop / max * 9 : 0;
+  const ch = Math.min(8, Math.floor(T)), t = Math.min(1, T - ch);
+  const svg = HXg.frame(ch, t);
+  plStage.innerHTML = svg; plStage.appendChild(plHint);
+  plHint.style.display = T < .02 ? '' : 'none';
+  plTitle.textContent = `${pad(ch+1)} / ${CH[ch].n} · ${Math.round(T/9*100)}%`;
+}
+plScroll.addEventListener('scroll', () => { if (!plQueued) { plQueued = true; requestAnimationFrame(plRender); } }, {passive:true});
+document.getElementById('playBtn').onclick = () => { opener = document.getElementById('playBtn'); pl.hidden = false; document.body.style.overflow = 'hidden'; plScroll.scrollTop = 0; plRender(); plScroll.focus(); };
+function plClose(){ pl.hidden = true; document.body.style.overflow = ''; if (opener) opener.focus(); }
+document.getElementById('plClose').onclick = plClose;
+
+document.addEventListener('keydown', e => {
+  if (!lb.hidden) { if (e.key === 'Escape') lbClose(); if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }
+  else if (!pl.hidden && e.key === 'Escape') plClose();
+});
+})();
+</script>

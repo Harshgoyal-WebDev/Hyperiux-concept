@@ -1,0 +1,329 @@
+<title>Hyperiux Blueprint</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-bleed orthographic WebGL plan under the site chrome. The plan sits left of centre;
+   the right column holds the service spec card and the chapter headline. Single drafting-paper look. */
+:root{
+  --paper:#E7E6E2; --sheet:#F3F2EE; --ink:#141413; --graphite:#5D5B56; --mute:#8E8B85; --rule:rgba(20,20,19,.16);
+  --or:#FF6A13; --or-ink:#B9440A;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Instrument Sans','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --sl:max(16px,env(safe-area-inset-left,0px)); --sr:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:light;
+}
+html,body{background:var(--paper)}
+body{margin:0;color:var(--ink);font:400 16px/1.5 var(--body);padding-left:var(--sl);padding-right:var(--sr)}
+[hidden]{display:none!important}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+.grain{position:fixed;inset:0;pointer-events:none;opacity:.3;mix-blend-mode:multiply;z-index:2;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .43 0 0 0 0 .4 0 0 0 .38 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.vig{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(120% 90% at 45% 50%,transparent 62%,rgba(70,58,44,.12))}
+.layer{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.mono{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+.top{position:fixed;left:0;right:0;top:0;z-index:5;display:flex;align-items:center;gap:14px;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(28px,env(safe-area-inset-right,0px)) 14px max(28px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--rule);background:color-mix(in srgb,var(--paper) 70%,transparent)}
+.top svg{width:26px;height:26px}
+.top .sp{flex:1}
+.top .pill{border:1px solid var(--ink);border-radius:20px;padding:7px 14px}
+.top .c{position:absolute;left:50%;transform:translateX(-50%)}
+
+/* projected labels */
+.lbl{position:absolute;left:0;top:0;white-space:nowrap;font:500 11px/1 var(--mono);letter-spacing:.06em;color:var(--graphite);will-change:transform}
+.lbl.or{color:var(--or-ink)}
+.cline{position:absolute;left:0;right:0;height:1px;background:var(--or)}
+.mk{position:absolute;left:0;top:0;width:30px;height:30px;margin:-15px 0 0 -15px;border:0;background:var(--or);color:#fff;font:600 12px/30px var(--mono);text-align:center;cursor:pointer;pointer-events:auto;padding:0;will-change:transform}
+.mk::after{content:"";position:absolute;inset:-7px;border:2px solid #fff;border-radius:50%;opacity:0;transition:opacity .2s}
+.mk.on::after{opacity:1}
+.mk:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.mk .tip{position:absolute;left:38px;top:50%;transform:translateY(-50%);background:var(--ink);color:var(--sheet);font:500 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:7px 8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.mk:hover .tip,.mk:focus-visible .tip{opacity:1}
+
+/* right column: spec card + headline */
+.card{position:fixed;right:max(6vw,env(safe-area-inset-right,0px));top:20vh;width:min(420px,34vw);background:var(--sheet);border:1px solid var(--ink);pointer-events:auto;z-index:4}
+.card .hd{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--sheet);padding:12px 16px}
+.card .hd .sp{flex:1}
+.card .hd button{all:unset;cursor:pointer;font:500 13px/1 var(--mono);padding:2px 6px;color:var(--sheet)}
+.card .hd button:focus-visible{outline:2px solid var(--or)}
+.card .bd{padding:18px 18px 20px}
+.card h2{margin:0 0 12px;font:700 30px/1 var(--display);letter-spacing:-.025em}
+.card p{margin:0 0 16px;font-size:18px;line-height:1.4}
+.card ul{margin:0 0 20px;padding:0;list-style:none;display:grid;gap:6px}
+.card li{font:500 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--graphite)}
+.card li::before{content:"→ ";color:var(--or-ink)}
+.card .go{display:inline-flex;gap:10px;align-items:center;background:var(--or);color:#fff;padding:12px 16px;font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.hd2{position:fixed;right:max(6vw,env(safe-area-inset-right,0px));top:32vh;width:min(560px,40vw)}
+.hd2 .eb{color:var(--or-ink);margin:0 0 16px}
+.hl{margin:0;font:700 clamp(44px,5.4vw,96px)/.92 var(--display);letter-spacing:-.035em;font-stretch:96%}
+.hl .ln{display:block;overflow:hidden;padding-bottom:.06em}
+.hl .ln span{display:block;will-change:transform}
+.hl em{font-style:normal;color:var(--or)}
+.next{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);color:var(--or-ink)}
+.hint{position:fixed;left:50%;bottom:84px;transform:translateX(-50%)}
+
+.strip{position:fixed;left:0;right:0;bottom:0;z-index:5;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(6px);
+  padding:0 max(28px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(28px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:repeat(10,minmax(0,1fr)) auto;gap:10px}
+.strip button{all:unset;cursor:pointer;padding:10px 0 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.strip .bar{height:3px;background:var(--rule);position:relative;overflow:hidden}
+.strip .bar i{position:absolute;inset:0;background:var(--or);transform-origin:left;transform:scaleX(0)}
+.strip .lab{font:500 10.5px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--graphite);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip button.on .lab{color:var(--or-ink)}
+.strip button:focus-visible{outline:2px solid var(--or);outline-offset:2px}
+.strip .pct{align-self:center;font:600 12px/1 var(--mono);font-variant-numeric:tabular-nums;min-width:4ch;text-align:right}
+.cap{position:fixed;left:max(28px,env(safe-area-inset-left,0px));bottom:70px;max-width:36ch;color:var(--graphite);z-index:4;margin:0}
+.cap b{color:var(--ink);font-weight:600}
+.spacer{height:1100vh}
+.nogl{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px}
+
+@media (max-width:760px){
+  .top .c,.top .hide-s{display:none}
+  .top,.strip{padding-left:var(--sl);padding-right:var(--sr)}
+  .card{left:var(--sl);right:var(--sr);top:auto;bottom:62px;width:auto}
+  .card h2{font-size:24px}.card p{font-size:16px;margin-bottom:10px}.card ul{display:none}.card .bd{padding:14px}
+  .hd2{left:var(--sl);right:var(--sr);top:auto;bottom:96px;width:auto}
+  .hl{font-size:clamp(38px,11vw,56px)}
+  .strip{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+  .strip .pct,.strip .lab .t,.cap{display:none}
+  .lbl{font-size:9px}
+  .mk{width:24px;height:24px;margin:-12px 0 0 -12px;line-height:24px;font-size:10px}
+}
+</style>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="vig"></div><div class="grain"></div>
+
+<header class="top" id="top">
+  <svg viewBox="0 0 240 240" aria-hidden="true" id="logo"></svg>
+  <span class="mono" style="font-weight:600">Hyperiux</span>
+  <span class="mono c">03 / Blueprint</span>
+  <span class="sp"></span>
+  <span class="mono hide-s">Menu</span>
+  <span class="mono pill">Start a project</span>
+</header>
+
+<div class="layer" id="labels"></div>
+<div class="layer">
+  <div class="hd2" id="hd2">
+    <p class="eb mono">From concept to conversion</p>
+    <h1 class="hl"><span class="ln"><span>Strategy is</span></span><span class="ln"><span>the floor</span></span><span class="ln"><span><em>plan.</em></span></span></h1>
+  </div>
+  <div class="next mono" id="next">[ Strategy → Structure ]</div>
+  <div class="hint mono" id="hint">Scroll to draw ↓</div>
+</div>
+<aside class="card" id="card" aria-live="polite">
+  <div class="hd"><span class="mono" id="cardNo">01 / 06</span><span class="sp"></span>
+    <button type="button" id="cPrev" aria-label="Previous service">←</button><button type="button" id="cNext" aria-label="Next service">→</button></div>
+  <div class="bd"><h2 id="cardT">UI Design Strategy</h2><p id="cardP"></p><ul id="cardL"></ul><span class="go">View service →</span></div>
+</aside>
+<p class="cap mono" id="cap"></p>
+<nav class="strip" id="strip" aria-label="Style frames"></nav>
+<div class="spacer" aria-hidden="true"></div>
+<div class="nogl" id="nogl" hidden><p>This style-frame prototype needs WebGL, which this browser has turned off.</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const clamp=(x,a=0,b=1)=>x<a?a:x>b?b:x, seg=(t,a,b)=>clamp((t-a)/(b-a)), lerp=(a,b,t)=>a+(b-a)*t;
+const io=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2, eo=x=>1-Math.pow(1-x,3), pad=n=>String(n).padStart(2,'0');
+const FR=[['Ghost net','The unfolded module from Survey fades; construction lines frame the sheet.'],['Outlines','Wall outlines start drawing themselves.'],['Full plan','The full plan reads: the H as a floor plan.'],['Poché','Walls fill in solid.'],['Dimensions','Dimension strings measure every room.'],['Areas + flow','Room areas appear; the user flow climbs the beam to conversion.'],['Markers','Six orange markers pin the six strategy services. Click any of them.'],['Spec card','Marker 01 opens its spec card; its room fills orange.'],['Headline','Strategy is the floor plan.'],['Tilt','The sheet tilts to axonometric and the walls rise.']];
+const SV=[
+ ['UI Design Strategy','Strategic planning based on insight is the starting point of everything we do.',['Insight workshops','Experience roadmap','KPI framework'],[[15,0],[47,0],[47,40],[15,40]]],
+ ['Branding','An identity system that holds up on every screen, from logo to motion language.',['Brand platform','Visual identity','Motion and sonic cues'],[[15,108],[47,101.1],[47,175],[15,175]]],
+ ['UX Development','Journeys, flows and prototypes tested with real users before a pixel is final.',['Journey maps','Wireframes and prototypes','Usability testing'],[[75,95.1],[165,75.75],[165,111.75],[75,131.1]]],
+ ['Integrated Digital Marketing Plan','Channels, content and campaigns planned around the same experience the site delivers.',['Channel strategy','Content calendar','Performance tracking'],[[192,0],[225,0],[225,32],[192,32]]],
+ ['Customer Experience Strategy','Every touchpoint mapped, so the brand feels the same before, during and after the sale.',['Service blueprint','Touchpoint audit','CX metrics'],[[192,133],[225,133],[225,186],[192,186]]],
+ ['Consumer Research','Behaviour, emotion and neuromarketing signals that show what people actually do.',['Interviews and surveys','Behavioural analytics','Neuromarketing tests'],[[192,186],[225,186],[225,240],[192,240]]]];
+
+/* ---------- logo + strip ---------- */
+const LA=[[15,0],[47,0],[47,78],[15,78]], LB=[[15,240],[15,108],[192,70],[192,0],[225,0],[225,99],[47,137],[47,240]], LC=[[192,133],[225,133],[225,240],[192,240]];
+(function(){ const P=a=>a.map(p=>p.join(',')).join(' '), k=.866*19, c=[120,101], hx=[[120,82],[120+k,91.5],[120+k,110.5],[120,120],[120-k,110.5],[120-k,91.5]];
+  document.getElementById('logo').innerHTML=[LA,LB,LC].map(p=>`<polygon points="${P(p)}" fill="#FF6A13"/>`).join('')+`<g fill="#F3F2EE" stroke="#FF6A13" stroke-width="9" stroke-linejoin="round"><polygon points="${P(hx)}"/><polyline points="${P([hx[5],c,hx[1]])}" fill="none"/><line x1="120" y1="101" x2="120" y2="120"/></g>`; })();
+const strip=document.getElementById('strip');
+strip.innerHTML=FR.map((f,i)=>`<button type="button" data-i="${i}" aria-label="Frame ${i+1}: ${f[0]}"><span class="bar"><i></i></span><span class="lab">F${pad(i+1)}<span class="t"> · ${f[0]}</span></span></button>`).join('')+'<span class="pct" id="pct">0%</span>';
+const bars=[...strip.querySelectorAll('.bar i')], btns=[...strip.querySelectorAll('button')];
+const maxScroll=()=>Math.max(1,document.documentElement.scrollHeight-innerHeight);
+strip.addEventListener('click',e=>{const b=e.target.closest('button'); if(b) scrollTo({top:(+b.dataset.i/9)*maxScroll(),behavior:'smooth'});});
+
+/* ---------- renderer ---------- */
+const canvas=document.getElementById('gl'); let R;
+try{ R=new THREE.WebGLRenderer({canvas,antialias:true}); }catch(e){ document.getElementById('nogl').hidden=false; return; }
+R.setPixelRatio(Math.min(devicePixelRatio,2)); R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
+const PAPER=new THREE.Color('#E7E6E2'), INK=new THREE.Color('#141413'), OR=new THREE.Color('#FF6A13');
+const scene=new THREE.Scene(); scene.background=PAPER;
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,.1,400);
+scene.add(new THREE.HemisphereLight(0xffffff,0xd6cfc2,.7)); scene.add(new THREE.AmbientLight(0xffffff,.2));
+const key=new THREE.DirectionalLight(0xffffff,.75); key.position.set(-18,30,14); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); Object.assign(key.shadow.camera,{left:-20,right:20,top:20,bottom:-20,near:1,far:90}); key.shadow.bias=-.0005; key.shadow.normalBias=.02; scene.add(key);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.ShadowMaterial({opacity:.15})); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+/* plan space: logo px (u,v) -> world (x,z), 0.1 m per px, 24 m square */
+const k=.1, W3=(u,v,y=0)=>new THREE.Vector3((u-120)*k,y,(v-120)*k), P2=p=>[(p[0]-120)*k,(p[1]-120)*k];
+const unit=new THREE.BoxGeometry(1,1,1), XA=new THREE.Vector3(1,0,0);
+function bar(a,b,w,mat,h){ const m=new THREE.Mesh(unit,mat); m.userData={a:a.clone(),b:b.clone(),w,h:h??w}; setBar(m,1); return m; }
+function setBar(m,f){ const {a,b,w,h}=m.userData, d=new THREE.Vector3().subVectors(b,a), L=d.length(); d.normalize();
+  m.quaternion.setFromUnitVectors(XA,d); m.scale.set(Math.max(1e-4,L*f),h,w); m.position.copy(a).addScaledVector(d,L*f/2); m.visible=f>0; }
+
+/* polygon helpers */
+const pip=(pt,poly)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>pt[1])!==(b[1]>pt[1]))&&(pt[0]<(b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1])+a[0]))c=!c;}return c;};
+function inset(poly,d){ const n=poly.length, L=[];
+  for(let i=0;i<n;i++){ const a=poly[i],b=poly[(i+1)%n], dx=b[0]-a[0], dz=b[1]-a[1], l=Math.hypot(dx,dz); let nx=-dz/l, nz=dx/l;
+    const m=[(a[0]+b[0])/2,(a[1]+b[1])/2]; if(!pip([m[0]+nx*.01,m[1]+nz*.01],poly)){nx=-nx;nz=-nz;}
+    L.push({p:[a[0]+nx*d,a[1]+nz*d],r:[dx,dz]}); }
+  return L.map((l,i)=>{ const q=L[(i+n-1)%n], cr=(x,y)=>x[0]*y[1]-x[1]*y[0], den=cr(q.r,l.r);
+    if(Math.abs(den)<1e-9) return l.p; const tt=cr([l.p[0]-q.p[0],l.p[1]-q.p[1]],l.r)/den; return [q.p[0]+q.r[0]*tt,q.p[1]+q.r[1]*tt]; }); }
+
+/* walls: footprint minus an inset hole, extruded up */
+const TH=.38, wallMat=new THREE.MeshStandardMaterial({color:0x1b1a18,roughness:.85,transparent:true,opacity:0});
+const walls=new THREE.Group(); scene.add(walls);
+const outlineMat=new THREE.MeshBasicMaterial({color:INK,transparent:true}), outlines=[];
+const parts=[[[15,40],[47,40]],[[15,175],[47,175]],[[15,208],[47,208]],[[75,95.1],[75,131.1]],[[165,75.75],[165,111.75]],[[192,32],[225,32]],[[192,186],[225,186]]];
+[LA,LB,LC].forEach(poly=>{
+  const outer=poly.map(P2), inner=inset(outer,TH);
+  const sh=new THREE.Shape(outer.map(p=>new THREE.Vector2(p[0],-p[1]))); sh.holes.push(new THREE.Path(inner.map(p=>new THREE.Vector2(p[0],-p[1]))));
+  const g=new THREE.ExtrudeGeometry(sh,{depth:1,bevelEnabled:false}); g.rotateX(-Math.PI/2);
+  const m=new THREE.Mesh(g,wallMat); m.castShadow=m.receiveShadow=true; walls.add(m);
+  [outer,inner].forEach(ring=>ring.forEach((p,i)=>{ const q=ring[(i+1)%ring.length]; const b=bar(new THREE.Vector3(p[0],.02,p[1]),new THREE.Vector3(q[0],.02,q[1]),.07,outlineMat,.02); b.userData.kind='wall'; scene.add(b); outlines.push(b); }));
+});
+parts.forEach(([a,b])=>{ const A=W3(...a), B=W3(...b), d=new THREE.Vector3().subVectors(B,A).normalize(), A2=A.clone().addScaledVector(d,TH*.6), B2=B.clone().addScaledVector(d,-TH*.6);
+  const m=new THREE.Mesh(unit,wallMat); m.castShadow=true; const L=A2.distanceTo(B2); m.scale.set(L,1,TH*.55); m.quaternion.setFromUnitVectors(XA,d); m.position.copy(A2).add(B2).multiplyScalar(.5); m.position.y=.5; walls.add(m);
+  const nrm=new THREE.Vector3(-d.z,0,d.x).multiplyScalar(TH*.275);
+  [1,-1].forEach(s=>{ const o=bar(A2.clone().addScaledVector(nrm,s).setY(.02),B2.clone().addScaledVector(nrm,s).setY(.02),.06,outlineMat,.02); o.userData.kind='part'; scene.add(o); outlines.push(o); }); });
+const wLen=outlines.map(o=>o.userData.a.distanceTo(o.userData.b));
+
+/* rooms (service highlight) */
+const roomMat=SV.map(()=>new THREE.MeshBasicMaterial({color:OR,transparent:true,opacity:0,depthWrite:false}));
+SV.forEach((s,i)=>{ const sh=new THREE.Shape(s[3].map(p=>{const q=P2(p);return new THREE.Vector2(q[0],-q[1]);})); const g=new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI/2); const m=new THREE.Mesh(g,roomMat[i]); m.position.y=.008; scene.add(m); });
+
+/* ghost net from Survey */
+const ghostMat=new THREE.MeshBasicMaterial({color:OR,transparent:true}), ghost=new THREE.Group(); scene.add(ghost);
+[[0,0],[6,0],[-6,0],[0,6],[0,-6],[0,12]].forEach(([x,z])=>{ const c=[[x-3,z-3],[x+3,z-3],[x+3,z+3],[x-3,z+3]]; c.forEach((p,i)=>{const q=c[(i+1)%4]; ghost.add(bar(new THREE.Vector3(p[0],.015,p[1]),new THREE.Vector3(q[0],.015,q[1]),.05,ghostMat,.01));}); });
+
+/* atrium (the module, open to above) */
+const atMat=new THREE.MeshBasicMaterial({color:OR,transparent:true}), atrium=new THREE.Group(); scene.add(atrium);
+const D=[[120,86],[137,103],[120,120],[103,103]].map(p=>W3(p[0],p[1],.03));
+D.forEach((p,i)=>{ const q=D[(i+1)%4]; for(let s=0;s<1;s+=.2) atrium.add(bar(p.clone().lerp(q,s),p.clone().lerp(q,s+.12),.05,atMat,.01)); });
+atrium.add(bar(D[0],D[2],.03,atMat,.01)); atrium.add(bar(D[1],D[3],.03,atMat,.01));
+
+/* dimension strings */
+const dimMat=new THREE.MeshBasicMaterial({color:INK,transparent:true}), dims=new THREE.Group(); scene.add(dims); const dimLabels=[];
+function dimRow(us,v,horiz){ const pts=us.map(u=>horiz?W3(u,v,.02):W3(v,u,.02));
+  dims.add(bar(pts[0],pts[pts.length-1],.035,dimMat,.01));
+  pts.forEach(p=>dims.add(bar(p.clone().add(new THREE.Vector3(-.28,0,.28)),p.clone().add(new THREE.Vector3(.28,0,-.28)),.06,dimMat,.01)));
+  for(let i=0;i<us.length-1;i++){ const m=pts[i].clone().lerp(pts[i+1],.5); dimLabels.push({p:m.add(horiz?new THREE.Vector3(0,0,-.55):new THREE.Vector3(-.55,0,0)),txt:String(Math.round((us[i+1]-us[i])*100)).replace(/\B(?=(\d{3})+(?!\d))/g,' '),rot:!horiz}); } }
+dimRow([15,47,192,225],-12,true); dimRow([15,225],-24,true); dimRow([0,78,108,240],3,false); dimRow([0,240],-9,false); dimRow([0,70,99,133,240],237,false);
+
+/* user flow */
+const flowMat=new THREE.MeshBasicMaterial({color:OR}), flow=[]; const fpts=[[31,232],[31,122.6],[208,84.5],[208,8]].map(p=>W3(p[0],p[1],.04));
+let acc=0; for(let i=0;i<fpts.length-1;i++){ const a=fpts[i],b=fpts[i+1],L=a.distanceTo(b); for(let s=0;s<L;s+=.9){ const e=Math.min(L,s+.55); const m=bar(a.clone().lerp(b,s/L),a.clone().lerp(b,e/L),.11,flowMat,.02); m.userData.d0=acc+s; scene.add(m); flow.push(m);} acc+=L; }
+const fTot=acc;
+const pulse=new THREE.Mesh(new THREE.CircleGeometry(.32,32),new THREE.MeshBasicMaterial({color:OR})); pulse.rotation.x=-Math.PI/2; scene.add(pulse);
+const endDot=new THREE.Mesh(new THREE.CircleGeometry(.42,32),new THREE.MeshBasicMaterial({color:OR})); endDot.rotation.x=-Math.PI/2; endDot.position.copy(fpts[3]).setY(.05); scene.add(endDot);
+const along=d=>{ let r=d; for(let i=0;i<fpts.length-1;i++){ const L=fpts[i].distanceTo(fpts[i+1]); if(r<=L) return fpts[i].clone().lerp(fpts[i+1],r/L); r-=L; } return fpts[fpts.length-1].clone(); };
+
+/* the module, hovering above the atrium at the end */
+const cube=new THREE.Group(); const cubeM=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.4,2.4),new THREE.MeshStandardMaterial({color:OR,roughness:.55,transparent:true})); cubeM.castShadow=true; cube.add(cubeM);
+cube.position.copy(W3(120,103,0)); cube.rotation.y=Math.PI/4; scene.add(cube);
+
+/* ---------- DOM labels ---------- */
+const LBL=document.getElementById('labels');
+const mkEl=(cls,txt)=>{ const e=document.createElement('div'); e.className=cls; e.textContent=txt; LBL.appendChild(e); return e; };
+const ROOMS=[[31,20,'12.8'],[31,59,'12.2'],[31,150,'18.4'],[31,192,'10.6'],[31,225,'10.2'],[61,117,'10.1'],[118,104,'32.4'],[180,88,'9.7'],[208,16,'10.6'],[208,58,'12.5'],[208,160,'17.5'],[208,213,'17.8']];
+const roomEls=ROOMS.map(r=>({p:W3(r[0],r[1]+6,0),e:mkEl('lbl',r[2]+' m²')}));
+dimLabels.forEach(d=>d.e=mkEl('lbl',d.txt));
+const atEl=mkEl('lbl or','Module · open to above'), atP=W3(120,68,0);
+const ufEl=mkEl('lbl or','User flow'), ufP=W3(31,252,0), cvEl=mkEl('lbl or','Conversion'), cvP=W3(234,10,0);
+const cl=[mkEl('cline',''),mkEl('cline','')];
+const MK=SV.map((s,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='mk'; b.innerHTML=`${pad(i+1)}<span class="tip">${s[0]}</span>`; b.setAttribute('aria-label',`Service ${i+1}: ${s[0]}`);
+  const c=s[3].reduce((a,p)=>[a[0]+p[0]/s[3].length,a[1]+p[1]/s[3].length],[0,0]); LBL.appendChild(b); b.addEventListener('click',()=>{ userSel=i; }); return {b,p:W3(c[0],c[1]-6,0)}; });
+
+/* ---------- card ---------- */
+let userSel=null; const $=id=>document.getElementById(id);
+const card=$('card'); let shown=-1;
+function fillCard(i){ if(i===shown) return; shown=i; const s=SV[i]; $('cardNo').textContent=`${pad(i+1)} / 06`; $('cardT').textContent=s[0]; $('cardP').textContent=s[1]; $('cardL').innerHTML=s[2].map(x=>`<li>${x}</li>`).join(''); }
+$('cPrev').onclick=()=>{ userSel=((userSel??0)+5)%6; }; $('cNext').onclick=()=>{ userSel=((userSel??0)+1)%6; };
+
+/* ---------- layout ---------- */
+let W=0,H=0,narrow=false;
+function resize(){ W=innerWidth; H=innerHeight; narrow=W<760; R.setSize(W,H,false); }
+addEventListener('resize',resize); resize();
+const proj=v=>{ const p=v.clone().project(cam); return [(p.x+1)/2*W,(1-p.y)/2*H]; };
+const place=(el,v,o,rot)=>{ const [x,y]=proj(v); el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%)${rot?' rotate(-90deg)':''}`; el.style.opacity=o.toFixed(3); el.style.visibility=o<=.001?'hidden':'visible'; };
+const setO=(el,o)=>{ el.style.opacity=o.toFixed(3); el.style.visibility=o<=.001?'hidden':'visible'; };
+
+/* ---------- scroll ---------- */
+let target=0,cur=0;
+const readScroll=()=>{ target=clamp(scrollY/maxScroll()); };
+addEventListener('scroll',readScroll,{passive:true});
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hm=/^#f(\d+)$/.exec(location.hash);
+if(hm){ const i=clamp(+hm[1]-1,0,9); requestAnimationFrame(()=>{ scrollTo(0,(i/9)*maxScroll()); target=cur=i/9; }); }
+const lines=[...document.querySelectorAll('.hl .ln span')];
+const els={top:$('top'),hd2:$('hd2'),next:$('next'),hint:$('hint'),cap:$('cap'),pct:$('pct')};
+const up0=new THREE.Vector3(0,0,-1), up1=new THREE.Vector3(0,1,0), d0=new THREE.Vector3(0,1,.0001), d1=new THREE.Vector3(.62,.78,.95).normalize();
+
+function frame(now){
+  requestAnimationFrame(frame);
+  cur+=(target-cur)*(reduce?1:.09); if(Math.abs(target-cur)<1e-5) cur=target;
+  const t=cur, time=now/1000, tl=io(seg(t,.88,1));
+
+  /* camera: orthographic plan, tilting to axonometric */
+  const asp=W/H, hh=narrow?Math.max(19,15.5/asp):lerp(20.5,21,tl);
+  Object.assign(cam,{left:-hh*asp,right:hh*asp,top:hh,bottom:-hh}); cam.updateProjectionMatrix();
+  const dir=d0.clone().lerp(d1,tl).normalize(), tg=new THREE.Vector3(0,lerp(0,1.6,tl),0);
+  cam.up.copy(up0.clone().lerp(up1,tl).normalize()); cam.position.copy(tg).addScaledVector(dir,90); cam.lookAt(tg);
+  if(narrow) cam.setViewOffset(W,H,0,lerp(.09,.06,tl)*H,W,H); else cam.setViewOffset(W,H,lerp(.15,.06,tl)*W,0,W,H);
+
+  /* drawing */
+  const gn=1-seg(t,0,.12); ghost.visible=gn>0; ghostMat.opacity=gn*.75;
+  const dr=seg(t,.05,.24), dp=seg(t,.15,.28), wf=io(seg(t,.3,.42));
+  let aw=0,ap=0; const tw=wLen.reduce((s,l,i)=>s+(outlines[i].userData.kind==='wall'?l:0),0), tp=wLen.reduce((s,l,i)=>s+(outlines[i].userData.kind==='part'?l:0),0);
+  outlines.forEach((o,i)=>{ const isW=o.userData.kind==='wall', L=wLen[i], st=isW?aw/tw:ap/tp, en=isW?(aw+L)/tw:(ap+L)/tp; if(isW) aw+=L; else ap+=L; setBar(o,clamp(((isW?dr:dp)-st)/(en-st))); });
+  outlineMat.opacity=1-wf;
+  wallMat.opacity=wf; walls.visible=wf>0; walls.scale.y=lerp(.05,3.4,tl);
+
+  const at=seg(t,.24,.3)*(1-seg(t,.9,.97)); atrium.visible=at>0; atMat.opacity=at;
+  const dm=seg(t,.42,.5)*(1-seg(t,.84,.9)); dims.visible=dm>0; dimMat.opacity=dm;
+  const fp=seg(t,.5,.6), ff=1-seg(t,.86,.9);
+  flow.forEach(m=>{ m.visible=ff>0 && m.userData.d0<fp*fTot; }); flowMat.transparent=true; flowMat.opacity=ff;
+  pulse.visible=fp>=1&&ff>0; pulse.position.copy(along((time*2.4)%fTot)).setY(.06); endDot.visible=fp>.98&&ff>0;
+
+  /* markers + card */
+  const mf=1-seg(t,.86,.9), markersOn=seg(t,.62,.66)*mf;
+  const autoCard=seg(t,.68,.75)*(1-seg(t,.8,.84));
+  const sel=userSel??0, cardO=userSel!=null?markersOn:autoCard;
+  if(userSel!=null&&markersOn<=0) userSel=null;
+  fillCard(sel); setO(card,cardO); card.style.pointerEvents=cardO>.5?'auto':'none';
+  roomMat.forEach((m,i)=>{ m.opacity=i===sel?.86*cardO:0; });
+  MK.forEach((m,i)=>{ const mp=eo(seg(t,.58+i*.012,.62+i*.012))*mf; place(m.b,m.p,mp); m.b.style.pointerEvents=mp>.5?'auto':'none'; m.b.classList.toggle('on',i===sel&&cardO>.5); });
+
+  /* labels */
+  const rm=seg(t,.5,.56)*(1-seg(t,.86,.9));
+  roomEls.forEach(r=>place(r.e,r.p,rm*.9));
+  dimLabels.forEach(d=>place(d.e,d.p,dm,d.rot));
+  place(atEl,atP,at*(1-tl)); place(ufEl,ufP,fp>0?ff:0); place(cvEl,cvP,seg(t,.58,.6)*ff);
+  const clo=seg(t,.03,.12)*(1-seg(t,.4,.5)); [0,240].forEach((v,i)=>{ const y=proj(W3(120,v,0))[1]; cl[i].style.transform=`translateY(${y.toFixed(1)}px)`; setO(cl[i],clo*.8); });
+
+  /* the module rises out of the atrium */
+  const cb=seg(t,.9,1); cube.visible=cb>0; cubeM.material.opacity=Math.min(1,cb*2);
+  cube.position.y=3.4+1.2+lerp(-2.4,2.2,eo(cb)); cube.rotation.y=Math.PI/4+time*.3;
+
+  /* type + chrome */
+  const hp=seg(t,.8,.87), hf=1-seg(t,.92,.98);
+  setO(els.hd2,hp>0?hf:0); lines.forEach((l,i)=>{ const lp=eo(clamp(hp*1.7-i*.28)); l.style.transform=`translateY(${((1-lp)*108).toFixed(2)}%)`; });
+  setO(els.next,seg(t,.93,1)); setO(els.hint,1-seg(t,0,.04));
+  const fi=Math.round(t*9);
+  bars.forEach((b,i)=>{ b.style.transform=`scaleX(${clamp(t*9-i+.5).toFixed(3)})`; btns[i].classList.toggle('on',i===fi); });
+  els.pct.textContent=Math.round(t*100)+'%';
+  els.cap.innerHTML=`<b>F${pad(fi+1)} · ${FR[fi][0]}</b><br>${FR[fi][1]}`;
+
+  key.position.set(-18,30,14);
+  R.render(scene,cam);
+}
+readScroll(); requestAnimationFrame(frame);
+})();
+</script>

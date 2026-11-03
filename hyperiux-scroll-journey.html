@@ -1,0 +1,1272 @@
+<title>Hyperiux Scroll Journey</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: an architectural drawing set. Each section is a sheet with a sheet number (A-00…A-99);
+   storyboard chapters are sheets of ten frames. One committed light "drafting paper" look. */
+:root{
+  --paper:#E6E5E1; --sheet:#F2F1ED; --ink:#141413; --graphite:#5D5B56; --rule:#C6C3BC;
+  --or:#FF6A13; --or-ink:#B9440A; --night:#0C0C0D;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Instrument Sans','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+.wrap{max-width:1360px;margin:0 auto;padding-block:20px 64px}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--or);outline-offset:3px}
+.mono,.eyebrow,.sheetno{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.025em;line-height:.98;text-wrap:balance;margin:0}
+
+/* title bar */
+.tb{display:flex;align-items:center;gap:16px;border:1px solid var(--ink);background:var(--sheet);padding:10px 14px}
+.tb svg{width:26px;height:26px;flex:none}
+.tb .mono{color:var(--ink)}
+.tb .sp{flex:1}
+.tb .muted{color:var(--graphite)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(20px,3vw,48px);padding-block:clamp(28px,5vw,64px) 36px;align-items:end}
+.hero h1{font-size:clamp(40px,5.6vw,84px);font-stretch:96%}
+.hero h1 em{font-style:normal;color:var(--or)}
+.lede{max-width:56ch;color:var(--ink);font-size:18px;margin:22px 0 0}
+.eyebrow{color:var(--or-ink);margin:0 0 18px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{font:600 13px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ink);background:var(--ink);color:var(--sheet);padding:15px 20px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:10px}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn .dot{width:9px;height:9px;background:var(--or);display:inline-block}
+.btn:hover{background:var(--or);border-color:var(--or);color:#fff}
+.stage{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--paper);border:1px solid var(--ink);overflow:hidden}
+.stage svg,.fr-img svg{display:block;width:100%;height:100%}
+.grain::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+figure{margin:0}
+figcaption{display:flex;justify-content:space-between;gap:12px;margin-top:10px;color:var(--graphite)}
+
+/* frame text classes (inside the SVG frames) */
+.hxf .h{font-family:var(--display);font-weight:640;letter-spacing:-.02em}
+.hxf .m{font-family:var(--mono);letter-spacing:.06em}
+.hxf .b{font-family:var(--body)}
+
+/* sheets */
+.sheet{border-top:1px solid var(--ink);padding-block:28px 56px}
+.sheet-head{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;margin-bottom:32px}
+.sheetno{color:var(--or-ink);padding-top:6px}
+.sheet-head h2{font-size:clamp(30px,3.6vw,52px)}
+.sheet-head p{margin:0;max-width:60ch;color:var(--graphite)}
+
+/* logo study */
+.logo-study{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px}
+.logo-dia{background:var(--sheet);border:1px solid var(--ink);padding:16px}
+.logo-dia svg{width:100%;height:auto;display:block}
+.rules{display:grid;gap:0;border:1px solid var(--ink);background:var(--sheet);align-content:start}
+.rule{display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:18px;border-bottom:1px solid var(--rule)}
+.rule:last-child{border-bottom:0}
+.rule .mono{color:var(--or-ink);padding-top:3px}
+.rule p{margin:0}
+.rule b{font-weight:700}
+.cubes{margin-top:24px;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:1px solid var(--ink);background:var(--sheet)}
+.cubes div{padding:12px 8px 10px;border-right:1px solid var(--rule);text-align:center;min-width:0}
+.cubes div:last-child{border-right:0}
+.cubes svg{width:100%;max-width:64px;height:auto;display:block;margin:0 auto 6px}
+.cubes span{font:500 10px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--graphite);display:block}
+
+/* references */
+.refs{border:1px solid var(--ink);background:var(--sheet)}
+.ref{display:grid;grid-template-columns:200px minmax(0,1fr) minmax(0,1fr) 150px;gap:24px;padding:20px;border-bottom:1px solid var(--rule)}
+.ref:last-child{border-bottom:0}
+.ref h3{font-size:22px;letter-spacing:-.01em;line-height:1.1}
+.ref h3 a{text-decoration:none;border-bottom:1px solid var(--rule)}
+.ref h3 a:hover{border-color:var(--or)}
+.ref .k{display:block;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--graphite);margin-bottom:8px}
+.ref p{margin:0;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-content:start}
+.chip{font:500 11px/1 var(--mono);letter-spacing:.06em;border:1px solid var(--ink);padding:5px 7px;white-space:nowrap}
+.chip.or{border-color:var(--or);color:var(--or-ink)}
+
+/* journey */
+.light{height:14px;border:1px solid var(--ink);background:linear-gradient(90deg,#E7E6E2 0%,#E7E6E2 44%,#3A332E 50%,#0C0C0D 56%,#0C0C0D 77%,#B86A40 83%,#E7E6E2 90%,#E7E6E2 100%)}
+.journey{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:1px solid var(--ink);border-top:0;background:var(--sheet)}
+.jc{padding:14px 12px 18px;border-right:1px solid var(--rule);min-width:0;display:flex;flex-direction:column;gap:8px;text-decoration:none}
+.jc:last-child{border-right:0}
+.jc:hover{background:#fff}
+.jc .n{font:700 34px/1 var(--display);letter-spacing:-.03em}
+.jc .t{font:700 16px/1.1 var(--display)}
+.jc .mt{font:500 10.5px/1.35 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--or-ink)}
+.jc p{margin:0;font-size:13px;line-height:1.4;color:var(--graphite)}
+.lt{font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;align-self:flex-start;border:1px solid var(--ink)}
+.lt.dk{background:var(--night);color:#EDEBE6;border-color:var(--night)}
+
+/* storyboard */
+.chap{border-top:1px solid var(--ink);padding-block:28px 40px}
+.chap-head{display:grid;grid-template-columns:120px minmax(0,1.1fr) minmax(0,1.4fr);gap:24px;margin-bottom:20px}
+.chap-head .cn{font:700 64px/.85 var(--display);letter-spacing:-.04em}
+.chap-head h3{font-size:clamp(28px,3vw,40px)}
+.chap-head .meta{margin:10px 0 0;color:var(--or-ink)}
+.chap-head .thesis{font:500 19px/1.4 var(--body);margin:0 0 14px;max-width:52ch}
+.spec{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px 16px;margin:0;font-size:14px}
+.spec dt{font:500 11px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--graphite)}
+.spec dd{margin:0}
+.frames{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 12px}
+.fr{all:unset;cursor:zoom-in;display:flex;flex-direction:column;gap:8px;min-width:0}
+.fr-img{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--paper);border:1px solid var(--ink);overflow:hidden;transition:transform .2s}
+.fr:hover .fr-img{transform:translateY(-2px);box-shadow:0 6px 0 -2px var(--or)}
+.fr:focus-visible .fr-img{outline:2px solid var(--or);outline-offset:2px}
+.fr-cap{font-size:13px;line-height:1.35;color:var(--ink)}
+.fr-cap b{display:block;font:600 10.5px/1.4 var(--mono);letter-spacing:.08em;color:var(--or-ink);margin-bottom:2px}
+
+/* build notes */
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--ink);background:var(--sheet)}
+.note{padding:20px;border-right:1px solid var(--rule);min-width:0}
+.note:last-child{border-right:0}
+.note h3{font-size:20px;letter-spacing:-.01em;margin-bottom:12px}
+.note ul,.note ol{margin:0;padding-left:18px;font-size:14.5px;display:grid;gap:8px}
+.foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;border:1px solid var(--ink);border-top:0;padding:12px 14px;color:var(--graphite)}
+
+/* lightbox + player overlays */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(12,12,13,.94);color:#EDEBE6;display:flex;flex-direction:column;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ov-bar{display:flex;align-items:center;gap:12px;min-height:40px}
+.ov-bar .sp{flex:1}
+.ov .mono{color:#EDEBE6}
+.ib{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;background:transparent;color:#EDEBE6;border:1px solid #57575c;padding:10px 12px;cursor:pointer}
+.ib:hover{border-color:var(--or);color:var(--or)}
+.lb-main{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.lb-stage{width:min(100%,calc((100vh - 190px) * 16 / 9));aspect-ratio:16/9;position:relative;border:1px solid #333;overflow:hidden;background:var(--paper)}
+.lb-foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:center;padding-top:12px}
+.lb-foot p{margin:0;font-size:15px}
+.scrub{display:flex;align-items:center;gap:12px}
+.scrub input{flex:1;accent-color:var(--or)}
+.pl-scroll{flex:1;overflow-y:auto;position:relative;margin-top:8px;overscroll-behavior:contain}
+.pl-sticky{position:sticky;top:0;height:100%;display:flex;align-items:center;justify-content:center}
+.pl-stage{width:min(100%,calc((100vh - 120px) * 16 / 9));aspect-ratio:16/9;position:relative;overflow:hidden;border:1px solid #333}
+.pl-spacer{height:1300vh}
+.pl-hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:500 11px/1 var(--mono);letter-spacing:.1em;color:#EDEBE6;background:rgba(12,12,13,.7);padding:8px 10px;pointer-events:none}
+
+@media (max-width:1100px){
+  .hero{grid-template-columns:1fr}
+  .sheet-head,.chap-head{grid-template-columns:1fr}
+  .logo-study{grid-template-columns:1fr}
+  .ref{grid-template-columns:1fr 1fr}
+  .journey{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .jc{border-bottom:1px solid var(--rule)}
+  .frames{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .notes{grid-template-columns:1fr}
+  .note{border-right:0;border-bottom:1px solid var(--rule)}
+  .cubes{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .tb .hide-s{display:none}
+  .ref{grid-template-columns:1fr}
+  .journey{grid-template-columns:1fr 1fr}
+  .frames{grid-template-columns:1fr 1fr}
+  .rule{grid-template-columns:1fr;gap:6px}
+  .cubes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lb-foot{grid-template-columns:1fr}
+  .chap-head .cn{font-size:48px}
+}
+@media (prefers-reduced-motion:reduce){.fr-img{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="tb">
+    <svg viewBox="0 0 240 240" aria-hidden="true" id="tbLogo"></svg>
+    <span class="mono">Hyperiux</span>
+    <span class="mono muted hide-s">Website concept 01 · Scroll journey</span>
+    <span class="sp"></span>
+    <span class="mono muted hide-s">Sheet A-00</span>
+    <span class="mono">03.11.2026</span>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Concept 01 · 9 chapters · 90 storyboard frames</p>
+      <h1>Your brand is the cube. <em>We build the world around&nbsp;it.</em></h1>
+      <p class="lede">A scroll journey for hyperiux.com that explains how Hyperiux works the way an architect would. The visitor watches a site get surveyed, a plan get drawn, a structure go up, the client's identity become its facade, the systems get wired, and a finished district handed over. It is one continuous 3D world with no hard cuts, built around the Hyperiux logo.</p>
+      <div class="actions">
+        <button class="btn" id="playBtn" type="button"><span class="dot"></span>Play the scroll journey</button>
+        <a class="btn ghost" href="https://claude.ai/artifact/K3GwwUp27AXdM95YPWt37X" target="_blank" rel="noopener">Arrival · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/3AcUcNBmLDw5zAMmHwCa7d" target="_blank" rel="noopener">Blueprint · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/TpeTZwsrA4BJvSFpmqrRG8" target="_blank" rel="noopener">Material · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="https://claude.ai/artifact/QP9BHwBydEopRA8yiRsm8g" target="_blank" rel="noopener">District · hi-fi WebGL ↗</a>
+        <a class="btn ghost" href="#storyboard">Storyboard ↓</a>
+      </div>
+    </div>
+    <figure>
+      <div class="stage grain" id="heroStage" role="img" aria-label="Chapter 01, Arrival: the Hyperiux logo assembles in 3D around a floating cube"></div>
+      <figcaption><span class="mono">01 / Arrival · live render</span><span class="mono" id="heroPct">—</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="sheet" id="logo">
+    <div class="sheet-head">
+      <span class="sheetno">A-01</span>
+      <h2>The logo is already a building.</h2>
+      <p>Two columns, a beam that climbs left to right, and a cube in the joint. Read as architecture, the mark gives us the whole story. Hyperiux is the structure, and the client's brand is the module it carries.</p>
+    </div>
+    <div class="logo-study">
+      <div class="logo-dia"><svg viewBox="0 0 640 330" id="logoDia" role="img" aria-label="Hyperiux logo annotated as columns, a 12 degree beam and a module"></svg></div>
+      <div class="rules">
+        <div class="rule"><span class="mono">Module</span><p><b>The cube is the client's brand.</b> It appears in every chapter: it floats on the empty site, unfolds into six brand facets, becomes the atrium in the plan, takes each client's colours, and finally rises in the central plaza.</p></div>
+        <div class="rule"><span class="mono">Columns + beam</span><p><b>The H is Hyperiux.</b> It is the frame that holds the brand up: strategy, design system and engineering. The cube has its own story, and the H is built around it.</p></div>
+        <div class="rule"><span class="mono">12° rise</span><p><b>The beam climbs at about 12°, left to right.</b> That is the scroll direction of the story, concept to conversion. The same diagonal becomes the user flow in the plan and the road through the project district.</p></div>
+        <div class="rule"><span class="mono">One orange</span><p><b>#FF6A13 marks Hyperiux, and nothing else.</b> It is used for the structure, markers, risers and highlights. Client colours only ever appear on the cube and the facade.</p></div>
+      </div>
+    </div>
+    <div class="cubes" id="cubes"></div>
+  </section>
+
+  <section class="sheet" id="refs">
+    <div class="sheet-head">
+      <span class="sheetno">A-02</span>
+      <h2>What we took from the five references.</h2>
+      <p>Each reference gave one technique. Together they make a single world that moves from drawing to building to city, and from day to night and back to day.</p>
+    </div>
+    <div class="refs" id="refList"></div>
+  </section>
+
+  <section class="sheet" id="journey">
+    <div class="sheet-head">
+      <span class="sheetno">A-03</span>
+      <h2>Nine chapters, one camera, one day.</h2>
+      <p>Light carries the pacing: drafting-paper daylight for thinking and planning, dusk for identity, night for technology and work, dawn for growth and handover. Every chapter ends on the frame the next one starts from.</p>
+    </div>
+    <div class="light" aria-hidden="true"></div>
+    <div class="journey" id="journeyList"></div>
+  </section>
+
+  <section class="sheet" id="storyboard">
+    <div class="sheet-head">
+      <span class="sheetno">A-10 → A-90</span>
+      <h2>Storyboard: ten frames per chapter.</h2>
+      <p>Each frame is a still from the same scroll timeline, sampled every ~11% through its chapter. Open any frame to scrub between them, or play the whole journey as a scroll prototype.</p>
+    </div>
+    <div id="chapters"></div>
+  </section>
+
+  <section class="sheet" id="build">
+    <div class="sheet-head">
+      <span class="sheetno">A-99</span>
+      <h2>How it gets built.</h2>
+      <p>The storyboard engine already works the way the site should: every chapter is a camera path plus scene state driven by one scroll value. Production swaps these SVG frames for a WebGL scene.</p>
+    </div>
+    <div class="notes">
+      <div class="note">
+        <h3>Stack</h3>
+        <ul>
+          <li>Next.js with React Three Fiber and drei for the single persistent 3D scene.</li>
+          <li>GSAP ScrollTrigger and Lenis for scroll, with one master timeline split into nine labelled chapters.</li>
+          <li>Logo geometry built from the real logo SVG paths with ExtrudeGeometry. The cube mesh never unmounts.</li>
+          <li>Headlines, cards and nav stay as DOM over the canvas, for SEO, accessibility and crisp type.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h3>Look</h3>
+        <ul>
+          <li>Hidden-line drawing style: EdgesGeometry over polygon-offset fills (Heron, Enpower).</li>
+          <li>Night chapters switch to emissive edge materials on black (Zeggo) and instanced ribs with a physical material (Composites).</li>
+          <li>One post pass for paper grain, vignette and the day-to-night colour grade.</li>
+          <li>Instanced fins, buildings and particles keep draw calls low.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h3>Next steps</h3>
+        <ol>
+          <li>Approve the storyline and chapter order.</li>
+          <li>High-fidelity style frames for the remaining chapters (Arrival, Blueprint, Material and District are linked above).</li>
+          <li>Prototype chapters 01–03 in R3F to test performance on mid-range Android.</li>
+          <li>Collect project captures for the District facades and real client metrics for Occupancy.</li>
+          <li>Ship these stills as the reduced-motion and low-power fallback.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="foot"><span class="mono">Hyperiux Immersion Labs · Noida</span><span class="mono">Placeholder palettes in chapter 05 stand in for real client brands</span></div>
+  </section>
+</div>
+
+<div class="ov" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
+  <div class="ov-bar">
+    <span class="mono" id="lbTitle">—</span><span class="sp"></span>
+    <button class="ib" id="lbPrev" type="button" aria-label="Previous frame">← Prev</button>
+    <button class="ib" id="lbNext" type="button" aria-label="Next frame">Next →</button>
+    <button class="ib" id="lbClose" type="button">Close</button>
+  </div>
+  <div class="lb-main"><div class="lb-stage grain" id="lbStage"></div></div>
+  <div class="lb-foot">
+    <p id="lbCap">—</p>
+    <div class="scrub"><label class="mono" for="lbScrub">Scrub</label><input type="range" id="lbScrub" min="0" max="900" value="0"><span class="mono" id="lbPct">0%</span></div>
+  </div>
+</div>
+
+<div class="ov" id="pl" hidden role="dialog" aria-modal="true" aria-label="Scroll journey player">
+  <div class="ov-bar">
+    <span class="mono" id="plTitle">Scroll to play</span><span class="sp"></span>
+    <button class="ib" id="plClose" type="button">Close</button>
+  </div>
+  <div class="pl-scroll" id="plScroll" tabindex="0">
+    <div class="pl-sticky"><div class="pl-stage grain" id="plStage"><span class="pl-hint" id="plHint">SCROLL ↓</span></div></div>
+    <div class="pl-spacer"></div>
+  </div>
+</div>
+
+<script>
+/* Hyperiux scroll journey — parametric frame engine.
+   Every frame is a pure function render(chapter, t) -> SVG, t in [0,1].
+   Storyboard frames sample t = i/9; the player scrubs t continuously. */
+(function (G) {
+'use strict';
+const W = 1600, H = 900, PI = Math.PI;
+const C = { paper:'#E7E6E2', paper2:'#F4F3EF', ink:'#151514', ink2:'#3B3A37', mute:'#8E8B85',
+  or:'#FF6A13', orD:'#B5470D', night:'#0C0C0D', white:'#EEEDE9' };
+
+/* ---------- math ---------- */
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const io = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eo = x => 1 - Math.pow(1 - x, 3);
+const lerp = (a, b, t) => a + (b - a) * t;
+const lv = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const len = a => Math.hypot(a[0], a[1], a[2]);
+const norm = a => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const rotY = (v, a) => [v[0] * Math.cos(a) + v[2] * Math.sin(a), v[1], -v[0] * Math.sin(a) + v[2] * Math.cos(a)];
+const cen = P => { const s = [0, 0, 0]; P.forEach(p => { s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; }); return mul(s, 1 / P.length); };
+const r1 = v => Math.round(v * 10) / 10;
+const r2 = v => Math.round(v * 100) / 100;
+const r4 = v => Math.round(v * 10000) / 10000;
+const pad = n => String(n).padStart(2, '0');
+const mm = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const toHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+const mx = (a, b, t) => t <= 0 ? a : t >= 1 ? b : toHex(lv(hex(a), hex(b), t));
+let UID = 0;
+
+/* ---------- camera ---------- */
+function cam(pos, tgt, o = {}) {
+  const up = o.up || [0, 1, 0];
+  const fw = norm(sub(tgt, pos));
+  let r = cross(fw, up); if (len(r) < 1e-6) r = cross(fw, [0, 0, -1]); r = norm(r);
+  const u = cross(r, fw);
+  const F = (H / 2) / Math.tan((o.fov || 38) * PI / 360), ortho = o.ortho || 0;
+  const cx = o.cx ?? W / 2, cy = o.cy ?? H / 2, near = .3;
+  const toC = p => { const d = sub(p, pos); return [dot(d, r), dot(d, u), dot(d, fw)]; };
+  const pr = c => ortho ? [cx + c[0] * ortho, cy - c[1] * ortho, c[2]] : [cx + c[0] * F / c[2], cy - c[1] * F / c[2], c[2]];
+  return { pos, fw, r, u, ortho, F,
+    p(p) { const c = toC(p); if (!ortho && c[2] < near) c[2] = near; return pr(c); },
+    line(a, b) {
+      let A = toC(a), B = toC(b);
+      if (!ortho) {
+        if (A[2] < near && B[2] < near) return null;
+        if (A[2] < near) A = lv(A, B, (near - A[2]) / (B[2] - A[2]));
+        else if (B[2] < near) B = lv(B, A, (near - B[2]) / (A[2] - B[2]));
+      }
+      return [pr(A), pr(B)];
+    },
+    facing(n, c) { return ortho ? dot(n, fw) < 0 : dot(n, sub(c, pos)) < 0; },
+    depth(p) { return toC(p)[2]; }
+  };
+}
+function keys(K, t) {
+  let i = 0; while (i < K.length - 2 && t > K[i + 1][0]) i++;
+  const a = K[i], b = K[i + 1], u = io(seg(t, a[0], b[0]));
+  return { pos: lv(a[1], b[1], u), tg: lv(a[2], b[2], u) };
+}
+
+/* ---------- geometry ---------- */
+function pip(pt, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if (((a[1] > pt[1]) !== (b[1] > pt[1])) && (pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0])) c = !c;
+  }
+  return c;
+}
+function prism(poly, map, h0, h1) {
+  const faces = [], n = poly.length;
+  let mnx = 1e9, mxx = -1e9; poly.forEach(p => { mnx = Math.min(mnx, p[0], p[1]); mxx = Math.max(mxx, p[0], p[1]); });
+  const eps = (mxx - mnx) * 1e-3;
+  const c2 = poly.reduce((s, p) => [s[0] + p[0] / n, s[1] + p[1] / n], [0, 0]);
+  for (let i = 0; i < n; i++) {
+    const a = poly[i], b = poly[(i + 1) % n], du = b[0] - a[0], dv = b[1] - a[1], l = Math.hypot(du, dv) || 1;
+    let nn = [dv / l, -du / l]; const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    if (pip([m[0] + nn[0] * eps, m[1] + nn[1] * eps], poly)) nn = [-nn[0], -nn[1]];
+    const n3 = norm(sub(map(m[0] + nn[0], m[1] + nn[1], h0), map(m[0], m[1], h0)));
+    faces.push({ pts: [map(a[0], a[1], h0), map(b[0], b[1], h0), map(b[0], b[1], h1), map(a[0], a[1], h1)], n: n3, side: 1, h0, h1 });
+  }
+  const nt = norm(sub(map(c2[0], c2[1], h1 + 1), map(c2[0], c2[1], h1)));
+  faces.push({ pts: poly.map(p => map(p[0], p[1], h1)), n: nt, cap: 1 });
+  faces.push({ pts: poly.map(p => map(p[0], p[1], h0)).reverse(), n: mul(nt, -1), cap: 1, bottom: 1 });
+  return faces;
+}
+const mapY = (u, v, w) => [u, w, v];
+function rectR(cx, cz, w, d, r = 0) {
+  const c = Math.cos(r), s = Math.sin(r);
+  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([x, z]) => [cx + x * c + z * s, cz - x * s + z * c]);
+}
+function ngon(cx, cz, rad, n, r = 0) { const o = []; for (let i = 0; i < n; i++) { const a = r + i * 2 * PI / n; o.push([cx + rad * Math.cos(a), cz + rad * Math.sin(a)]); } return o; }
+const box = (cx, cz, w, d, y0, y1, r = 0) => prism(rectR(cx, cz, w, d, r), mapY, y0, y1);
+const shift = (faces, o) => faces.map(f => ({ ...f, pts: f.pts.map(p => add(p, o)), h0: f.h0 + o[1], h1: f.h1 + o[1] }));
+function cutPath(pts, p) {
+  if (p >= 1) return pts; let L = 0; const seglen = [];
+  for (let i = 1; i < pts.length; i++) { const l = len(sub(pts[i], pts[i - 1])); seglen.push(l); L += l; }
+  let rem = L * p; const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) { if (rem >= seglen[i - 1]) { out.push(pts[i]); rem -= seglen[i - 1]; } else { out.push(lv(pts[i - 1], pts[i], rem / seglen[i - 1])); break; } }
+  return out;
+}
+
+/* ---------- the logo ---------- */
+const LA = [[15, 0], [47, 0], [47, 78], [15, 78]];
+const LB = [[15, 240], [15, 108], [192, 70], [192, 0], [225, 0], [225, 99], [47, 137], [47, 240]];
+const LC = [[192, 133], [225, 133], [225, 240], [192, 240]];
+const LOGO = [LA, LB, LC];
+function isoCube(cx, cy, r) {
+  const k = .866 * r, T = [cx, cy - r], UR = [cx + k, cy - r / 2], LR = [cx + k, cy + r / 2], B = [cx, cy + r], LL = [cx - k, cy + r / 2], UL = [cx - k, cy - r / 2], M = [cx, cy];
+  return { hex: [T, UR, LR, B, LL, UL], T, UR, LR, B, LL, UL, M };
+}
+const P2 = a => a.map(p => r1(p[0]) + ',' + r1(p[1])).join(' ');
+function logo2D(o = {}) {
+  const f = o.fill || C.or, c = isoCube(120, 101, 19), cs = o.cs || f;
+  return LOGO.map(p => `<polygon points="${P2(p)}" fill="${f}"/>`).join('') +
+    `<g fill="${o.cube || '#fff'}" stroke="${cs}" stroke-width="${o.csw || 3.5}" stroke-linejoin="round"><polygon points="${P2(c.hex)}"/>` +
+    `<polyline points="${P2([c.UL, c.M, c.UR])}" fill="none"/><line x1="120" y1="101" x2="120" y2="120"/></g>`;
+}
+function isoCubeSVG(cx, cy, r, o = {}) {
+  const c = isoCube(cx, cy, r);
+  return `<g fill="${o.fill || '#fff'}" stroke="${o.stroke || C.or}" stroke-width="${o.sw || 2}" stroke-linejoin="round"${o.op != null ? ` opacity="${r2(o.op)}"` : ''}><polygon points="${P2(c.hex)}"/><polyline points="${P2([c.UL, c.M, c.UR])}" fill="none"/><line x1="${r1(cx)}" y1="${r1(cy)}" x2="${r1(cx)}" y2="${r1(cy + r)}"/></g>`;
+}
+
+/* ---------- scene ---------- */
+class Scene {
+  constructor(c) { this.c = c; this.pre = []; this.items = []; this.post = []; this.L = norm([-.55, .8, .4]); }
+  shade(st, n) {
+    if (st.flat) return st.fill;
+    const amb = st.amb ?? .5, k = amb + (1 - amb) * Math.max(0, dot(n, this.L));
+    return mx(st.dark || '#9a978f', st.fill, k);
+  }
+  mesh(faces, st, key) {
+    const c = this.c, out = []; let zs = 0, k = 0;
+    for (const f of faces) {
+      if (f.bottom && st.cull !== false) continue;
+      const ce = cen(f.pts);
+      if (st.cull !== false && !c.facing(f.n, ce)) continue;
+      if (!c.ortho && f.pts.some(p => c.depth(p) < .35)) continue;
+      const d = c.depth(ce); zs += d; k++;
+      out.push({ P: f.pts.map(p => c.p(p)), d, f });
+    }
+    if (!k) return;
+    out.sort((a, b) => ((a.f.cap ? 1 : 0) - (b.f.cap ? 1 : 0)) || b.d - a.d);
+    let s = '';
+    for (const o of out) {
+      const fill = st.fill === 'none' ? 'none' : this.shade(st, o.f.n);
+      s += `<polygon points="${P2(o.P)}" fill="${fill}"${st.fo != null ? ` fill-opacity="${r2(st.fo)}"` : ''} stroke="${st.stroke || 'none'}" stroke-width="${st.sw ?? 1}" stroke-linejoin="round"/>`;
+      if (st.floors && o.f.side) {
+        const fl = st.floors, f = o.f, org = fl.org || 0;
+        for (let y = org + Math.ceil((f.h0 - org) / fl.step + 1e-6) * fl.step; y < f.h1 - 1e-3; y += fl.step) {
+          if (y <= f.h0 + 1e-3) continue;
+          const kk = (y - f.h0) / (f.h1 - f.h0), A = c.p(lv(f.pts[0], f.pts[3], kk)), B = c.p(lv(f.pts[1], f.pts[2], kk));
+          s += `<line x1="${r1(A[0])}" y1="${r1(A[1])}" x2="${r1(B[0])}" y2="${r1(B[1])}" stroke="${fl.stroke}" stroke-width="${fl.sw || .7}"/>`;
+        }
+      }
+    }
+    this.items.push({ d: key ?? zs / k, s: st.op != null && st.op < 1 ? `<g opacity="${r2(st.op)}">${s}</g>` : s });
+  }
+  bestFace(faces) { // side face that most squarely faces the camera
+    let best = null, bd = -1;
+    for (const f of faces) { if (!f.side) continue; const v = dot(f.n, norm(sub(this.c.pos, cen(f.pts)))); if (v > bd) { bd = v; best = f; } }
+    return best;
+  }
+  onFace(f, rects, op, layer) { // rects: [x,y,w,h,fill] in unit coords, y from top
+    const c = this.c; let p0 = f.pts[0], p1 = f.pts[1], p3 = f.pts[3];
+    if (c.p(p1)[0] < c.p(p0)[0]) { p0 = f.pts[1]; p1 = f.pts[0]; p3 = f.pts[2]; }
+    const ex = sub(p1, p0), ey = sub(p0, p3);
+    const P = (x, y) => c.p(add(add(p3, mul(ex, x)), mul(ey, y)));
+    let s = '';
+    for (const [x, y, w, h, fill] of rects) s += `<polygon points="${P2([P(x, y), P(x + w, y), P(x + w, y + h), P(x, y + h)])}" fill="${fill}"/>`;
+    (layer || this.post).push(`<g opacity="${r2(op)}">${s}</g>`);
+  }
+  path3(pts, st) {
+    const prog = st.prog ?? 1; if (prog <= 0) return;
+    const P = pts.map(p => this.c.p(p));
+    let a = `d="M${P.map(p => r1(p[0]) + ' ' + r1(p[1])).join('L')}${st.closed ? 'Z' : ''}" fill="${st.fill || 'none'}" stroke="${st.stroke || 'none'}" stroke-width="${st.sw ?? 1}" stroke-linejoin="round" stroke-linecap="${st.cap || 'round'}"`;
+    if (prog < 1) a += ` pathLength="1" stroke-dasharray="${r4(prog)} 2"`;
+    else if (st.dash) a += ` stroke-dasharray="${st.dash}"${st.doff != null ? ` stroke-dashoffset="${r1(st.doff)}"` : ''}`;
+    if (st.op != null) a += ` opacity="${r2(st.op)}"`;
+    if (st.fo != null) a += ` fill-opacity="${r2(st.fo)}"`;
+    (st.layer === 'pre' ? this.pre : this.post).push(`<path ${a}/>`);
+  }
+  line3(a, b, st) {
+    const L = this.c.line(a, b); if (!L) return;
+    const s = `<line x1="${r1(L[0][0])}" y1="${r1(L[0][1])}" x2="${r1(L[1][0])}" y2="${r1(L[1][1])}" stroke="${st.stroke}" stroke-width="${st.sw ?? 1}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}${st.op != null ? ` opacity="${r2(st.op)}"` : ''}/>`;
+    (st.layer === 'pre' ? this.pre : this.post).push(s);
+  }
+  grid(ext, step, st, cx = 0, cz = 0) {
+    let s = '';
+    for (let v = -ext; v <= ext + 1e-6; v += step) {
+      const op = Math.pow(1 - Math.abs(v) / ext * .92, 1.4);
+      for (const dir of [0, 1]) {
+        const a = dir ? [cx + v, 0, cz - ext] : [cx - ext, 0, cz + v], b = dir ? [cx + v, 0, cz + ext] : [cx + ext, 0, cz + v];
+        const L = this.c.line(a, b); if (!L) continue;
+        s += `<line x1="${r1(L[0][0])}" y1="${r1(L[0][1])}" x2="${r1(L[1][0])}" y2="${r1(L[1][1])}" stroke-opacity="${r2(op)}"/>`;
+      }
+    }
+    this.pre.push(`<g stroke="${st.stroke}" stroke-width="${st.sw || 1}" opacity="${r2(st.op ?? 1)}">${s}</g>`);
+  }
+  render() { return this.pre.join('') + this.items.sort((a, b) => b.d - a.d).map(i => i.s).join('') + this.post.join(''); }
+}
+
+/* ---------- 2D type helpers ---------- */
+function T(x, y, s, o = {}) {
+  if (o.op != null && o.op <= 0) return '';
+  return `<text x="${r1(x)}" y="${r1(y)}" class="${o.c || 'm'}" font-size="${o.fs || 13}" fill="${o.fill || C.ink}"${o.a ? ` text-anchor="${o.a}"` : ''}${o.op != null ? ` opacity="${r2(o.op)}"` : ''}${o.w ? ` font-weight="${o.w}"` : ''}${o.tr ? ` transform="${o.tr}"` : ''}>${o.raw ? s : esc(s)}</text>`;
+}
+function HL(x, y, lines, o = {}) {
+  const fs = o.fs || 64, lh = o.lh || fs * .98; let s = '';
+  if ((o.op ?? 1) <= 0) return '';
+  lines.forEach((ln, i) => {
+    const lp = eo(clamp((o.p ?? 1) * 1.7 - i * .28)); if (lp <= 0) return;
+    const inner = ln.split('*').map((p, j) => j % 2 ? `<tspan fill="${o.hi || C.or}">${esc(p)}</tspan>` : esc(p)).join('');
+    s += `<text x="${r1(x)}" y="${r1(y + i * lh + (1 - lp) * fs * .45)}" class="${o.c || 'h'}" font-size="${fs}" fill="${o.fill || C.ink}" opacity="${r2(lp * (o.op ?? 1))}"${o.a ? ` text-anchor="${o.a}"` : ''}>${inner}</text>`;
+  });
+  return s;
+}
+function bionic(x, y, lines, fs, fill, op) {
+  if (op <= 0) return '';
+  return lines.map((ln, i) => `<text x="${x}" y="${y + i * fs * 1.35}" class="b" font-size="${fs}" fill="${fill}" opacity="${r2(op)}">` +
+    ln.split(' ').map(w => { const k = Math.ceil(w.length / 2); return `<tspan font-weight="700">${esc(w.slice(0, k))}</tspan>${esc(w.slice(k))}`; }).join(' ') + '</text>').join('');
+}
+
+const NAMES = ['Arrival', 'Survey', 'Blueprint', 'Structure', 'Material', 'Systems', 'District', 'Occupancy', 'Handover'];
+function chrome(ch, t, o) {
+  const ink = o.ink, faint = o.faint, op = o.op ?? 1; if (op <= 0) return '';
+  let s = `<g opacity="${r2(op)}"><line x1="0" y1="66" x2="${W}" y2="66" stroke="${faint}"/>`;
+  s += `<g transform="translate(40,21) scale(.1)">${logo2D({ cube: o.cubeBg || '#fff', csw: 9 })}</g>`;
+  s += T(74, 39, 'HYPERIUX', { fs: 13, fill: ink, w: 600 });
+  s += T(W / 2, 39, `${pad(ch + 1)} / ${NAMES[ch].toUpperCase()}`, { a: 'middle', fs: 12, fill: ink });
+  s += T(W - 210, 39, 'MENU', { fs: 12, fill: ink });
+  s += `<rect x="${W - 172}" y="22" width="132" height="26" rx="13" fill="none" stroke="${ink}" stroke-opacity=".6"/>` + T(W - 106, 39.5, 'START A PROJECT', { a: 'middle', fs: 11, fill: ink });
+  const x0 = 40, x1 = W - 110, y = H - 44, sw = (x1 - x0) / 9;
+  s += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="${faint}"/>`;
+  for (let i = 0; i < 9; i++) {
+    const x = x0 + i * sw, cur = i === ch;
+    if (i < ch) s += `<rect x="${r1(x)}" y="${y - 1.5}" width="${r1(sw - 8)}" height="3" fill="${ink}" opacity=".45"/>`;
+    if (cur && t > 0) s += `<rect x="${r1(x)}" y="${y - 1.5}" width="${r1((sw - 8) * t)}" height="3" fill="${C.or}"/>`;
+    s += T(x, H - 18, `${pad(i + 1)} ${NAMES[i].toUpperCase()}`, { fs: 10.5, fill: cur ? C.or : ink, op: cur ? 1 : .5 });
+  }
+  s += T(W - 40, H - 18, Math.round((ch + t) / 9 * 100) + '%', { a: 'end', fs: 12, fill: ink });
+  return s + '</g>';
+}
+function card(x, y, w, h, o) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${o.fill}" stroke="${o.stroke}" stroke-width="1"/>`;
+}
+
+/* =================================================================
+   01 ARRIVAL — the module floats on an empty site; the H assembles.
+   ================================================================= */
+const sL = .05, DL = 1.4, mapL = (u, v, w) => [(u - 120) * sL, (240 - v) * sL, w];
+function ch0(t) {
+  const ink = C.ink, a1 = io(seg(t, .3, .88)), a2 = io(seg(t, .88, 1));
+  const cubeC = [0, (240 - 101) * sL, 0];
+  const th = -.55 * a1 - .12 * a2;
+  const R = lerp(lerp(44, 31, a1), 5.4, a2);
+  const tg = lv([0, 6.2, 0], cubeC, a2);
+  const h = lerp(lerp(9.5, 11, a1), cubeC[1] + 2.4, a2);
+  const pos = [tg[0] + R * Math.sin(th), h, tg[2] + R * Math.cos(th)];
+  const c = cam(pos, tg, { fov: 30, cx: lerp(lerp(800, 1010, io(seg(t, .6, .78))), 800, a2) });
+  const S = new Scene(c);
+  const gop = seg(t, .04, .2) * (1 - .6 * a2);
+  if (gop > 0) S.grid(36, 2, { stroke: ink, op: .2 * gop });
+  const sv = seg(t, .13, .25) * (1 - seg(t, .5, .6));
+  if (sv > 0) {
+    for (const [x, z] of [[-9, -6], [9, -6], [-9, 6], [9, 6], [0, 0]]) {
+      S.line3([x - .7, 0, z], [x + .7, 0, z], { stroke: C.or, sw: 1.6, op: sv, layer: 'pre' });
+      S.line3([x, 0, z - .7], [x, 0, z + .7], { stroke: C.or, sw: 1.6, op: sv, layer: 'pre' });
+    }
+    S.line3([-5.25, 0, 4], [5.25, 0, 4], { stroke: ink, op: sv * .8, layer: 'pre' });
+    for (const x of [-5.25, 5.25]) S.line3([x, 0, 3.6], [x, 0, 4.4], { stroke: ink, op: sv, layer: 'pre' });
+    S.line3([6.6, 0, 0], [6.6, 12, 0], { stroke: ink, op: sv * .8, dash: '4 4' });
+    const a = c.p([0, 0, 4.6]), b = c.p([7, 6, 0]);
+    S.post.push(T(a[0], a[1] + 16, '10 500', { a: 'middle', fs: 12, op: sv }) + T(b[0] + 8, b[1], '12 000', { fs: 12, op: sv }));
+  }
+  const gd = seg(t, .34, .46), gf = 1 - .75 * seg(t, .6, .7);
+  if (gd > 0) for (const P of LOGO) S.path3(P.map(p => mapL(p[0], p[1], DL / 2 + .02)), { closed: 1, stroke: C.or, sw: 1.8, prog: gd, op: gf });
+  const pA = eo(seg(t, .44, .6)), pC = eo(seg(t, .47, .63)), pB = eo(seg(t, .5, .66)), ok = io(seg(t, .7, .84));
+  const st = { fill: mx('#FAF9F6', C.or, ok), dark: mx('#BDB9B0', C.orD, ok), stroke: mx(ink, '#7a2c03', ok), sw: 1.2, amb: .42 };
+  if (pA > 0) S.mesh(shift(prism(LA, mapL, -DL / 2, DL / 2), [0, (1 - pA) * 9, 0]), { ...st, op: pA });
+  if (pC > 0) S.mesh(shift(prism(LC, mapL, -DL / 2, DL / 2), [(1 - pC) * 12, 0, 0]), { ...st, op: pC });
+  if (pB > 0) S.mesh(shift(prism(LB, mapL, -DL / 2, DL / 2), [-(1 - pB) * 14, 0, 0]), { ...st, op: pB });
+  const spin = PI / 4 + (1 - eo(seg(t, 0, .34))) * 2.6;
+  S.mesh(box(0, 0, 2, 2, cubeC[1] - 1, cubeC[1] + 1, spin), { fill: '#FFFFFF', dark: '#E4E0D8', stroke: C.or, sw: 2, amb: .5 }, c.depth(cubeC) - 4);
+  let o = '';
+  const ld = 1 - seg(t, .33, .4);
+  if (ld > 0) {
+    const n = Math.round(seg(t, 0, .333) * 100);
+    o += T(W - 70, H / 2 + 44, n >= 100 ? '100' : pad(n), { c: 'h', fs: 132, a: 'end', op: ld });
+    o += T(70, H / 2 + 6, t < .2 ? 'SURVEYING THE SITE…' : 'GOOD THINGS WORTH THE WAIT!!', { fs: 13, op: ld });
+  }
+  const hp = seg(t, .7, .8), hf = 1 - seg(t, .88, .94);
+  if (hp > 0 && hf > 0) {
+    o += T(84, 418, 'DIGITAL EXPERIENCE DESIGN AGENCY', { fs: 13, op: hp * hf });
+    o += HL(80, 500, ["WE DON'T", 'DECORATE BRANDS.', 'WE *BUILD* THEM.'], { fs: 64, p: hp, op: hf });
+  }
+  const sp = seg(t, .8, .88) * hf;
+  if (sp > 0) {
+    o += T(84, 730, 'Emotion, design, technology and neuromarketing,', { c: 'b', fs: 21, op: sp });
+    o += T(84, 758, 'engineered into one structure.', { c: 'b', fs: 21, op: sp });
+    o += T(84, 800, '[ SCROLL TO ENTER THE MODULE ]', { fs: 12, op: sp, fill: C.or });
+  }
+  const ep = seg(t, .93, 1);
+  if (ep > 0) o += HL(W / 2, H / 2 + 20, ['YOUR BRAND IS THE CUBE.'], { fs: 58, a: 'middle', p: ep });
+  return { bg: C.paper, svg: S.render() + o, ink, faint: '#C8C5BE', op: seg(t, .3, .4) };
+}
+
+/* =================================================================
+   02 SURVEY — the module unfolds into six brand facets; data lands.
+   ================================================================= */
+function ch1(t) {
+  const ink = C.ink, u = io(seg(t, .06, .24)), th = PI / 2 * (1 - u);
+  const ct = Math.cos(th), sn = Math.sin(th), s2 = Math.sin(2 * th), c2 = Math.cos(2 * th), hy = 6 * sn, hz = 3 + 6 * ct;
+  const F = [
+    { n: 'PURPOSE', p: [[-3, 0, -3], [3, 0, -3], [3, 0, 3], [-3, 0, 3]] },
+    { n: 'VOICE', p: [[3, 0, -3], [3 + 6 * ct, 6 * sn, -3], [3 + 6 * ct, 6 * sn, 3], [3, 0, 3]] },
+    { n: 'AUDIENCE', p: [[-3, 0, 3], [-3 - 6 * ct, 6 * sn, 3], [-3 - 6 * ct, 6 * sn, -3], [-3, 0, -3]] },
+    { n: 'BEHAVIOUR', p: [[-3, 0, 3], [3, 0, 3], [3, 6 * sn, 3 + 6 * ct], [-3, 6 * sn, 3 + 6 * ct]] },
+    { n: 'VISUALS', p: [[3, 0, -3], [-3, 0, -3], [-3, 6 * sn, -3 - 6 * ct], [3, 6 * sn, -3 - 6 * ct]] },
+    { n: 'MARKET', p: [[-3, hy, hz], [3, hy, hz], [3, hy + 6 * s2, hz + 6 * c2], [-3, hy + 6 * s2, hz + 6 * c2]] }
+  ];
+  const zc = 3 * io(seg(t, .05, .3));
+  const tg = [0, lerp(6, 0, io(seg(t, 0, .3))), zc];
+  const hg = lerp(16, 50, io(seg(t, 0, .32)));
+  const tl = io(seg(t, .24, .55)) * (1 - io(seg(t, .86, 1)));
+  const c = cam([-12 * tl, hg - 6 * tl, zc + .01 + 34 * tl], tg, { fov: 38, up: [0, 0, -1] });
+  const S = new Scene(c);
+  const cop = 1 - seg(t, .88, .96);
+  for (let i = 0; i < 10; i++) {
+    const pr = seg(t, .27 + i * .012, .4 + i * .012); if (pr <= 0 || cop <= 0) continue;
+    const r0 = 11 + i * 3.6, pts = [];
+    for (let k = 0; k <= 72; k++) { const f = k / 72 * 2 * PI, r = r0 * (1 + .07 * Math.sin(3 * f + i * .7) + .045 * Math.sin(5 * f - i * .4) + .025 * Math.sin(8 * f + i * 1.3)); pts.push([r * Math.cos(f), 0, 3 + r * Math.sin(f)]); }
+    S.path3(pts, { stroke: C.ink2, sw: 1, prog: pr, op: .42 * cop, layer: 'pre' });
+  }
+  const fin = seg(t, .9, 1);
+  S.mesh(F.map(f => ({ pts: f.p, n: [0, 1, 0] })), { flat: 1, fill: mx('#FFFFFF', C.paper2, fin), stroke: mx(C.or, ink, fin), sw: 2.2, cull: false });
+  const lab = seg(t, .2, .27) * (1 - seg(t, .9, .97));
+  if (lab > 0) F.forEach((f, i) => { const P = c.p(cen(f.p)); S.post.push(T(P[0], P[1] - 6, 'F' + (i + 1), { a: 'middle', fs: 10, fill: C.or, op: lab }) + T(P[0], P[1] + 12, f.n, { a: 'middle', fs: 14, op: lab, w: 600 })); });
+  const pv = seg(t, .38, .46) * (1 - seg(t, .86, .95)) * (1 - .6 * seg(t, .7, .76));
+  const CL = [[-24, 0, -6], [24, 0, -6], [-24, 0, 15], [24, 0, 15]], CN = ['EMOTION', 'DESIGN', 'TECHNOLOGY', 'NEUROMARKETING'];
+  if (pv > 0) {
+    const m = io(seg(t, .46, .58)), R = rng(7); let ds = '';
+    for (let i = 0; i < 260; i++) {
+      const a = R() * 2 * PI, rr = 10 + R() * 26, p0 = [rr * Math.cos(a), 0, 3 + rr * Math.sin(a)], k = i % 4;
+      const b = R() * 2 * PI, br = Math.pow(R(), .6) * 5, p1 = [CL[k][0] + br * Math.cos(b), 0, CL[k][2] + br * Math.sin(b)];
+      const P = c.p(lv(p0, p1, m));
+      ds += `<circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="${i % 9 ? 2.2 : 3.4}"${i % 9 ? '' : ` fill="${C.or}"`}/>`;
+    }
+    S.post.push(`<g fill="${ink}" opacity="${r2(pv)}">${ds}</g>`);
+    if (m > 0) CL.forEach((p, k) => { const P = c.p(add(p, [0, 0, -7])); S.post.push(`<rect x="${r1(P[0] - 4)}" y="${r1(P[1] - 18)}" width="8" height="8" fill="${C.or}" opacity="${r2(m * pv)}"/>` + T(P[0], P[1] + 4, CN[k], { a: 'middle', fs: 13, w: 600, op: m * pv })); });
+  }
+  let o = '';
+  const cv = seg(t, .6, .67) * (1 - seg(t, .78, .84));
+  if (cv > 0) {
+    const tgt = [F[2], F[3], F[5]];
+    const codes = [['HX-01.1 · AUDIENCE', 'Who decides, and what they feel first'], ['HX-02.4 · BEHAVIOUR', 'Where attention drops, and why'], ['HX-03.2 · MARKET', 'What competitors already own']];
+    codes.forEach((cd, i) => {
+      const P = c.p(cen(tgt[i].p)), bx = 1190, by = 150 + i * 104;
+      o += `<g opacity="${r2(cv)}"><path d="M${r1(P[0])} ${r1(P[1])}L${bx - 34} ${by + 32}L${bx} ${by + 32}" fill="none" stroke="${C.or}" stroke-width="1.3"/><rect x="${r1(P[0] - 5)}" y="${r1(P[1] - 5)}" width="10" height="10" fill="${C.or}"/>` +
+        card(bx, by, 350, 66, { fill: C.paper2, stroke: ink }) + `<rect x="${bx}" y="${by}" width="350" height="22" fill="${ink}"/>` +
+        T(bx + 10, by + 15, cd[0], { fs: 11, fill: C.paper2 }) + T(bx + 10, by + 50, cd[1], { c: 'b', fs: 17 }) + '</g>';
+    });
+  }
+  o += HL(80, 190, ['BEFORE WE DRAW A LINE,', 'WE *READ THE LAND.*'], { fs: 58, p: seg(t, .7, .77), op: (seg(t, .7, .71) > 0 ? 1 : 0) * (1 - seg(t, .82, .86)) });
+  const bp = seg(t, .8, .87) * (1 - seg(t, .93, .98));
+  o += bionic(80, 690, ['We unravel complex design challenges through', 'meticulous user research, expert analysis,', 'prototyping and collaborative design.'], 26, ink, bp);
+  o += T(80, 810, 'WHAT YOU JUST READ IS CALLED BIONIC READING.', { fs: 11, fill: C.or, op: bp });
+  o += T(W / 2, H - 76, '[ RESEARCH → STRATEGY ]', { a: 'middle', fs: 12, fill: C.or, op: seg(t, .93, 1) });
+  return { bg: C.paper, svg: S.render() + o, ink, faint: '#C8C5BE' };
+}
+
+/* =================================================================
+   03 BLUEPRINT — the H drawn as a floor plan, Heron-style.
+   ================================================================= */
+const kP = .1, mapP = (u, v, w) => [(u - 120) * kP, w, (v - 120) * kP];
+const PW = [[[15, 40], [47, 40]], [[15, 175], [47, 175]], [[15, 208], [47, 208]], [[75, 95.1], [75, 131.1]], [[165, 75.75], [165, 111.75]], [[192, 32], [225, 32]], [[192, 186], [225, 186]]];
+const ROOMS = [[31, 20, '12.8'], [31, 59, '12.2'], [31, 150, '18.4'], [31, 192, '10.6'], [31, 225, '10.2'], [61, 117, '10.1'], [118, 104, '32.4'], [180, 88, '9.7'], [208, 16, '10.6'], [208, 58, '12.5'], [208, 160, '17.5'], [208, 213, '17.8']];
+const SERV = [[31, 20, 'UI Design Strategy'], [31, 150, 'Branding'], [112, 102, 'UX Development'], [208, 16, 'Integrated Digital Marketing Plan'], [208, 160, 'Customer Experience Strategy'], [208, 213, 'Consumer Research']];
+function planCam(tilt, sc, cx, cy, tg, az = 0) {
+  let dir = norm(lv([0, 1, .0001], [.62, .78, .95], tilt)); if (az) dir = rotY(dir, az);
+  const up = norm(lv([0, 0, -1], [0, 1, 0], tilt));
+  return cam(add(tg, mul(dir, 200)), tg, { ortho: sc, up, cx, cy });
+}
+function planWalls(S, sc, dr, dp, wf, layer = 'pre') {
+  const ow = .42 * sc, iw = Math.max(0, (ow - 2.6) * (1 - wf));
+  const polys = LOGO.map(P => P.map(p => mapP(p[0], p[1], 0))), parts = PW.map(L => L.map(p => mapP(p[0], p[1], 0)));
+  polys.forEach(P => S.path3(P, { closed: 1, stroke: C.ink, sw: ow, prog: dr, cap: 'butt', layer }));
+  parts.forEach(P => S.path3(P, { stroke: C.ink, sw: ow, prog: dp, cap: 'butt', layer }));
+  if (iw > .2) {
+    polys.forEach(P => S.path3(P, { closed: 1, stroke: C.paper, sw: iw, prog: dr, cap: 'butt', layer }));
+    parts.forEach(P => S.path3(P, { stroke: C.paper, sw: iw, prog: dp, cap: 'butt', layer }));
+  }
+}
+function dimRow(S, c, us, v, op, horiz = true) {
+  let s = '';
+  const P = us.map(u => c.p(horiz ? mapP(u, v, 0) : mapP(v, u, 0)));
+  s += `<line x1="${r1(P[0][0])}" y1="${r1(P[0][1])}" x2="${r1(P[P.length - 1][0])}" y2="${r1(P[P.length - 1][1])}" stroke="${C.ink2}" stroke-width="1"/>`;
+  P.forEach(p => { s += `<line x1="${r1(p[0] - 5)}" y1="${r1(p[1] + 5)}" x2="${r1(p[0] + 5)}" y2="${r1(p[1] - 5)}" stroke="${C.ink}" stroke-width="1.4"/>`; });
+  for (let i = 0; i < us.length - 1; i++) {
+    const m = [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2], txt = mm((us[i + 1] - us[i]) * 100);
+    s += horiz ? T(m[0], m[1] - 7, txt, { a: 'middle', fs: 11, fill: C.ink2 }) : T(m[0] - 7, m[1], txt, { a: 'middle', fs: 11, fill: C.ink2, tr: `rotate(-90 ${r1(m[0] - 7)} ${r1(m[1])})` });
+  }
+  S.post.push(`<g opacity="${r2(op)}">${s}</g>`);
+}
+function ch2(t) {
+  const ink = C.ink, tl = io(seg(t, .88, 1));
+  const c = planCam(tl, lerp(25, 22, tl), lerp(600, 800, tl), lerp(476, 470, tl), [0, 0, 0]);
+  const S = new Scene(c), sc = c.ortho;
+  let o = '';
+  const cl = seg(t, .03, .12) * (1 - seg(t, .4, .5));
+  if (cl > 0) for (const v of [0, 240]) { const P = c.p(mapP(0, v, 0)); S.pre.push(`<line x1="0" y1="${r1(P[1])}" x2="${W}" y2="${r1(P[1])}" stroke="${C.or}" opacity="${r2(cl * .8)}"/>`); }
+  const gn = 1 - seg(t, 0, .12);
+  if (gn > 0) for (const [x, z] of [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6], [0, 12]]) S.path3([[x - 3, 0, z - 3], [x + 3, 0, z - 3], [x + 3, 0, z + 3], [x - 3, 0, z + 3]], { closed: 1, stroke: C.or, sw: 1.5, op: gn * .7, layer: 'pre' });
+  const hl = seg(t, .68, .74) * (1 - seg(t, .8, .85));
+  if (hl > 0) S.path3(LA.map(p => mapP(p[0], p[1], 0)), { closed: 1, fill: C.or, fo: .85, op: hl, layer: 'pre' });
+  planWalls(S, sc, seg(t, .05, .24), seg(t, .15, .28), io(seg(t, .3, .42)));
+  const at = seg(t, .24, .3) * (1 - seg(t, .9, 1));
+  if (at > 0) {
+    const D = [[120, 88], [135, 103], [120, 118], [105, 103]].map(p => mapP(p[0], p[1], 0));
+    S.path3(D, { closed: 1, stroke: C.or, sw: 1.6, dash: '5 4', op: at });
+    S.path3([D[0], D[2]], { stroke: C.or, sw: 1, op: at }); S.path3([D[1], D[3]], { stroke: C.or, sw: 1, op: at });
+    const L = c.p(mapP(120, 66, 0)); S.post.push(T(L[0], L[1], 'MODULE · OPEN TO ABOVE', { a: 'middle', fs: 10.5, fill: C.or, op: at }));
+  }
+  const dm = seg(t, .42, .5) * (1 - seg(t, .84, .9));
+  if (dm > 0) {
+    dimRow(S, c, [15, 47, 192, 225], -12, dm); dimRow(S, c, [15, 225], -24, dm);
+    dimRow(S, c, [0, 78, 108, 240], 3, dm, false); dimRow(S, c, [0, 240], -9, dm, false);
+    dimRow(S, c, [0, 70, 99, 133, 240], 237, dm, false);
+  }
+  const rm = seg(t, .5, .56) * (1 - seg(t, .86, .9));
+  if (rm > 0) ROOMS.forEach(([u, v, a]) => { const P = c.p(mapP(u, v, 0)); S.post.push(T(P[0], P[1] + 4, a + ' m²', { a: 'middle', fs: 10, fill: C.mute, op: rm })); });
+  const fp = seg(t, .5, .6), ff = 1 - seg(t, .86, .9);
+  if (fp > 0 && ff > 0) {
+    const path = cutPath([[31, 232], [31, 122.6], [208, 84.5], [208, 8]].map(p => mapP(p[0], p[1], 0)), fp);
+    S.path3(path, { stroke: C.or, sw: 2.2, dash: '9 6', op: ff });
+    const e = c.p(path[path.length - 1]); S.post.push(`<circle cx="${r1(e[0])}" cy="${r1(e[1])}" r="5" fill="${C.or}" opacity="${r2(ff)}"/>`);
+    const a = c.p(mapP(31, 254, 0)), b = c.p(mapP(234, 10, 0));
+    S.post.push(T(a[0], a[1], 'USER FLOW', { a: 'middle', fs: 10.5, fill: C.or, op: ff }) + T(b[0], b[1], 'CONVERSION', { fs: 10.5, fill: C.or, op: ff * seg(t, .58, .6) }));
+  }
+  const mf = 1 - seg(t, .86, .9);
+  SERV.forEach(([u, v], i) => {
+    const mp = eo(seg(t, .58 + i * .012, .62 + i * .012)) * mf; if (mp <= 0) return;
+    const P = c.p(mapP(u, v, 0)), z = 12 * mp;
+    S.post.push(`<rect x="${r1(P[0] - z)}" y="${r1(P[1] - z)}" width="${r1(2 * z)}" height="${r1(2 * z)}" fill="${C.or}"/>` + T(P[0], P[1] + 4, pad(i + 1), { a: 'middle', fs: 11, fill: '#fff', op: mp, w: 600 }));
+    if (i === 0 && hl > 0) S.post.push(`<circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="22" fill="none" stroke="#fff" stroke-width="2" opacity="${r2(hl)}"/>`);
+  });
+  const cv = seg(t, .68, .75) * (1 - seg(t, .8, .84));
+  if (cv > 0) {
+    const x = 1110, y = 190;
+    o += `<g opacity="${r2(cv)}">` + card(x, y, 420, 330, { fill: C.paper2, stroke: ink }) + `<rect x="${x}" y="${y}" width="420" height="40" fill="${ink}"/>` +
+      T(x + 16, y + 25, '01 / 06 — UI DESIGN STRATEGY', { fs: 12, fill: C.paper2 }) +
+      ['Strategic planning based on insight', 'is the starting point of everything', 'we do.'].map((l, i) => T(x + 16, y + 84 + i * 28, l, { c: 'b', fs: 21 })).join('') +
+      ['→ Insight workshops', '→ Experience roadmap', '→ KPI framework'].map((l, i) => T(x + 16, y + 192 + i * 24, l, { fs: 12, fill: C.ink2 })).join('') +
+      `<rect x="${x + 16}" y="${y + 270}" width="170" height="38" fill="${C.or}"/>` + T(x + 101, y + 294, 'VIEW SERVICE →', { a: 'middle', fs: 12, fill: '#fff' }) + '</g>';
+  }
+  const hp = seg(t, .8, .87);
+  o += T(1044, 340, 'FROM CONCEPT TO CONVERSION', { fs: 12, fill: C.or, op: hp * (1 - seg(t, .92, .98)) });
+  o += HL(1040, 410, ['STRATEGY IS', 'THE FLOOR', '*PLAN.*'], { fs: 68, p: hp, op: hp > 0 ? 1 - seg(t, .92, .98) : 0 });
+  o += T(W / 2, H - 76, '[ STRATEGY → STRUCTURE ]', { a: 'middle', fs: 12, fill: C.or, op: seg(t, .93, 1) });
+  return { bg: C.paper, svg: S.render() + o, ink, faint: '#C8C5BE' };
+}
+
+/* =================================================================
+   04 STRUCTURE — the plan rises; floors are the design system.
+   ================================================================= */
+const FH = 2.6, NF = [7, 4, 10], LAY = [0, 1, 3, 6, 10];
+const COLS = (() => {
+  const o = [[20, 5], [42, 5], [20, 39], [42, 39], [20, 73], [42, 73], [20, 112], [42, 112], [20, 150], [42, 150], [20, 190], [42, 190], [20, 235], [42, 235],
+    [197, 5], [220, 5], [197, 35], [220, 35], [197, 66], [220, 66], [197, 98], [220, 94], [197, 138], [220, 138], [197, 186], [220, 186], [197, 235], [220, 235]];
+  for (const u of [70, 100, 130, 160]) { const top = 108 - .215 * (u - 15); o.push([u, top + 6], [u, top + 30]); }
+  return o;
+})();
+const polyW = P => P.map(p => [(p[0] - 120) * kP, (p[1] - 120) * kP]);
+function ch3(t) {
+  const ink = C.ink, gr = io(seg(t, .3, .62));
+  const sc = lerp(22, 16.5, io(seg(t, .2, .62)));
+  const cxs = lerp(800, 960, io(seg(t, .68, .76)) * (1 - io(seg(t, .9, 1))));
+  const c = planCam(1, sc, cxs, lerp(470, 520, gr), [0, lerp(0, 11, gr), 0], -.16 * io(seg(t, 0, .9)));
+  const S = new Scene(c);
+  const wl = 1 - seg(t, .3, .4);
+  if (wl > 0) { const tmp = new Scene(c); planWalls(tmp, sc, 1, 1, 1); S.pre.push(`<g opacity="${r2(wl)}">${tmp.pre.join('')}</g>`); }
+  const gb = seg(t, .05, .14) * (1 - seg(t, .58, .66));
+  if (gb > 0) {
+    'ABCDE'.split('').forEach((L, i) => { const u = [15, 47, 120, 192, 225][i]; S.line3(mapP(u, -30, 0), mapP(u, 268, 0), { stroke: ink, op: .45 * gb, dash: '7 6', layer: 'pre' }); const P = c.p(mapP(u, -42, 0)); S.pre.push(`<g opacity="${r2(gb)}"><circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="12" fill="${C.paper2}" stroke="${ink}"/>${T(P[0], P[1] + 4, L, { a: 'middle', fs: 11, w: 600 })}</g>`); });
+    [0, 78, 137, 240].forEach((v, i) => { S.line3(mapP(-30, v, 0), mapP(268, v, 0), { stroke: ink, op: .45 * gb, dash: '7 6', layer: 'pre' }); const P = c.p(mapP(-42, v, 0)); S.pre.push(`<g opacity="${r2(gb)}"><circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="12" fill="${C.paper2}" stroke="${ink}"/>${T(P[0], P[1] + 4, String(i + 1), { a: 'middle', fs: 11, w: 600 })}</g>`); });
+  }
+  const co = 1 - seg(t, .38, .46);
+  if (co > 0) COLS.forEach(([u, v], i) => { const g = eo(seg(t, .14 + i * .003, .26 + i * .003)); if (g <= 0) return; const p = mapP(u, v, 0); S.mesh(box(p[0], p[2], .55, .55, 0, 2 * FH * g), { fill: '#FBFAF7', dark: '#B9B5AC', stroke: ink, sw: 1, amb: .4, op: co }); });
+  const nf = gr * 10, ex = io(seg(t, .78, .86)) * (1 - io(seg(t, .9, .98)));
+  LOGO.forEach((P, mi) => {
+    const top = Math.min(NF[mi], nf) * FH; if (top <= .02) return;
+    for (let j = 0; j < 4; j++) {
+      const y0 = LAY[j] * FH, y1 = Math.min(LAY[j + 1] * FH, top); if (y1 <= y0) continue;
+      const off = j * ex * 4.5;
+      S.mesh(prism(polyW(P), mapY, y0 + off, y1 + off), { fill: '#FBFAF7', dark: '#B4B0A6', stroke: ink, sw: 1.1, amb: .36, floors: { step: FH, org: off, stroke: '#8E8B85', sw: .7 } });
+    }
+  });
+  let o = '';
+  const an = seg(t, .62, .69) * (1 - seg(t, .72, .76));
+  if (an > 0) {
+    const A = [[mapP(15, 240, 0), 'GRID → 12-COLUMN LAYOUT', 'One 12-col, 8 pt grid under every page.'],
+      [[10.5, 13, 12], 'COLUMNS → COMPONENTS', 'Components carry content like columns.'],
+      [[-8.9, 18.2, -4.2], 'SLABS → TYPE SCALE', 'One scale sets every level, H1 to caption.'],
+      [[0, 10.4, -1.7], 'CORE → DESIGN TOKENS', 'Colour, space and motion tokens.']];
+    A.forEach(([p, h, d], i) => { const P = c.p(p), y = 200 + i * 112; o += `<g opacity="${r2(an)}"><path d="M${r1(P[0])} ${r1(P[1])}L1190 ${y - 4}L1214 ${y - 4}" fill="none" stroke="${C.or}" stroke-width="1.3"/><circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="4.5" fill="${C.or}"/>${T(1224, y, h, { fs: 12, w: 600 })}${T(1224, y + 24, d, { c: 'b', fs: 15, fill: C.ink2 })}</g>`; });
+  }
+  const hp = seg(t, .7, .77);
+  o += HL(80, 300, ['DESIGN SYSTEMS', 'ARE LOAD-', '*BEARING.*'], { fs: 76, p: hp, op: hp > 0 ? 1 - seg(t, .9, .96) : 0 });
+  if (ex > .02) ['L1 · TOKENS', 'L2 · COMPONENTS', 'L3 · PATTERNS', 'L4 · PAGES'].forEach((n, j) => {
+    const ym = (LAY[j] + LAY[j + 1]) / 2 * FH + j * ex * 4.5, P = c.p([10.5, ym, 12]);
+    o += `<g opacity="${r2(ex)}"><line x1="${r1(P[0] + 8)}" y1="${r1(P[1])}" x2="1330" y2="${r1(P[1])}" stroke="${ink}" stroke-dasharray="3 4"/>${T(1340, P[1] + 4, n, { fs: 13, w: 600 })}</g>`;
+  });
+  const cb = seg(t, .9, 1);
+  if (cb > 0) S.mesh(box(0, -1.7, 3, 3, 4 * FH + 1 + (1 - cb) * 6, 4 * FH + 4 + (1 - cb) * 6, PI / 4), { fill: C.or, dark: C.orD, stroke: '#7a2c03', sw: 1.2, amb: .45, op: cb }, -1e3);
+  return { bg: mx(C.paper, '#D9D6CF', seg(t, .9, 1)), svg: S.render() + o, ink, faint: '#C8C5BE' };
+}
+
+/* =================================================================
+   05 MATERIAL — the client's identity becomes the facade.
+   ================================================================= */
+const PAL = [['#1E3DFF', '#62D5FF'], ['#0E9F6E', '#C6F25A'], ['#D7263D', '#FF9DB0'], ['#18181A', '#3A3A3F']];
+const BRANDS = [['BRAND A', 'FINTECH'], ['BRAND B', 'CLIMATE'], ['BRAND C', 'LIFESTYLE']];
+function ch4(t) {
+  const nt = seg(t, .36, .48), night = seg(t, .55, .75);
+  const tx = mx(C.ink, '#EDEBE6', seg(t, .36, .46));
+  const K = [[0, [0, 4, 34], [0, 7, -2]], [.3, [6, 5, 30], [0, 8, -4]], [.67, [-4, 6, 28], [0, 9, -4]], [.78, [2, 27, 19], [0, 5, -5]], [.9, [0, 30, 22], [0, 6, -4]], [1, [0, 34, 40], [0, 4, -4]]];
+  const k = keys(K, t), c = cam(k.pos, k.tg, { fov: 42 });
+  const S = new Scene(c);
+  S.grid(40, 2, { stroke: mx(C.ink, '#FFFFFF', nt), op: lerp(.16, .1, nt) }, 0, 0);
+  const ph = [seg(t, .4, .47), seg(t, .5, .57), seg(t, .61, .68), seg(t, .72, .8)];
+  const colAt = f => { let col = '#E2DFD8'; ph.forEach((w, i) => { col = mx(col, mx(PAL[i][0], PAL[i][1], f), w); }); return col; };
+  const wire = seg(t, .9, 1);
+  const N = 44, fp = 1 - seg(t, .1, .2);
+  for (let i = 0; i < N; i++) {
+    const a = -1.25 + 2.5 * i / (N - 1), x = 18 * Math.sin(a), z = 6 - 18 * Math.cos(a);
+    const hh = 7 + 13 * Math.pow(Math.sin(PI * (i + .5) / N), 1.4) + 2.2 * Math.sin(i * .62);
+    const g = eo(seg(t, .03 + i * .0035, .17 + i * .0035));
+    if (fp > 0) S.path3(rectR(x, z, .42, 2.8, PI - a).map(p => [p[0], 0, p[1]]), { closed: 1, stroke: C.ink, sw: 1, op: fp * .6, layer: 'pre' });
+    if (g <= 0) continue;
+    const col = colAt(i / N);
+    S.mesh(box(x, z, .42, 2.8, 0, hh * g, PI - a), { fill: col, dark: mx(col, '#000000', .55), stroke: mx(mx('#1a1a1a', mx(col, '#000000', .5), ph[0]), '#A4A4AA', Math.max(ph[3] * .8, wire)), sw: 1, amb: .32, fo: 1 - wire });
+  }
+  S.mesh(box(0, 0, 7, 7, 0, 1.2), { fill: mx('#E2DFD8', '#2A2A2D', night), dark: mx('#8F8B83', '#121214', night), stroke: mx(C.ink, '#6a6a70', night), sw: 1, amb: .35, fo: 1 - wire });
+  const cc = colAt(0);
+  S.mesh(box(0, 0, 3.2, 3.2, 1.2, 4.4, PI / 4), { fill: mx('#FFFFFF', cc, Math.max(...ph.slice(0, 3)) > 0 ? 1 : 0), dark: mx('#E4E0D8', mx(cc, '#000000', .5), ph[0]), stroke: C.or, sw: 2, amb: .45, fo: 1 - wire * .8 }, -1e3);
+  let o = '';
+  const h1 = seg(t, .16, .23);
+  o += HL(80, 730, ['YOUR IDENTITY', 'BECOMES THE *FACADE.*'], { fs: 54, p: h1, op: h1 > 0 ? 1 - seg(t, .26, .3) : 0, fill: tx });
+  const sw = seg(t, .29, .33) * (1 - seg(t, .4, .44));
+  if (sw > 0) [['M-01', 'CONCRETE', 'Strategy', '#CFCBC3'], ['M-02', 'GLASS', 'Experience', '#A9C4C9'], ['M-03', 'COMPOSITE', 'Hyperiux #FF6A13', C.or]].forEach(([cd, n, d, f], i) => {
+    const x = 80 + i * 250, y = 712;
+    o += `<g opacity="${r2(sw)}"><rect x="${x}" y="${y}" width="54" height="54" fill="${f}" stroke="${C.ink}"/>${T(x + 68, y + 14, cd, { fs: 11, fill: C.mute })}${T(x + 68, y + 33, n, { fs: 14, w: 600, fill: tx })}${T(x + 68, y + 52, d, { c: 'b', fs: 15, fill: tx })}</g>`;
+  });
+  const pp = seg(t, .4, .46) * (1 - seg(t, .72, .76));
+  if (pp > 0) {
+    const bi = t < .555 ? 0 : t < .665 ? 1 : 2, x = 1170, y = 100;
+    o += `<g opacity="${r2(pp)}">` + card(x, y, 370, 150, { fill: mx(C.paper2, '#1b1b1e', nt), stroke: tx }) + T(x + 18, y + 28, 'APPLYING IDENTITY', { fs: 11, fill: C.or }) +
+      T(x + 18, y + 72, BRANDS[bi][0] + ' — ' + BRANDS[bi][1], { c: 'h', fs: 30, fill: tx }) + T(x + 18, y + 104, 'Same structure. Its own skin.', { c: 'b', fs: 16, fill: tx }) +
+      `<rect x="${x + 18}" y="${y + 118}" width="44" height="14" fill="${PAL[bi][0]}"/><rect x="${x + 66}" y="${y + 118}" width="44" height="14" fill="${PAL[bi][1]}"/>` + T(x + 352, y + 130, 'PLACEHOLDER PALETTE', { a: 'end', fs: 9.5, fill: C.mute }) + '</g>';
+  }
+  const sp = seg(t, .82, .88);
+  o += HL(80, 650, ['*EMOTION*, *DESIGN*, *TECHNOLOGY*', '& *NEUROMARKETING*,', 'CAST IN ONE MATERIAL.'], { fs: 54, p: sp, op: sp > 0 ? 1 - seg(t, .94, 1) : 0, fill: tx });
+  o += T(W / 2, H - 76, '[ MATERIAL → SYSTEMS ]', { a: 'middle', fs: 12, fill: C.or, op: seg(t, .93, 1) });
+  const top = mx(mx(C.paper, '#3A332E', seg(t, .3, .5)), C.night, seg(t, .58, .75));
+  const bot = mx(mx(C.paper, '#8A7A6E', seg(t, .3, .5)), '#151516', seg(t, .58, .75));
+  return { grad: [top, bot], svg: S.render() + o, ink: tx, faint: mx('#C8C5BE', '#333336', nt), cubeBg: mx('#ffffff', '#151516', nt) };
+}
+
+/* =================================================================
+   06 SYSTEMS — wireframe on black; what holds the experience up.
+   ================================================================= */
+const RIS = [[31, 39, 0], [31, 190, 1], [120, 103, 1], [208, 35, 1], [208, 186, 2]];
+function wireMasses(S, op, st = {}) {
+  LOGO.forEach((P, mi) => S.mesh(prism(polyW(P), mapY, 0, NF[mi] * FH), { flat: 1, fill: C.night, stroke: st.stroke || '#C9C9CE', sw: .9, op, floors: { step: FH, stroke: '#55555B', sw: .6 } }));
+}
+function ch5(t) {
+  const K = [[0, [54, 32, 68], [0, 10, 0]], [.2, [42, 22, 54], [0, 11, 0]], [.42, [-36, 24, 50], [0, 12, 0]], [.62, [-48, 32, 24], [0, 11, 0]], [.8, [0, 18, 68], [0, 11, 0]], [.88, [0, 20, 72], [0, 11, 0]], [1, [0, 95, 110], [0, 0, -14]]];
+  const k = keys(K, t), cxs = 800 + 190 * (seg(t, .36, .42) - seg(t, .78, .82));
+  const c = cam(k.pos, k.tg, { fov: 44, cx: cxs });
+  const S = new Scene(c), wt = '#EDEBE6';
+  S.grid(64, 4, { stroke: '#FFFFFF', op: .1 * seg(t, .05, .18) + .02 });
+  const mo = (.3 + .7 * seg(t, 0, .1)) * (1 - .5 * seg(t, .8, .86));
+  wireMasses(S, mo);
+  const df = seg(t, .88, 1);
+  if (df > 0) { const R = rng(11); for (let i = 0; i < 40; i++) { const a = R() * 2 * PI, rr = 30 + R() * 50, w = 4 + R() * 8, d = 4 + R() * 8, h = 4 + R() * 22; S.mesh(box(rr * Math.cos(a), rr * Math.sin(a), w, d, 0, h, R()), { flat: 1, fill: C.night, stroke: '#7A7A80', sw: .8, op: df }); } }
+  RIS.forEach(([u, v, mi], i) => {
+    const p = seg(t, .18 + i * .02, .28 + i * .02) * (1 - .4 * seg(t, .8, .86)); if (p <= 0) return;
+    const b = mapP(u, v, 0), e = mapP(u, v, NF[mi] * FH * p);
+    S.line3(b, e, { stroke: C.or, sw: 7, op: .22 }); S.line3(b, e, { stroke: C.or, sw: 2.2 });
+  });
+  const fl = seg(t, .28, .38) * (1 - .4 * seg(t, .8, .86));
+  if (fl > 0) for (let j = 1; j < 4; j++) {
+    const pts = [[31, 190], [31, 118], [120, 103], [208, 84], [208, 35]].map(p => mapP(p[0], p[1], j * FH));
+    S.path3(pts, { stroke: C.or, sw: 1.6, dash: '14 10', doff: -t * 600 - j * 30, op: fl });
+    const L = c.p(lv(pts[2], pts[3], (t * 3 + j * .3) % 1)); S.post.push(`<circle cx="${r1(L[0])}" cy="${r1(L[1])}" r="4" fill="#FFD2B8" opacity="${r2(fl)}"/>`);
+  }
+  const wc = seg(t, .4, .46) * (1 - seg(t, .8, .86));
+  if (wc > 0) { const y0 = 4 * FH + 2.5; S.mesh(box(0, -1.7, 3.6, 3.6, y0, y0 + 3.6, t * 5), { fill: 'none', stroke: C.or, sw: 1.6, cull: false, op: wc }, -1e3); }
+  const nd = seg(t, .6, .66) * (1 - seg(t, .8, .86));
+  if (nd > 0) { const R = rng(4); for (let i = 0; i < 9; i++) { const a = i / 9 * 2 * PI + .3, p = [22 * Math.cos(a), 3 + R() * 14, 22 * Math.sin(a)], r = RIS[i % 5], q = mapP(r[0], r[1], NF[r[2]] * FH); S.line3(p, q, { stroke: '#9A9AA0', sw: .8, op: nd * .7, dash: '3 4' }); const P = c.p(p); S.post.push(`<rect x="${r1(P[0] - 6)}" y="${r1(P[1] - 6)}" width="12" height="12" fill="${C.night}" stroke="${C.or}" stroke-width="1.5" opacity="${r2(nd)}"/>`); } }
+  const og = seg(t, .7, .78) * (1 - seg(t, .8, .86));
+  if (og > 0) for (let i = 0; i < 14; i++) { const a = i / 14 * 2 * PI; S.path3(cutPath([[14 * Math.cos(a), 0, 14 * Math.sin(a)], [90 * Math.cos(a), 0, 90 * Math.sin(a)]], og), { stroke: C.or, sw: 1.2, op: .6 }); }
+  let o = '';
+  const items = [['01', 'Motion & WebGL', ['Scroll-driven 3D, shaders and GSAP', 'that load fast and degrade gracefully.'], .4],
+    ['02', 'Performance', ['Core Web Vitals budgets on every build,', 'set before design starts.'], .5],
+    ['03', 'Headless CMS', ['Sanity and Strapi structures your team', 'can edit without breaking the build.'], .6],
+    ['04', 'Organic growth', ['Technical SEO, schema and content', 'architecture built into the frame.'], .7]];
+  const lf = 1 - seg(t, .8, .84);
+  items.forEach(([n, h, d, s], i) => {
+    const a = seg(t, s, s + .05); if (a <= 0 || lf <= 0) return;
+    const cur = t < s + .1 || i === 3, op = a * lf * (cur ? 1 : .4), x = 80 + i * 34, y = 220 + i * 128;
+    o += T(x, y, n, { fs: 13, fill: C.or, op }) + T(x + 40, y + 2, h, { c: 'b', fs: 34, fill: wt, op }) + d.map((l, j) => T(x + 40, y + 32 + j * 22, l, { c: 'b', fs: 16, fill: '#A8A6A1', op })).join('');
+  });
+  const hud = seg(t, .5, .56) * (1 - seg(t, .8, .84));
+  if (hud > 0) {
+    const x = 1240, y = 110;
+    o += `<g opacity="${r2(hud)}">` + T(x, y, 'PERFORMANCE BUDGET', { fs: 11, fill: C.or }) +
+      [['LCP', '< 2.0 s', .78], ['INP', '< 200 ms', .66], ['CLS', '< 0.05', .9], ['LIGHTHOUSE', '≥ 95', .95]].map(([a, b, f], i) => T(x, y + 32 + i * 30, a, { fs: 12, fill: wt }) + T(x + 300, y + 32 + i * 30, b, { a: 'end', fs: 12, fill: wt }) + `<rect x="${x}" y="${y + 38 + i * 30}" width="300" height="2" fill="#333336"/><rect x="${x}" y="${y + 38 + i * 30}" width="${r1(300 * f * eo(seg(t, .5, .58)))}" height="2" fill="${C.or}"/>`).join('') + '</g>';
+  }
+  const hp = seg(t, .8, .87);
+  o += HL(W / 2, 410, ["WHAT YOU DON'T SEE", '*HOLDS EVERYTHING UP.*'], { fs: 72, a: 'middle', p: hp, op: hp > 0 ? 1 - seg(t, .93, .99) : 0, fill: wt });
+  o += T(W / 2, H - 76, '[ SYSTEMS → DISTRICT ]', { a: 'middle', fs: 12, fill: C.or, op: seg(t, .93, 1) });
+  return { bg: C.night, svg: S.render() + o, ink: wt, faint: '#2C2C30', cubeBg: C.night };
+}
+
+/* =================================================================
+   07 DISTRICT — selected work as buildings along the beam-road.
+   ================================================================= */
+const RD = norm([1, 0, -.45]), RN = norm([.45, 0, 1]), RR = .42;
+const road = s => mul(RD, s);
+const PROJ = [['Montra', '2023', 'WEB DESIGN · BRANDING · MARKETING'], ['Yellow', '2024', 'WEB DESIGN · BRANDING · MARKETING'], ['Patronum', '2023', 'WEB DESIGN · MARKETING · BRANDING'], ['Montra App', '2025', 'WEB DESIGN · BRANDING · MARKETING'], ['Monielink', '2025', 'WEB DESIGN · MARKETING · BRANDING']];
+const BH = [21, 29, 8, 32, 30.6];
+const BLD = PROJ.map((p, j) => { const s = -48 + 24 * j, side = j % 2 ? 1 : -1; return { s, side, P: add(road(s), mul(RN, side * 15)) }; });
+const FILL = (() => { const R = rng(21), o = []; for (let i = 0; i < 120; i++) { const s = -100 + R() * 200, side = R() < .5 ? -1 : 1, off = side * (9 + R() * 46), p = add(road(s), mul(RN, off)); const w = 4 + R() * 5, d = 4 + R() * 5, h = 3 + R() * 14; if (BLD.some(b => Math.hypot(b.P[0] - p[0], b.P[2] - p[2]) < 13)) continue; o.push([p[0], p[2], w, d, h]); } return o; })();
+function bldMeshes(j) {
+  const P = BLD[j].P, cr = Math.cos(RR), sr = Math.sin(RR);
+  const tr = (lx, lz) => [P[0] + lx * cr + lz * sr, P[2] - lx * sr + lz * cr];
+  const B = (lx, lz, w, d, y0, y1, r = 0) => { const q = tr(lx, lz); return box(q[0], q[1], w, d, y0, y1, RR + r); };
+  if (j === 0) return [B(0, 0, 10, 10, 0, 8), B(1.5, 1, 9, 9, 8, 15), B(-1, 2, 8, 8, 15, 21)];
+  if (j === 1) return [prism(ngon(P[0], P[2], 6, 12, RR), mapY, 0, 26), prism(ngon(P[0], P[2], 4.4, 12, RR), mapY, 26, 29)];
+  if (j === 2) return [B(0, 0, 16, 10, 0, 4), B(3, 0, 22, 13, 4, 5), B(-3, 0, 6, 6, 5, 8)];
+  if (j === 3) return [B(0, 0, 7, 3.2, 0, 32)];
+  const o = []; for (let i = 0; i < 9; i++) o.push(B(0, 0, 8, 8, i * 3.4, (i + 1) * 3.4, i * .12)); return o;
+}
+function district(S, o) {
+  const c = S.c;
+  S.grid(120, 8, { stroke: o.grid, op: o.gop });
+  for (const sd of [-4, 4]) S.line3(add(road(-130), mul(RN, sd)), add(road(130), mul(RN, sd)), { stroke: o.road, sw: 1.2, layer: 'pre' });
+  S.line3(road(-130), road(130), { stroke: C.or, sw: 1.2, dash: '10 10', op: .55, layer: 'pre' });
+  FILL.forEach(([x, z, w, d, h]) => S.mesh(box(x, z, w, d, 0, h, RR), o.fill));
+  const out = [];
+  BLD.forEach((b, j) => { const ms = bldMeshes(j), st = j === o.active ? o.act : o.proj; ms.forEach(m => S.mesh(m, st)); out.push(ms); });
+  return out;
+}
+const camK = (j, back = 38) => { const b = BLD[j]; return [add(add(road(b.s - back), mul(RN, -b.side * 9)), [0, 15, 0]), [b.P[0], BH[j] * .45, b.P[2]]]; };
+function projCard(j, op, ink, bg) {
+  if (op <= 0) return '';
+  const x = 1130, y = 548, p = PROJ[j];
+  return `<g opacity="${r2(op)}">` + card(x, y, 410, 262, { fill: bg, stroke: ink }) + T(x + 18, y + 28, `[${pad(j + 1)}/05]`, { fs: 11, fill: C.or }) + T(x + 392, y + 28, p[1], { a: 'end', fs: 11, fill: ink }) +
+    T(x + 18, y + 84, p[0].toUpperCase(), { c: 'h', fs: 46, fill: ink }) + T(x + 18, y + 112, p[2], { fs: 10.5, fill: C.mute }) +
+    T(x + 18, y + 150, 'One-of-a-kind experiences that captivate', { c: 'b', fs: 15, fill: ink }) + T(x + 18, y + 172, 'and engage your customers.', { c: 'b', fs: 15, fill: ink }) +
+    `<line x1="${x + 18}" y1="${y + 202}" x2="${x + 392}" y2="${y + 202}" stroke="${ink}" stroke-opacity=".3"/>` + T(x + 18, y + 236, 'VIEW PROJECT', { fs: 12, fill: ink }) + `<rect x="${x + 356}" y="${y + 218}" width="28" height="28" fill="${C.or}"/>` + T(x + 370, y + 237, '↗', { a: 'middle', fs: 14, fill: '#fff' }) + '</g>';
+}
+const vis = (t, tk) => clamp((.075 - Math.abs(t - tk)) / .03);
+function ch6(t) {
+  const fr = (j, d) => { const b = BLD[j]; return [add(add(b.P, mul(RN, -b.side * d)), [0, 6, 0]), [b.P[0], 5, b.P[2]]]; };
+  const K = [[0, [0, 95, 85], [0, 0, -5]], [.111, add(road(-96), [0, 13, 0]), add(BLD[0].P, [0, 8, 0])], [.222, ...camK(0)], [.333, ...fr(0, 25)], [.444, ...camK(1)], [.556, ...camK(2, 30)], [.667, ...camK(3, 42)], [.778, ...camK(4, 42)], [.889, [24, 72, 96], [0, 0, -6]], [1, [0, 40, 110], [0, 12, -30]]];
+  const k = keys(K, t), c = cam(k.pos, k.tg, { fov: 44 });
+  const S = new Scene(c), wt = '#EDEBE6';
+  const ai = t < .05 || t > .84 ? -1 : t < .39 ? 0 : t < .5 ? 1 : t < .61 ? 2 : t < .72 ? 3 : 4;
+  const ms = district(S, { grid: '#FFFFFF', gop: .07, road: '#55555A', active: ai,
+    fill: { flat: 1, fill: '#111113', stroke: '#3D3D42', sw: .8 }, proj: { flat: 1, fill: '#141416', stroke: '#8A8A90', sw: 1 }, act: { flat: 1, fill: '#17120F', stroke: C.or, sw: 1.6 } });
+  const sv = clamp((.06 - Math.abs(t - .333)) / .03);
+  if (sv > 0) {
+    const f = S.bestFace(ms[0][0]);
+    S.onFace(f, [[.04, .05, .92, .9, '#F3F2EE'], [.08, .1, .12, .035, '#151514'], [.6, .1, .07, .03, '#8E8B85'], [.7, .1, .07, .03, '#8E8B85'], [.8, .095, .12, .04, C.or],
+      [.08, .3, .42, .07, '#151514'], [.08, .4, .36, .07, '#151514'], [.08, .5, .24, .07, '#151514'], [.08, .66, .32, .03, '#8E8B85'], [.08, .74, .15, .06, C.or], [.56, .28, .36, .56, '#1E3DFF'], [.6, .66, .2, .04, '#62D5FF']], sv);
+  }
+  const lb = (1 - seg(t, .04, .1)) + seg(t, .84, .9) * (1 - seg(t, .95, 1));
+  if (lb > 0) BLD.forEach((b, j) => { const P = c.p([b.P[0], BH[j] + 5, b.P[2]]), Q = c.p([b.P[0], BH[j] + .5, b.P[2]]); S.post.push(`<g opacity="${r2(lb)}"><line x1="${r1(P[0])}" y1="${r1(P[1])}" x2="${r1(Q[0])}" y2="${r1(Q[1])}" stroke="${C.or}"/>${T(P[0], P[1] - 8, pad(j + 1) + ' ' + PROJ[j][0].toUpperCase(), { a: 'middle', fs: 13, fill: wt, w: 600 })}</g>`); });
+  let o = '';
+  const tk = [.278, .444, .556, .667, .778];
+  PROJ.forEach((p, j) => { const op = j === 0 ? Math.max(vis(t, .222), vis(t, .333)) : vis(t, tk[j]); o += projCard(j, op, C.ink, C.paper2); });
+  const vp = seg(t, .84, .9) * (1 - seg(t, .95, 1));
+  o += T(84, 700, 'SELECTED WORK (05)', { fs: 12, fill: C.or, op: vp }) + HL(80, 770, ['VIEW ALL PROJECTS ↗'], { fs: 56, p: vp, op: vp > 0 ? 1 : 0, fill: wt });
+  const dw = seg(t, .9, 1);
+  return { grad: [mx(C.night, '#24232C', dw), mx('#0F0F11', '#B86A40', dw)], svg: S.render() + o, ink: wt, faint: '#2C2C30', cubeBg: C.night };
+}
+
+/* =================================================================
+   08 OCCUPANCY — dawn; industries, people, proof.
+   ================================================================= */
+const ZN = [0, 1, 2, 3, 4].map(k => add(road(-64 + 32 * k), mul(RN, (k % 2 ? -1 : 1) * 30)));
+const IND = [['Electronics', ['Launches and configurators that', 'make specs feel simple.']], ['Fintech', ['Experiences that simplify complexity,', 'build trust and lift adoption.']], ['Education', ['Learning journeys that hold attention', 'from first visit to enrolment.']], ['Technology', ['Clear stories for complex platforms,', 'from SaaS to deep tech.']], ['Banking', ['Secure, accessible journeys from', 'browsing to onboarding.']]];
+function ch7(t) {
+  const dn = io(seg(t, 0, .14)), ink = mx('#EDEBE6', C.ink, seg(t, .05, .09));
+  const zc = k => { const z = ZN[k]; return [add(z, [-26, 46, 58]), z]; };
+  const K = [[0, [0, 40, 110], [0, 12, -30]], [.111, ...zc(0)], [.222, ...zc(1)], [.333, ...zc(2)], [.444, ...zc(3)], [.556, ...zc(4)], [.667, [10, 58, 92], [0, 6, -8]], [.889, [10, 58, 92], [0, 6, -8]], [1, [0, 150, 140], [0, 0, 0]]];
+  const zo = seg(t, .06, .1) * (1 - seg(t, .6, .64));
+  const k = keys(K, t), c = cam(k.pos, k.tg, { fov: 44, cx: 800 + 190 * zo });
+  const S = new Scene(c);
+  const fs = mx('#3D3D42', C.ink, dn), ps = mx('#8A8A90', C.ink, dn);
+  const ms = district(S, { grid: mx('#FFFFFF', C.ink, dn), gop: lerp(.07, .1, dn), road: mx('#55555A', C.ink2, dn), active: -1,
+    fill: { fill: mx('#111113', '#FAF9F6', dn), dark: mx('#111113', '#C3BFB6', dn), amb: .4, stroke: fs, sw: .8 },
+    proj: { fill: mx('#141416', '#FAF9F6', dn), dark: mx('#141416', '#BDB9B0', dn), amb: .4, stroke: ps, sw: 1 } });
+  const zi = clamp(Math.round((t - .111) / .111), 0, 4);
+  if (zo > 0) ZN.forEach((z, i) => {
+    const pts = []; for (let a = 0; a <= 64; a++) pts.push(add(z, [13 * Math.cos(a / 64 * 2 * PI), .1, 13 * Math.sin(a / 64 * 2 * PI)]));
+    if (i === zi) S.path3(pts, { closed: 1, stroke: C.or, sw: 2.4, fill: C.or, fo: .14, op: zo });
+    else S.path3(pts, { closed: 1, stroke: ink, sw: 1, dash: '5 5', op: zo * .5 });
+    const P = c.p(add(z, [0, 0, 15.5])); S.post.push(T(P[0], P[1] + 14, pad(i + 1), { a: 'middle', fs: 12, fill: i === zi ? C.or : ink, op: zo, w: 600 }));
+  });
+  const pe = seg(t, .6, .68) * (1 - seg(t, .9, .97));
+  if (pe > 0) {
+    const R = rng(9); let ds = '';
+    for (let i = 0; i < 180; i++) { const p = (R() + t * 1.6) % 1, lat = (R() - .5) * 6, P = c.p(add(road(-100 + 200 * p), mul(RN, lat))); ds += `<circle cx="${r1(P[0])}" cy="${r1(P[1])}" r="2.2"/>`; }
+    S.post.push(`<g fill="${C.ink}" opacity="${r2(pe)}">${ds}</g>`);
+    ms.forEach((bm, j) => { const f = S.bestFace(bm[0]); const R2 = rng(30 + j), rs = []; for (let i = 0; i < 10; i++) rs.push([.1 + R2() * .7, .1 + R2() * .7, .08, .06, C.or]); S.onFace(f, rs, pe); });
+  }
+  let o = '';
+  if (zo > 0) {
+    o += `<g opacity="${r2(zo)}"><rect x="48" y="168" width="470" height="530" fill="${C.paper2}" fill-opacity=".92" stroke="${C.ink}" stroke-opacity=".25"/>` + T(84, 200, 'INDUSTRIES WE WORK IN', { fs: 12, fill: C.or }) + T(80, 330, pad(zi + 1), { c: 'h', fs: 124, fill: C.or }) +
+      T(80, 410, IND[zi][0].toUpperCase(), { c: 'h', fs: 60, fill: ink }) + IND[zi][1].map((l, j) => T(82, 452 + j * 26, l, { c: 'b', fs: 19, fill: ink })).join('') +
+      IND.map((d, j) => T(84, 560 + j * 26, pad(j + 1) + '  ' + d[0].toUpperCase(), { fs: 12, fill: j === zi ? C.or : ink, op: j === zi ? 1 : .5 })).join('') + '</g>';
+  }
+  const gb = seg(t, .7, .76) * (1 - seg(t, .8, .84));
+  if (gb > 0) {
+    o += `<g opacity="${r2(gb)}">` + card(64, 400, 470, 420, { fill: C.paper2, stroke: C.ink }) + T(88, 434, 'GROWTH, MEASURED', { fs: 12, fill: C.or });
+    [['CONVERSION', 180], ['ENGAGEMENT', 240], ['ORGANIC REACH', 300]].forEach(([n, h], i) => { const hh = h * eo(seg(t, .7, .78)), x = 100 + i * 140; o += `<rect x="${x}" y="${r1(760 - hh)}" width="80" height="${r1(hh)}" fill="${i === 2 ? C.or : C.ink}"/>` + T(x, 786, n + ' ↑', { fs: 10.5 }); });
+    o += T(88, 808, 'Live client metrics plug in here', { c: 'b', fs: 13, fill: C.mute }) + '</g>';
+  }
+  const qp = seg(t, .8, .86);
+  o += T(84, 214, '“', { c: 'h', fs: 140, fill: C.or, op: qp * (1 - seg(t, .93, .98)) });
+  o += HL(80, 300, ['A WEBSITE THAT NOT ONLY', 'CAPTURED OUR ESSENCE BUT', '*TRANSFORMED* OUR DIGITAL', 'PRESENCE.'], { fs: 44, p: qp, op: qp > 0 ? 1 - seg(t, .93, .98) : 0 });
+  o += T(84, 520, 'PAUL LEES · CEO, PATRONUM', { fs: 12, op: qp * (1 - seg(t, .93, .98)) });
+  const top = mx('#24232C', C.paper, dn), bot = mx('#B86A40', C.paper, dn);
+  return { grad: [top, bot], svg: S.render() + o, ink, faint: mx('#2C2C30', '#C8C5BE', dn), cubeBg: mx(C.night, '#ffffff', dn) };
+}
+
+/* =================================================================
+   09 HANDOVER — the streets spell the logo; the module rises.
+   ================================================================= */
+const kG = .6, mapG = (u, v, w) => [(u - 120) * kG, w, (v - 120) * kG];
+const CITY = (() => {
+  const R = rng(5), out = [], hit = (x, z, m) => { for (const [dx, dz] of [[0, 0], [m, 0], [-m, 0], [0, m], [0, -m], [m, m], [-m, -m], [m, -m], [-m, m]]) { const u = (x + dx) / kG + 120, v = (z + dz) / kG + 120; if (LOGO.some(P => pip([u, v], P))) return true; } return false; };
+  for (let x = -198; x <= 198; x += 11) for (let z = -110; z <= 110; z += 11) {
+    if (R() < .12) continue; const w = 6 + R() * 3.2, d = 6 + R() * 3.2; if (hit(x, z, 5.5)) { R(); continue; }
+    const dist = Math.hypot(x, z * 1.4); out.push([x, z, w, d, 3 + R() * 10 + (dist < 110 ? R() * 18 : 0)]);
+  }
+  return out;
+})();
+function ch8(t) {
+  const K = [[0, [0, 150, 140], [0, 0, 0]], [.111, [0, 220, 80], [0, 0, 0]], [.222, [0, 290, .1], [0, 0, 0]], [.333, [0, 290, .1], [0, 0, 0]], [.444, [60, 230, 150], [0, 0, -6]], [.556, [0, 300, .1], [0, 0, 0]], [.667, [0, 330, .1], [0, 0, 0]], [1, [0, 330, .1], [0, 0, 0]]];
+  const k = keys(K, t);
+  const cx = lerp(800, 560, io(seg(t, .58, .66))), cy = lerp(450, 370, io(seg(t, .76, .84)));
+  const c = cam(k.pos, k.tg, { fov: 38, up: [0, 0, -1], cx, cy });
+  const S = new Scene(c), ink = C.ink;
+  const all = 1 - seg(t, .9, .97), bo = (1 - .82 * seg(t, .5, .6)) * all, lf = seg(t, .3, .4);
+  const flat = 1 - seg(t, .5, .6);
+  if (flat * all > 0) LOGO.forEach(P => S.path3(P.map(p => mapG(p[0], p[1], 0)), { closed: 1, fill: mx(C.paper2, C.or, lf), stroke: mx(ink, C.orD, lf), sw: 1, op: flat * all, layer: 'pre' }));
+  if (bo > 0) CITY.forEach(([x, z, w, d, h]) => S.mesh(box(x, z, w, d, 0, h), { fill: '#FAF9F6', dark: '#BDB9B0', amb: .45, stroke: ink, sw: .7, op: bo }));
+  const cr = eo(seg(t, .4, .5)) * flat * all;
+  if (cr > 0) S.mesh(box(0, (101 - 120) * kG, 16, 16, 0, 16 * cr, PI / 4), { fill: C.or, dark: C.orD, stroke: '#7a2c03', sw: 1.2, amb: .45, op: Math.min(1, cr * 3) }, -1e4);
+  let o = '';
+  const l2 = seg(t, .5, .6) * all;
+  if (l2 > 0) { const O = c.p(mapG(0, 0, 0)), X = c.p(mapG(240, 0, 0)), s = (X[0] - O[0]) / 240; o += `<g opacity="${r2(l2)}" transform="translate(${r1(O[0])},${r1(O[1])}) scale(${r4(s)})">${logo2D({ cube: '#fff', csw: 3.5 })}</g>`; }
+  const ct = seg(t, .6, .68) * all;
+  o += T(1004, 250, "LET'S BUILD YOURS", { fs: 12, fill: C.or, op: ct });
+  o += HL(1000, 320, ["LET'S BRING YOUR", '*IDEAS TO LIFE.*'], { fs: 56, p: ct, op: ct > 0 ? all : 0 });
+  o += T(1002, 420, 'Your brand is the cube.', { c: 'b', fs: 21, op: ct }) + T(1002, 448, 'We build the world around it.', { c: 'b', fs: 21, op: ct });
+  const sh = seg(t, .7, .78) * all;
+  if (sh > 0) o += `<g opacity="${r2(sh)}"><rect x="1000" y="490" width="210" height="64" rx="32" fill="${C.or}"/>${T(1105, 529, 'SAY HI ↗', { a: 'middle', fs: 16, fill: '#fff', w: 600 })}${T(1236, 514, 'hi@hyperiux.com', { c: 'b', fs: 19 })}${T(1236, 542, '+91 8178 026 136', { c: 'b', fs: 19 })}</g>`;
+  const tb = seg(t, .8, .87) * all;
+  if (tb > 0) {
+    const y = 688, cells = [['PROJECT', 'YOUR BRAND — NEXT'], ['ARCHITECT', 'HYPERIUX IMMERSION LABS'], ['SITE', 'A-40, SECTOR 62, NOIDA 201309'], ['SHEET', 'A-09 / 09'], ['SCALE', '1 : 1'], ['YEAR', '© 2026']], ws = [210, 300, 360, 170, 150, 150];
+    let x = 40; o += `<g opacity="${r2(tb)}"><rect x="40" y="${y}" width="1520" height="140" fill="${C.paper2}" stroke="${ink}"/>`;
+    cells.forEach(([a, b], i) => { o += (i ? `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 76}" stroke="${ink}"/>` : '') + T(x + 14, y + 26, a, { fs: 10.5, fill: C.mute }) + T(x + 14, y + 56, b, { fs: 13, w: 600 }); x += ws[i]; });
+    o += `<line x1="40" y1="${y + 76}" x2="1560" y2="${y + 76}" stroke="${ink}"/>` + T(54, y + 114, 'ABOUT    WORK    EXPERTISE    CAREER    RESOURCES    CONTACT    THE VAULT    LABS', { fs: 12 }) + T(1546, y + 114, 'GRANDSLAM I-THUM, NOIDA', { a: 'end', fs: 12, fill: C.mute }) + '</g>';
+  }
+  const lp = seg(t, .93, 1);
+  if (lp > 0) o += isoCubeSVG(W / 2, H / 2, 16, { op: lp }) + T(W - 70, H / 2 + 44, '00', { c: 'h', fs: 132, a: 'end', op: lp }) + T(70, H / 2 + 6, 'BACK TO THE FIRST SHEET ↑', { fs: 13, op: lp });
+  return { bg: C.paper, svg: S.render() + o, ink, faint: '#C8C5BE', op: 1 - seg(t, .93, 1) };
+}
+
+const CHS = [ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8];
+function frame(ch, t) {
+  const r = CHS[ch](t), id = 'hxg' + (UID++);
+  const bg = r.grad ? `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${r.grad[0]}"/><stop offset="1" stop-color="${r.grad[1]}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id})"/>` : `<rect width="${W}" height="${H}" fill="${r.bg}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="hxf">${bg}${r.svg}${chrome(ch, t, r)}</svg>`;
+}
+G.HX = { frame, logo2D, isoCubeSVG, NAMES, W, H };
+})(window);
+
+</script>
+<script>
+(function(){
+const HXg = window.HX;
+const CH = [
+ {n:'Arrival', m:'The site', light:'Day', thesis:'A single module floats over an empty site. The H assembles around it: Hyperiux builds the structure that carries your brand.',
+  carries:'Loader (00→100), hero, "Digital Experience Design Agency" positioning', refs:['Heron','Composites'], build:'Loader counter bound to real asset loading. Logo extruded from SVG; pieces fly in on separate eases.',
+  caps:['Blank sheet. One module floats; the loader counts from 00.','Survey grid fades in under the module.','Survey pegs and dimension strings are set out.','Counter hits 100. The module stops spinning.','The logo is set out as an orange drawing in the air.','Columns and beam fly in from three directions.','The structure locks around the module: the H stands.','Headline reveals line by line beside the monument.','Camera orbits; concrete turns Hyperiux orange.','Camera dives into the module: "Your brand is the cube."']},
+ {n:'Survey', m:'Reading the land', light:'Day', thesis:'Before anything is drawn, the brand is studied. The module unfolds into six facets and audience data settles into the four Hyperiux lenses.',
+  carries:'"We are Hyperiux" intro, the four lenses (emotion, design, technology, neuromarketing), bionic-reading block', refs:['Mkebsi','Heron'], build:'Cube faces are hinged groups. Contours use a draw-on line shader; particles are Points with a morph target per cluster.',
+  caps:['Inside the module, looking down on its lid.','The module unfolds, hinge by hinge.','Flat net: six faces become six brand facets.','Contour lines ripple out like a site survey.','Audience data lands as a field of points.','Points cluster into the four Hyperiux lenses.','Code-style callouts pin insights to facets.','"Before we draw a line, we read the land."','Bionic-reading paragraph carries the research copy.','Camera returns overhead; net lines become plan lines.']},
+ {n:'Blueprint', m:'The floor plan', light:'Day', thesis:'Strategy before pixels. The H is drawn as a floor plan, its rooms are the six strategy services, and the user flow runs up the beam to conversion.',
+  carries:'"From concept to conversion", Explore our solutions → the six strategy services', refs:['Heron'], build:'Orthographic camera. Walls draw with stroke-dashoffset, then fill to solid. Markers and the spec card are DOM so they stay clickable.',
+  caps:['Ghost of the net; construction lines frame the sheet.','Wall outlines start drawing themselves.','The full plan reads: the H as a floor plan.','Walls fill in solid.','Dimension strings measure every room.','Room areas appear; the user flow climbs the beam.','Six orange markers pin the six strategy services.','Marker 01 opens a spec card; its room fills orange.','"Strategy is the floor plan."','The sheet tilts from plan to axonometric.']},
+ {n:'Structure', m:'Load-bearing system', light:'Day', thesis:'The plan rises into three masses. Grid, columns, slabs and core map one-to-one onto the design system.',
+  carries:'UI/UX design, design systems, process', refs:['Heron','Enpower'], build:'Floors are instanced per mass. The exploded view is one uniform driven by scroll.',
+  caps:['The plan in axonometric, ready to build.','Structural grid A–E / 1–4 with bubbles.','Columns rise on the grid.','Ground floors go up around the columns.','Floors stack at different rates per mass.','Full massing: three towers from one logo.','Annotations map structure to the design system.','"Design systems are load-bearing."','Exploded view: tokens, components, patterns, pages.','Layers close; the module lands on the roof.']},
+ {n:'Material', m:'The facade', light:'Dusk → Night', thesis:'The client\'s identity becomes the facade. Same structure, different skin: the fins and the module recolour brand by brand.',
+  carries:'Branding, "We don\'t just offer solutions, we craft impact"', refs:['Composites'], build:'Instanced fins with per-instance colour; palettes swap by uniform. Dark composite uses a physical material with clearcoat.',
+  caps:['Dusk. The module on a plinth; the facade traced on the ground.','Fins grow in a wave around the module.','"Your identity becomes the facade."','Material spec chips: concrete, glass, composite.','Fins and module take Brand A\'s palette.','Same structure, Brand B.','Same structure, Brand C.','Night falls; camera rises through dark composite ribs.','Statement with the four lenses highlighted.','Surfaces dissolve to wireframe.']},
+ {n:'Systems', m:'Services & risers', light:'Night', thesis:'What you don\'t see holds everything up. Risers, flows and nodes inside the building stand for motion, performance, CMS and organic growth.',
+  carries:'Development, performance, CMS, SEO / organic growth', refs:['Zeggo'], build:'Edge-only render on black with depth-tested fills. Flow lines use an animated dash-offset shader.',
+  caps:['Wireframe building draws in on black.','Camera moves closer; ground grid appears.','Orange risers light up through every core.','Data flows run along each floor.','01 Motion & WebGL; a wire module spins in the core.','02 Performance budget readout.','03 Headless CMS nodes connect to the risers.','04 Organic growth lines run to the horizon.','"What you don\'t see holds everything up."','Pull back: more wire buildings appear. A district.']},
+ {n:'District', m:'Streets of projects', light:'Night', thesis:'Selected work as a district. The beam becomes a road and the camera stops at each project like a station, with its live site on the facade.',
+  carries:'Work: Montra, Yellow, Patronum, Montra App, Monielink', refs:['Enpower','Zeggo'], build:'Camera on a CatmullRom spline with eased stops. Facades use real site captures as video textures.',
+  caps:['Aerial over the district; five projects labelled.','Camera drops to the road.','01 Montra: project card slides in.','Montra\'s facade becomes its live site.','02 Yellow.','03 Patronum.','04 Montra App.','05 Monielink.','Rise: all five labelled. View all projects.','First light at the horizon.']},
+ {n:'Occupancy', m:'People move in', light:'Dawn', thesis:'Dawn. The district fills up: industry zones light in turn, people flow along the roads, and proof arrives.',
+  carries:'Industries we work in, results, Clients love us', refs:['Enpower','Heron'], build:'Zones as projected decals; people as instanced points along road curves; window lights as an emissive mask.',
+  caps:['Dawn. The district turns back into a drawing.','01 Electronics zone highlighted.','02 Fintech.','03 Education.','04 Technology.','05 Banking.','People flow along the roads; windows light up.','Growth bars rise like towers.','Client quote on the sheet.','Camera climbs to a high aerial.']},
+ {n:'Handover', m:'The skyline', light:'Day', thesis:'From above, the streets spell the H and the module rises in the central plaza. The contact section works as a drawing title block, and the page loops back to the first sheet.',
+  carries:'CTA, Say Hi, contact details, footer', refs:['Heron'], build:'Same city instanced; the logo is the negative space between lots. Camera ends at 90°, then crossfades to the 2D logo.',
+  caps:['High aerial over the city.','Higher; the street pattern starts to read.','Top-down: the streets form the H.','The H fills orange.','The module rises in the central plaza.','The city fades to line; the logo stays.','"Let\'s bring your ideas to life."','Say Hi, email and phone.','Footer as a drawing title block.','Back to the blank sheet and one module. Loop.']}
+];
+const REFS = [
+ ['Heron AI','https://heronaiapp.com/','Drafting paper, an elevation drawing, then a floor plan that draws its own walls, fills them solid, adds dimension strings and pins orange markers that open spec cards. One-line statements sit alone on blank sheets between scenes.','The drawing language for Survey, Blueprint and Structure; orange markers with spec cards; the title-block footer; statement sheets between chapters.',['02','03','04','09']],
+ ['Composites.archi','https://www.composites.archi/','Starts with line strokes on black, then sculptural ribbed forms under hard light. Huge caps headlines reveal line by line, with key words in orange, and chapters are numbered 01/02/03.','The ribbed facade in Material, the dusk-to-night grade, and the line-by-line headline reveal with orange highlight words.',['01','05']],
+ ['Zeggo','https://www.zeggo.com.sg/','A wireframe city rendered edges-only on black. The camera flies in, and a numbered benefit list steps diagonally down the page with orange keywords.','The edge-only night world for Systems and District, and the stepped numbered list for the four technology services.',['06','07']],
+ ['Mkebsi','https://mkebsi.com/','Grainy grey ground, particle clouds that form shapes, topographic contour lines, a vertical dot progress rail and a radial dial for projects.','Contours and particle clusters in Survey, and paper grain over every frame.',['02']],
+ ['Enpower Trading','https://enpowertrading.co.za/','A white line-drawn 3D world on a grid terrain. The camera travels station to station, with a chapter progress bar along the bottom and an info card bottom-right.','The bottom chapter bar on every frame, station stops in District, and the project info card.',['07','08','All']]
+];
+const pad = n => String(n).padStart(2,'0');
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* title-bar logo + logo diagram */
+document.getElementById('tbLogo').innerHTML = HXg.logo2D({cube:'#F2F1ED'});
+(function(){
+  const s = 1.05, ox = 40, oy = 38, P = (u,v) => [ox+u*s, oy+v*s];
+  const lab = (from, to, t1, t2) => { const [x1,y1]=from; return `<path d="M${x1} ${y1}L${to[0]-14} ${to[1]-5}L${to[0]-4} ${to[1]-5}" fill="none" stroke="#FF6A13" stroke-width="1.2"/><circle cx="${x1}" cy="${y1}" r="4" fill="#FF6A13"/><text x="${to[0]}" y="${to[1]}" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" letter-spacing="1" fill="#141413">${t1}</text><text x="${to[0]}" y="${to[1]+20}" font-family="Instrument Sans,Arial,sans-serif" font-size="14" fill="#5D5B56">${t2}</text>`; };
+  let g = `<g transform="translate(${ox},${oy}) scale(${s})">${HXg.logo2D({cube:'#F2F1ED'})}</g>`;
+  const a = P(15,-14), b = P(225,-14);
+  g += `<g stroke="#141413" stroke-width="1"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line x1="${a[0]-5}" y1="${a[1]+5}" x2="${a[0]+5}" y2="${a[1]-5}"/><line x1="${b[0]-5}" y1="${b[1]+5}" x2="${b[0]+5}" y2="${b[1]-5}"/></g><text x="${(a[0]+b[0])/2}" y="${a[1]-7}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5D5B56">210</text>`;
+  const s0 = P(47,137), s1 = P(160,112.7);
+  g += `<path d="M${s0[0]} ${s0[1]+26} A 120 120 0 0 0 ${s0[0]+70} ${s0[1]+10}" fill="none" stroke="#141413" stroke-dasharray="3 3"/><text x="${s0[0]+76}" y="${s0[1]+24}" font-family="IBM Plex Mono,monospace" font-size="11" fill="#141413">12°</text>`;
+  g += lab(P(31,40), [360,70], 'COLUMN', 'Suspended mass, top left');
+  g += lab(P(185,93), [360,140], 'BEAM · 12°', 'Concept → conversion');
+  g += lab(P(120,101), [360,210], 'MODULE', 'The client’s brand');
+  g += lab(P(208,190), [360,280], 'COLUMN', 'Grounded mass, bottom right');
+  document.getElementById('logoDia').innerHTML = g;
+})();
+
+/* the module through the journey */
+(function(){
+  const st = [['#FFFFFF','#FF6A13','#E7E6E2','Floats'],['#FFFFFF','#FF6A13','#E7E6E2','Unfolds'],['none','#FF6A13','#E7E6E2','Atrium'],['#FF6A13','#B5470D','#E7E6E2','Lands'],['#1E3DFF','#FF6A13','#3A332E','Brand skin'],['none','#FF6A13','#0C0C0D','Wireframe'],['#17120F','#FF6A13','#0C0C0D','Live site'],['#FFFFFF','#141413','#E7E6E2','Occupied'],['#FF6A13','#7a2c03','#E7E6E2','Rises']];
+  document.getElementById('cubes').innerHTML = st.map((s,i)=>`<div><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="${s[2]}"/>${HXg.isoCubeSVG(32,32,17,{fill:s[0],stroke:s[1],sw:2})}</svg><span>${pad(i+1)} ${s[3]}</span></div>`).join('');
+})();
+
+/* references */
+document.getElementById('refList').innerHTML = REFS.map(r => `<div class="ref"><div><h3><a href="${r[1]}" target="_blank" rel="noopener">${r[0]} ↗</a></h3></div><div><span class="k">What it does</span><p>${esc(r[2])}</p></div><div><span class="k">What Hyperiux takes</span><p>${esc(r[3])}</p></div><div><span class="k">Used in</span><div class="chips">${r[4].map(c=>`<span class="chip or">${c==='All'?'All frames':'Ch '+c}</span>`).join('')}</div></div></div>`).join('');
+
+/* journey */
+document.getElementById('journeyList').innerHTML = CH.map((c,i)=>`<a class="jc" href="#ch-${i+1}"><span class="n">${pad(i+1)}</span><span class="t">${c.n}</span><span class="mt">${c.m}</span><span class="lt${/Night|Dusk/.test(c.light)?' dk':''}">${c.light}</span><p>${esc(c.carries)}</p></a>`).join('');
+
+/* storyboard */
+document.getElementById('chapters').innerHTML = CH.map((c,i)=>`
+<article class="chap" id="ch-${i+1}">
+  <div class="chap-head">
+    <div><div class="cn">${pad(i+1)}</div><p class="meta mono">Sheet A-${i+1}0</p></div>
+    <div><h3>${c.n}</h3><p class="meta mono">${c.m} · ${c.light}</p></div>
+    <div><p class="thesis">${esc(c.thesis)}</p>
+      <dl class="spec"><dt>Carries</dt><dd>${esc(c.carries)}</dd><dt>References</dt><dd>${c.refs.join(', ')}</dd><dt>Build</dt><dd>${esc(c.build)}</dd></dl></div>
+  </div>
+  <div class="frames">${c.caps.map((cap,j)=>`<button class="fr" type="button" data-ch="${i}" data-i="${j}" aria-label="Chapter ${i+1}, frame ${j+1}: ${esc(cap)}"><div class="fr-img grain" data-ch="${i}" data-t="${j/9}"></div><span class="fr-cap"><b>F${pad(j+1)} · ${Math.round(j/9*100)}%</b>${esc(cap)}</span></button>`).join('')}</div>
+</article>`).join('');
+
+const draw = (el, ch, t) => { el.innerHTML = HXg.frame(ch, t); };
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const el = e.target; draw(el, +el.dataset.ch, +el.dataset.t); io.unobserve(el); } }), {rootMargin:'400px 0px'}) : null;
+document.querySelectorAll('.fr-img').forEach(el => io ? io.observe(el) : draw(el, +el.dataset.ch, +el.dataset.t));
+
+/* hero: chapter 01 rendered live */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hero = document.getElementById('heroStage'), heroPct = document.getElementById('heroPct');
+let heroOn = true, last = 0;
+const heroT = ms => { const L = 12000, x = (ms % L) / L; return .3 + .7 * Math.min(1, x / .88); };
+function heroLoop(ms){
+  if (heroOn && ms - last > 33) { last = ms; const t = heroT(ms); draw(hero, 0, t); heroPct.textContent = Math.round(t*100) + '% of chapter'; }
+  requestAnimationFrame(heroLoop);
+}
+if (reduce) { draw(hero, 0, 8/9); heroPct.textContent = 'F09'; }
+else {
+  draw(hero, 0, .55);
+  if (io) new IntersectionObserver(es => { heroOn = es[0].isIntersecting && !document.hidden; }).observe(hero);
+  requestAnimationFrame(heroLoop);
+}
+
+/* lightbox */
+const lb = document.getElementById('lb'), lbStage = document.getElementById('lbStage'), lbScrub = document.getElementById('lbScrub');
+const lbTitle = document.getElementById('lbTitle'), lbCap = document.getElementById('lbCap'), lbPct = document.getElementById('lbPct');
+let cur = {ch:0, i:0}, opener = null;
+function lbShow(ch, i){
+  cur = {ch, i}; lbScrub.value = i * 100; lbRender(i/9);
+}
+function lbRender(t){
+  const j = Math.round(t * 9);
+  draw(lbStage, cur.ch, t);
+  lbTitle.textContent = `${pad(cur.ch+1)} / ${CH[cur.ch].n} · F${pad(j+1)}`;
+  lbCap.textContent = CH[cur.ch].caps[j];
+  lbPct.textContent = Math.round(t*100) + '%';
+}
+document.getElementById('chapters').addEventListener('click', e => {
+  const b = e.target.closest('.fr'); if (!b) return;
+  opener = b; lb.hidden = false; document.body.style.overflow = 'hidden';
+  lbShow(+b.dataset.ch, +b.dataset.i); document.getElementById('lbClose').focus();
+});
+lbScrub.addEventListener('input', () => lbRender(lbScrub.value / 900));
+const step = d => { let {ch, i} = cur; i += d; if (i > 9) { i = 0; ch = (ch + 1) % 9; } if (i < 0) { i = 9; ch = (ch + 8) % 9; } lbShow(ch, i); };
+document.getElementById('lbPrev').onclick = () => step(-1);
+document.getElementById('lbNext').onclick = () => step(1);
+function lbClose(){ lb.hidden = true; document.body.style.overflow = ''; if (opener) opener.focus(); }
+document.getElementById('lbClose').onclick = lbClose;
+
+/* scroll player */
+const pl = document.getElementById('pl'), plScroll = document.getElementById('plScroll'), plStage = document.getElementById('plStage'), plTitle = document.getElementById('plTitle'), plHint = document.getElementById('plHint');
+let plQueued = false;
+function plRender(){
+  plQueued = false;
+  const max = plScroll.scrollHeight - plScroll.clientHeight, T = max > 0 ? plScroll.scrollTop / max * 9 : 0;
+  const ch = Math.min(8, Math.floor(T)), t = Math.min(1, T - ch);
+  const svg = HXg.frame(ch, t);
+  plStage.innerHTML = svg; plStage.appendChild(plHint);
+  plHint.style.display = T < .02 ? '' : 'none';
+  plTitle.textContent = `${pad(ch+1)} / ${CH[ch].n} · ${Math.round(T/9*100)}%`;
+}
+plScroll.addEventListener('scroll', () => { if (!plQueued) { plQueued = true; requestAnimationFrame(plRender); } }, {passive:true});
+document.getElementById('playBtn').onclick = () => { opener = document.getElementById('playBtn'); pl.hidden = false; document.body.style.overflow = 'hidden'; plScroll.scrollTop = 0; plRender(); plScroll.focus(); };
+function plClose(){ pl.hidden = true; document.body.style.overflow = ''; if (opener) opener.focus(); }
+document.getElementById('plClose').onclick = plClose;
+
+document.addEventListener('keydown', e => {
+  if (!lb.hidden) { if (e.key === 'Escape') lbClose(); if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }
+  else if (!pl.hidden && e.key === 'Escape') plClose();
+});
+})();
+</script>

@@ -27,6 +27,8 @@ export const T = {
   night: false,
   moonIntensity: 1.6,
   moonColor: "#a9bcff",
+  nightAmbient: 1.8, // ambient light at night, so the soil reads (fades in with the night)
+  nightAmbientColor: "#8f8ea8",
   stars: 1.0,
 
   // Lighting & atmosphere (the sand-dune concept's sunset)
@@ -67,6 +69,15 @@ export const T = {
   sandColor: "#2c1000",
   rippleStrength: 1.5,
 
+  // Entering (after the loader)
+  arriveDuration: 3.4, // seconds for the scene to come in from far off to the camera
+  arriveDistance: 220, // how far back the camera starts (m, along its view)
+  arriveLift: 46, // ...and how far up
+  loaderReveal: 2.2, // seconds for the loader to open from the centre out to the edges
+  revealWarp: 2.0, // the scene warped along the inside of the opening's edge
+  revealBlur: 3.0, // ...smeared outwards (motion blur)
+  revealChroma: 1.4, // ...and split into its colours
+
   // Beam
   trailIntensity: 2.98,
   beamFlow: 0.91, // pace of the dashes streaming along the strands
@@ -76,77 +87,17 @@ export const T = {
   beamDashLength: 0.18, // share of that spacing each dash fills
   beamBase: 0.54, // glow of the strands between dashes
 
-  // The swirl the broken rock turns into. Grain / dust counts are capped by
-  // the quality tier.
-  swirlSpeed: 0.99, // overall pace of the swirl
+  // The sand and gravel the broken rock turns into (counts are capped by the
+  // quality tier).
+  swirlSpeed: 0.99, // pace of the swirl's sound
   crumbleSand: 6000, // grains of sand the broken rock turns into (capped by the quality tier)
-  crumbleSize: 0.85,
+  crumbleSize: 0.83,
   crumbleOpacity: 1.0,
   gravelCount: 4000, // gravel it turns into (capped by the quality tier)
-  gravelSize: 0.98,
-  sandCount: 1200, // fine soil shed into the swirl (capped by the quality tier)
-  sandSize: 0.75,
-  sandSpeed: 0.94,
+  gravelSize: 1.47,
+  gravelEmbers: 0.02, // share of the gravel that stays glowing embers
+  gravelEmberGlow: 2.0, // ...how bright they glow
   sandBrightness: 0.19,
-  // the orbits it all revolves on (see world/swirl.js)
-  orbitCount: 3, // how many orbits (1..8)
-  orbitRadius: 36, // metres: the innermost orbit (below ~28 it can pass through the mark)
-  orbitGap: 0, // metres between neighbouring orbits
-  orbitThickness: 5.3, // metres: diameter of each orbit's tube (thin wire → thick band)
-  orbitSpread: 0.23, // how far the particles fill in from the orbits towards the mark (0..1)
-  orbitTilt: 1, // degrees added to every orbit's lean towards / away from the camera
-  orbitRoll: 2, // ...its sideways roll
-  orbitTurn: 16, // ...and its turn about the vertical
-  // each orbit's own: lean, roll, turn (degrees), height (m), speed (rad/s,
-  // negative = the other way round), squash (depth / width)
-  orbit1Tilt: 12,
-  orbit1Roll: 0,
-  orbit1Turn: 0,
-  orbit1Height: 2,
-  orbit1Speed: 0.22,
-  orbit1Squash: 0.55,
-  orbit2Tilt: -10,
-  orbit2Roll: 32,
-  orbit2Turn: 6,
-  orbit2Height: -2,
-  orbit2Speed: -0.17,
-  orbit2Squash: 0.55,
-  orbit3Tilt: 18,
-  orbit3Roll: -36,
-  orbit3Turn: -6,
-  orbit3Height: 4,
-  orbit3Speed: 0.2,
-  orbit3Squash: 0.62,
-  orbit4Tilt: -6,
-  orbit4Roll: 12,
-  orbit4Turn: 4,
-  orbit4Height: 9,
-  orbit4Speed: 0.14,
-  orbit4Squash: 0.45,
-  orbit5Tilt: 20,
-  orbit5Roll: -18,
-  orbit5Turn: -4,
-  orbit5Height: -9,
-  orbit5Speed: -0.19,
-  orbit5Squash: 0.58,
-  orbit6Tilt: 4,
-  orbit6Roll: 48,
-  orbit6Turn: 10,
-  orbit6Height: 0,
-  orbit6Speed: 0.16,
-  orbit6Squash: 0.5,
-  orbit7Tilt: -16,
-  orbit7Roll: -52,
-  orbit7Turn: -10,
-  orbit7Height: 6,
-  orbit7Speed: -0.15,
-  orbit7Squash: 0.52,
-  orbit8Tilt: 8,
-  orbit8Roll: 20,
-  orbit8Turn: 0,
-  orbit8Height: -5,
-  orbit8Speed: 0.12,
-  orbit8Squash: 0.48,
 
   // Past the mark, over the dunes
   beamLeadScale: 1.0, // how far ahead of the camera the beam runs (× DUNES.beamLead)
@@ -176,20 +127,79 @@ export const T = {
   grainOpacity: 3.0,
   grainSize: 3.0,
   grainColorDay: "#482100", // sand kicked up by the pointer, by day
-  grainColorNight: "#25262e", // ...and in moonlight
+  grainColorNight: "#3f3f58", // ...and in moonlight
 
   // Air
   dust: 3.0,
 
+  // The breakup on the scroll: vh of scrolling after the beam reaches the core
+  // (the event is SCROLL_VH.event = 200 vh long: 200 = the forged logo).
+  // These set the shares below every frame (timeline.js syncSequence).
+  seqBreak: 20, // the rock breaks (the impact)
+  seqImpactEnd: 41.6, // the impact's energy has dissipated
+  seqBlastEnd: 38, // the blast has thrown the pieces out
+  seqGatherStart: 48.8, // the pieces start to be drawn in towards the streams...
+  seqGatherEnd: 155, // ...and are riding them
+  seqSpinStart: 20, // the streams start to pick up speed...
+  seqSpinEnd: 133.4, // ...and are up to full speed
+  seqGrindStart: 20, // the pieces start to grind away into sand and gravel...
+  seqGrindEnd: 108.2, // ...and are all sand: the auto-scroll hands back to the visitor here
+  seqSandFlow: 108, // how long (vh) a grain takes to find its place in its stream
+  seqBreakEnd: 200, // the breakup is over
+
+  // The beam's run to the core
+  beamAccel: 0.35, // how much it speeds up into the core (0 = an even pace all the way; 0.9 = it rushes the last stretch)
+  cameraSettle: 0.12, // share of the run to the core the camera spends easing to a stop (lower = it keeps moving to the end)
+
   // Forging event: when the excess rock breaks away, as shares of the event
-  // (0 = the beam reaches the core, 1 = the forged logo); the crack glow
-  // fills in over roughly the first 0.15
+  // (0 = the beam reaches the core, 1 = the forged logo) — set from seqBreak
+  // / seqBreakEnd above
   breakStart: 0.1,
-  breakEnd: 0.9,
+  breakEnd: 1.0,
+  // the pointer stirring the broken rock's sand and gravel
+  breakStirForce: 4.0, // how far it pushes them
+  breakStirRadius: 0.17, // how wide its reach is (share of the screen)
+  breakStirLinger: 4.0, // seconds they take to ease back into their streams
+  breakStirAlong: 0.69, // how much they are pushed along the pointer's motion...
+  breakStirApart: 0, // ...and parted out from its line
+  breakStirSmooth: 0.5, // seconds the pointer's motion is smoothed over (higher = softer, lazier)
+  breakStirWake: 0.8, // how much the stir spreads out behind the pointer (a softer, wider wake)
+  breakStirSpread: 0.46, // how unevenly the grains are pushed (0 = all alike: more fluid the higher)
+  breakStirSand: 1.52, // how much the crumbled sand is stirred...
+  breakStirGravel: 1.66, // ...and the gravel
+  breakStirEase: 0.12, // how quickly the grains give way under the pointer (lower = they drift aside more gently)
+  breakStirGlow: 0, // how much a stirred grain lights up (0 = not at all)
+  breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
+  breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
+  breakSandShare: 0.55, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
+  breakShrink: 0.43, // the pieces' size once broken off
+  breakSpin: 0.6, // how fast the streams carry it round
+  breakTumble: 0, // how fast the pieces tumble as they go
+  // when each stage runs, as shares of the breakup (a piece's own progress)
+  // — set from the seq values above
+  breakBurstEnd: 0.12, // the impact's energy has dissipated
+  breakBlastEnd: 0.1, // the blast has thrown the pieces out
+  breakGatherStart: 0.16, // they start to be drawn in towards the streams...
+  breakGatherEnd: 0.75, // ...and are riding them
+  breakGather: 0.44, // how far the rocks themselves are drawn in (0 = they stay out where the blast threw them and grind away there; 1 = they ride the streams)
+  breakSpinStart: 0, // the streams start to pick up speed...
+  breakSpinEnd: 0.63, // ...and are up to full speed
+  breakGrindStart: 0, // the pieces start to grind away into sand and gravel...
+  breakGrindEnd: 0.49, // ...and are gone
+  breakSandFlow: 0.6, // how long a grain takes to find its place in the stream
+  // the streams of sand the broken rock is carried round the mark in
+  streams: 2, // how many
+  streamRadius: 41.4, // metres: how far round the mark they loop
+  streamTilt: 35, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
+  streamWobble: 11.5, // degrees their loops keep tilting and turning by as they go
+  streamHeight: 4.8, // metres they rise and fall on the way round
+  streamTail: 0.67, // how long each stream's tail is (share of a turn)
+  streamWidth: 8.9, // metres: how wide a stream spreads (wider towards its tail)
+  streamLoose: 0.16, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
-  forgeDuration: 4.5,
-  forgeReverse: 3.0,
+  forgeDuration: 8.0,
+  forgeReverse: 5.0,
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

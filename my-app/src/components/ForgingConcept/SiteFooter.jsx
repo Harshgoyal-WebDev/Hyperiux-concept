@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useLenis } from "lenis/react";
 import { T } from "./tuning";
 import { FOOTER } from "./footer";
 
@@ -15,14 +16,51 @@ const CONTACT = [
   { label: "hi@hyperiux.com", href: "mailto:hi@hyperiux.com" },
   { label: "+91 8178 026 136", href: "tel:+918178026136" },
 ];
+// Each link scrolls smoothly to its part of this page: a section of the
+// homepage above (its id, set in HomeSections), the top of the journey, or
+// this footer's own call to action. The site's other pages have no section
+// here, so they go to the nearest one.
 const SECTIONS = [
-  { title: "Company", links: ["About", "Work", "Expertise", "Career", "Resources", "Contact us"] },
-  { title: "Discover", links: ["The Vault", "Labs"] },
+  {
+    title: "Company",
+    links: [
+      { label: "About", to: "top" },
+      { label: "Work", to: "#work" },
+      { label: "Expertise", to: "#expertise" },
+      { label: "Career", to: "#testimonials" },
+      { label: "Resources", to: "#resources" },
+      { label: "Contact us", to: "footer" },
+    ],
+  },
+  {
+    title: "Discover",
+    links: [
+      { label: "The Vault", to: "#clients" },
+      { label: "Labs", to: "#industries" },
+    ],
+  },
 ];
+// (placeholders until the profiles are linked)
 const SOCIAL = ["LinkedIn", "Instagram", "X", "Facebook"];
 
 export default function SiteFooter() {
   const ref = useRef(null);
+  const lenis = useLenis();
+  // the page's y of a link's target
+  const targetY = (to) => {
+    if (to === "top") return 0;
+    const el = to === "footer" ? ref.current : document.querySelector(to);
+    return el ? el.getBoundingClientRect().top + window.scrollY : null;
+  };
+  const go = (e, to) => {
+    e.preventDefault();
+    const y = targetY(to);
+    if (y == null) return;
+    // longer trips take a little longer (back to the top crosses the whole journey)
+    const duration = Math.min(1.2 + Math.abs(y - window.scrollY) / (window.innerHeight * 12), 3);
+    if (lenis) lenis.scrollTo(y, { duration, force: true });
+    else window.scrollTo({ top: y, behavior: "smooth" });
+  };
   useEffect(() => {
     const el = ref.current;
     FOOTER.el = el;
@@ -63,7 +101,7 @@ export default function SiteFooter() {
           <p className="text-white/80">Grandslam I-Thum, A-40, Sector- 62, Noida, Uttar Pradesh (201309)</p>
           <div className="flex gap-[1.5vw] text-white/80 max-[64rem]:gap-5">
             {SOCIAL.map((s) => (
-              <a key={s} href="#" className="transition-colors hover:text-[#ff5f00]">
+              <a key={s} href="#" onClick={(e) => e.preventDefault()} className="transition-colors hover:text-[#ff5f00]">
                 {s}
               </a>
             ))}
@@ -75,8 +113,13 @@ export default function SiteFooter() {
             <div key={section.title} className="flex flex-col gap-[0.8vw] max-[64rem]:gap-3">
               <h3 className="mb-[0.4vw] text-[1.4vw] font-medium max-[64rem]:text-lg">{section.title}</h3>
               {section.links.map((l) => (
-                <a key={l} href="#" className="w-fit text-[1vw] text-white/80 transition-colors hover:text-[#ff5f00] max-[64rem]:text-base">
-                  {l}
+                <a
+                  key={l.label}
+                  href={l.to.startsWith("#") ? l.to : "#"}
+                  onClick={(e) => go(e, l.to)}
+                  className="w-fit cursor-pointer text-[1vw] text-white/80 transition-colors hover:text-[#ff5f00] max-[64rem]:text-base"
+                >
+                  {l.label}
                 </a>
               ))}
             </div>

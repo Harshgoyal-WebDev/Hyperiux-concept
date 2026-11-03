@@ -15,32 +15,84 @@ import { T } from "../tuning";
 export const TERRAIN_SIZE = 2400;
 export const TERRAIN_CENTER = [-60, -500];
 
-export function buildTerrainGeometry(terrain, segments) {
-  const g = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, segments, segments);
-  g.rotateX(-Math.PI / 2);
-  g.translate(TERRAIN_CENTER[0], 0, TERRAIN_CENTER[1]);
-  const pos = g.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    pos.setY(i, terrain.height(pos.getX(i), pos.getZ(i)));
+// The sand's mesh: fine where the camera is — 0.9 × (TERRAIN_SIZE /
+// segments) apart within NEAR m of the slab — and coarser out towards the
+// horizon (the spacing growing by GROW m per m), where the dunes are far off
+// and hazed: about a third of the triangles of an even grid at that detail.
+// (Heights come from the terrain itself, not this mesh: see buildHeightField.)
+const NEAR = 150;
+const GROW = 0.03;
+// grid lines along one axis from lo to hi, closest round 0 (the slab)
+function gridLines(lo, hi, fine) {
+  const spacing = (x) => fine + Math.max(Math.abs(x) - NEAR, 0) * GROW;
+  // the running count of lines, at 1 m steps
+  const xs = [];
+  const run = [];
+  let total = 0;
+  for (let x = lo; x <= hi; x += 1) {
+    xs.push(x);
+    run.push(total);
+    total += 1 / spacing(x + 0.5);
   }
+  const n = Math.max(Math.round(total), 2);
+  const lines = [lo];
+  let j = 0;
+  for (let i = 1; i < n; i++) {
+    const want = (i / n) * total;
+    while (j < run.length - 1 && run[j + 1] < want) j++;
+    const t = run[j + 1] > run[j] ? (want - run[j]) / (run[j + 1] - run[j]) : 0;
+    lines.push(xs[j] + t);
+  }
+  lines.push(hi);
+  return lines;
+}
+
+export function buildTerrainGeometry(terrain, segments) {
+  const fine = (TERRAIN_SIZE / segments) * 0.9;
+  const half = TERRAIN_SIZE / 2;
+  const gx = gridLines(TERRAIN_CENTER[0] - half, TERRAIN_CENTER[0] + half, fine);
+  const gz = gridLines(TERRAIN_CENTER[1] - half, TERRAIN_CENTER[1] + half, fine);
+  const nx = gx.length;
+  const nz = gz.length;
+  const position = new Float32Array(nx * nz * 3);
+  for (let iz = 0; iz < nz; iz++) {
+    for (let ix = 0; ix < nx; ix++) {
+      const k = (iz * nx + ix) * 3;
+      position[k] = gx[ix];
+      position[k + 1] = terrain.height(gx[ix], gz[iz]);
+      position[k + 2] = gz[iz];
+    }
+  }
+  const index = [];
+  for (let iz = 0; iz < nz - 1; iz++) {
+    for (let ix = 0; ix < nx - 1; ix++) {
+      const a = iz * nx + ix;
+      const b = a + 1;
+      const c = a + nx;
+      const d = c + 1;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(position, 3));
+  g.setIndex(index);
   g.computeVertexNormals();
   g.computeBoundingSphere();
   return g;
 }
 
-// The terrain grid doubles as a height map: vertex (ix, iz) sits at
+// The sand's height map, on an even grid of its own: point (ix, iz) at
 // x0 + ix * step, z0 + iz * step. `sample` is a fast bilinear lookup for
 // CPU ray casts; `texture` serves the same heights to shaders.
-export function buildHeightField(geometry, segments) {
+export function buildHeightField(terrain, segments) {
   const n = segments + 1;
   const step = TERRAIN_SIZE / segments;
   const x0 = TERRAIN_CENTER[0] - TERRAIN_SIZE / 2;
   const z0 = TERRAIN_CENTER[1] - TERRAIN_SIZE / 2;
-  const pos = geometry.attributes.position;
   const heights = new Float32Array(n * n);
   const half = new Uint16Array(n * n);
   for (let i = 0; i < n * n; i++) {
-    heights[i] = pos.getY(i);
+    heights[i] = terrain.height(x0 + (i % n) * step, z0 + Math.floor(i / n) * step);
     half[i] = THREE.DataUtils.toHalfFloat(heights[i]);
   }
   const texture = new THREE.DataTexture(half, n, n, THREE.RedFormat, THREE.HalfFloatType);

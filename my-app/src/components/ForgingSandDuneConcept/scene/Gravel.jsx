@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
-import { makeOrbits, syncOrbit } from "../world/swirl";
 import { breakupGLSL, breakupUniforms, puffDirection, samplePieceSurfaces } from "../world/breakup";
 import { PALETTE } from "../config";
 import { T } from "../tuning";
@@ -47,8 +46,11 @@ function patch(material, uniforms, pieces) {
         attribute vec4 aDrift; // puff direction, seed
         uniform float uGravelSize;
         uniform float uFade;
+        uniform float uEmbers;
+        uniform float uEmberGlow;
         varying float vGvTint;
         varying float vGvHot;
+        varying float vGvStir;
         mat3 gvRot;
         vec3 gvPos;
         vec3 gvScale;`
@@ -59,6 +61,8 @@ function patch(material, uniforms, pieces) {
         {
           float g = breakupFlow(int(aGravel.x + 0.5), aLocal, aGravel.y, aDrift, gvPos);
           float s = aGravel.w;
+          float heat;
+          gvPos = breakupStir(gvPos, s, heat);
           // chips off at a little under full size, never seen growing from nothing
           float size = g < 0.0 ? 0.0 : aGravel.z * uGravelSize * uFade * mix(0.6, 1.0, smoothstep(0.0, 0.12, g));
           gvScale = size * vec3(1.0, 0.55 + 0.45 * fract(s * 3.17), 0.7 + 0.3 * fract(s * 5.71));
@@ -75,7 +79,12 @@ function patch(material, uniforms, pieces) {
           );
           objectNormal = gvRot * objectNormal;
           vGvTint = fract(s * 13.7);
-          vGvHot = g < 0.0 ? 0.0 : step(0.72, fract(s * 4.3)) * (1.0 - smoothstep(0.0, 0.5, g));
+          // hot as they break off; and a share of them (uEmbers) stay embers,
+          // glowing and flickering as they go round
+          float ember = step(1.0 - uEmbers, fract(s * 4.3));
+          float flicker = 0.75 + 0.25 * sin(uTime * (3.0 + 4.0 * fract(s * 7.7)) + s * 50.0);
+          vGvHot = g < 0.0 ? 0.0 : max(step(0.72, fract(s * 4.3)) * (1.0 - smoothstep(0.0, 0.5, g)), ember * uEmberGlow * flicker);
+          vGvStir = g < 0.0 ? 0.0 : heat;
         }`
       )
       .replace("#include <begin_vertex>", "vec3 transformed = gvRot * (position * gvScale) + gvPos;");
@@ -85,35 +94,31 @@ function patch(material, uniforms, pieces) {
         `#include <common>
         uniform vec3 uHotColor;
         varying float vGvTint;
-        varying float vGvHot;`
+        varying float vGvHot;
+        varying float vGvStir;`
       )
       .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.65, 1.3, vGvTint);")
-      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 2.2;");
+      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHotColor * vGvHot * 1.5 + vec3(1.7, 1.5, 1.2) * vGvStir * 1.6;");
   };
   material.customProgramCacheKey = () => "forge-gravel";
 }
 
 export default function Gravel({ J, tier, shared, forge }) {
   const ref = useRef();
-  const clock = useRef(0);
   const built = useMemo(() => {
     const count = tier.maxGravel;
     const rng = mulberry32(5150);
     const { local, piece, threshold } = samplePieceSurfaces(forge, count, rng);
-    const orbits = makeOrbits(count, 1.1, rng);
+    // (the draws the old orbit placement took, so every grain keeps its size, tint and drift)
+    for (let k = 0; k < count * 8; k++) rng();
     const gravel = new Float32Array(count * 4);
     const drift = new Float32Array(count * 4);
-    const orbit = new Float32Array(count * 4);
-    const plane = new Float32Array(count * 4);
     const dir = new THREE.Vector3();
     for (let i = 0; i < count; i++) {
       // mostly small chips, a few larger stones (metres)
       gravel.set([piece[i], threshold[i], 0.08 + Math.pow(rng(), 2.2) * 0.42, rng()], i * 4);
       puffDirection(rng, dir);
       drift.set([dir.x, dir.y, dir.z, rng()], i * 4);
-      const o = orbits[i];
-      orbit.set(o.orbit, i * 4);
-      plane.set(o.plane, i * 4);
     }
     const stone = stoneGeometry();
     const geometry = new THREE.InstancedBufferGeometry();
@@ -123,14 +128,14 @@ export default function Gravel({ J, tier, shared, forge }) {
     geometry.setAttribute("aLocal", new THREE.InstancedBufferAttribute(local, 3));
     geometry.setAttribute("aGravel", new THREE.InstancedBufferAttribute(gravel, 4));
     geometry.setAttribute("aDrift", new THREE.InstancedBufferAttribute(drift, 4));
-    geometry.setAttribute("aOrbit", new THREE.InstancedBufferAttribute(orbit, 4));
-    geometry.setAttribute("aPlane", new THREE.InstancedBufferAttribute(plane, 4));
     geometry.instanceCount = 0;
     const uniforms = {
       ...breakupUniforms(forge, shared),
       uGravelSize: { value: 1 },
       uFade: { value: 1 },
       uHotColor: { value: new THREE.Color("#ff6a14") },
+      uEmbers: { value: 0.3 },
+      uEmberGlow: { value: 0.6 },
     };
     const material = new THREE.MeshStandardMaterial({ color: PALETTE.basalt, roughness: 0.88, metalness: 0, flatShading: true });
     patch(material, uniforms, forge.chunks.length);
@@ -146,18 +151,17 @@ export default function Gravel({ J, tier, shared, forge }) {
     [built]
   );
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     const on = J.fracture > 0 && T.gravelCount >= 1;
     if (ref.current) ref.current.visible = on;
     if (!on) return;
-    syncOrbit();
-    clock.current += Math.min(delta, 0.1) * J.orbitSpeed * T.swirlSpeed * T.sandSpeed;
     const u = built.uniforms;
-    u.uClock.value = clock.current;
-    u.uOpen.value = J.swirlOpen;
     u.uGravelSize.value = T.gravelSize;
+    u.uStirAmount.value = T.breakStirGravel;
     u.uFade.value = 1;
     u.uHotColor.value.set(T.crackColor);
+    u.uEmbers.value = T.gravelEmbers;
+    u.uEmberGlow.value = T.gravelEmberGlow;
     built.geometry.instanceCount = Math.min(Math.round(T.gravelCount), tier.maxGravel);
   });
 

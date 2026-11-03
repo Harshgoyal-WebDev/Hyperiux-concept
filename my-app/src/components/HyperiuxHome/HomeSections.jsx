@@ -45,15 +45,30 @@ export default function HomeSections() {
 
   return (
     <div ref={root} data-white-site data-hyperiux-home className="relative z-10  text-[#111] mt-[-100vh]">
-      <WorkWithContent />
-      <WorkMobile />
+      {/* (the ids are the footer's links: SiteFooter scrolls to them) */}
+      <div id="work">
+        <WorkWithContent />
+        <WorkMobile />
+      </div>
       {/* <SectionBreak /> */}
-      <Solutions />
-      <Industries />
-      <ClientsGrid />
-      <Testimonial />
-      <Blogs />
-      <NewFaq content={faqContent} />
+      <div id="expertise">
+        <Solutions />
+      </div>
+      <div id="industries">
+        <Industries />
+      </div>
+      <div id="clients">
+        <ClientsGrid />
+      </div>
+      <div id="testimonials">
+        <Testimonial />
+      </div>
+      <div id="resources">
+        <Blogs />
+      </div>
+      <div id="faq">
+        <NewFaq content={faqContent} />
+      </div>
     </div>
   );
 }

@@ -16,12 +16,14 @@ import Forge from "./Forge";
 import ForgeBeam from "./ForgeBeam";
 import DuneBeam from "./DuneBeam";
 import Pillars from "./Pillars";
-import SoilSwirl from "./SoilSwirl";
 import CrumbleSand from "./CrumbleSand";
 import Gravel from "./Gravel";
+import BreakupStir from "./BreakupStir";
 import Rocks, { buildRockSet } from "./Rocks";
 import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
 import { getAudio } from "../audio";
+import { Q, QUALITY_EVENT } from "../quality";
+import Governor from "./Governor";
 
 // Feeds the journey state to the score and sound effects every frame.
 function SoundDriver({ J }) {
@@ -64,7 +66,7 @@ export default function Scene({ J, tier, withForge = true, onMissing, focus, pin
   const terrain = useMemo(() => createTerrainSampler(), []);
   const envSky = useMemo(() => ({ uNight: { value: 0 }, uWhite: { value: 0 }, uWhiteLevel: { value: 1 } }), []);
   const terrainGeometry = useMemo(() => buildTerrainGeometry(terrain, tier.terrainSegments), [terrain, tier]);
-  const heightField = useMemo(() => buildHeightField(terrainGeometry, tier.terrainSegments), [terrainGeometry, tier]);
+  const heightField = useMemo(() => buildHeightField(terrain, tier.terrainSegments), [terrain, tier]);
   const groundY = useMemo(() => footprintGround(terrain), [terrain]);
   const pillars = useMemo(() => buildPillars(terrain), [terrain]);
   const closeUps = useMemo(() => buildCloseUps(pillars, terrain), [pillars, terrain]);
@@ -81,12 +83,22 @@ export default function Scene({ J, tier, withForge = true, onMissing, focus, pin
   );
 
   const [forge, setForge] = useState(null);
+  // the post passes, while the live quality keeps them (quality.js)
+  const [post, setPost] = useState(Q.post);
+  useEffect(() => {
+    const sync = () => setPost(Q.post);
+    window.addEventListener(QUALITY_EVENT, sync);
+    return () => window.removeEventListener(QUALITY_EVENT, sync);
+  }, []);
   const onReady = useCallback(
     (f, missing) => {
       setForge(f);
+      // (J is the journey's plain mutable state, written outside render)
+      // eslint-disable-next-line react-hooks/immutability
+      J.forgeReady = true;
       if (!f) onMissing?.(missing);
     },
-    [onMissing],
+    [onMissing, J],
   );
 
   return (
@@ -106,14 +118,14 @@ export default function Scene({ J, tier, withForge = true, onMissing, focus, pin
           </Suspense>
         )}
 
-        <Lights tier={tier} shared={shared} />
+        <Lights J={J} tier={tier} shared={shared} />
         {forge && (
           <>
             <ForgeBeam terrain={terrain} forge={forge} J={J} shared={shared} />
             <DuneBeam terrain={terrain} forge={forge} J={J} shared={shared} />
-            <SoilSwirl J={J} tier={tier} shared={shared} forge={forge} />
             <CrumbleSand J={J} tier={tier} shared={shared} forge={forge} />
             {tier.maxGravel > 0 && <Gravel J={J} tier={tier} shared={shared} forge={forge} />}
+            <BreakupStir J={J} />
           </>
         )}
         {forge && focus && pins && <Pillars J={J} tier={tier} shared={shared} forge={forge} pillars={pillars} pins={pins} focus={focus} />}
@@ -123,9 +135,10 @@ export default function Scene({ J, tier, withForge = true, onMissing, focus, pin
 
       <UniformSync J={J} shared={shared} shockCenter={forge?.world.origin} />
       <SoundDriver J={J} />
+      <Governor />
       <CameraRig J={J} opening={forge?.world.opening} focus={focus} closeUps={closeUps} />
 
-      {tier.post && <Post J={J} tier={tier} />}
+      {tier.post && post && <Post J={J} tier={tier} />}
     </>
   );
 }

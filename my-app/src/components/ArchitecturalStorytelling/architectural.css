@@ -1,0 +1,106 @@
+/* The connected blueprint: theme tokens and the drawing primitives.
+   Dark (#111 ground, white lines) until the opening's transition, light
+   (white ground, black lines) after it; the opening tweens these variables
+   on .bp-root, so everything that reads them changes together, and back. */
+.bp-root {
+  --bp-bg: #111111;
+  --bp-fg: #ffffff;
+  --bp-guide: rgba(119, 119, 119, 0.55);
+  --bp-faint: rgba(119, 119, 119, 0.22);
+  --bp-muted: #777777;
+  --bp-face: rgba(255, 255, 255, 0.035);
+  --bp-accent: #ff5f00;
+  background: var(--bp-bg);
+  color: var(--bp-fg);
+}
+/* the light half of the page: always light, whatever the opening is doing */
+.bp-light {
+  --bp-bg: #ffffff;
+  --bp-fg: #111111;
+  --bp-guide: rgba(119, 119, 119, 0.45);
+  --bp-faint: rgba(119, 119, 119, 0.18);
+  --bp-muted: #777777;
+  --bp-face: rgba(17, 17, 17, 0.025);
+}
+
+.bp-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* lines that draw themselves (pathLength="1"): hidden until drawn */
+.bp-root [data-draw] {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.bp-root [data-fade] {
+  opacity: 0;
+}
+.bp-root [data-grow="x"] {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.bp-root [data-grow="y"] {
+  transform: scaleY(0);
+  transform-origin: center top;
+}
+
+/* the world's lines run behind the copy: the type carries a halo of the
+   ground, so a line breaks round the letters like a label set over a
+   drawing, instead of striking through them */
+.bp-light :is(h1, h2, h3, p, li, dt, dd, blockquote, figcaption, a) {
+  text-shadow:
+    0 0 3px var(--bp-bg),
+    0 0 6px var(--bp-bg),
+    0 0 10px var(--bp-bg);
+}
+
+/* reduced motion: everything already drawn, nothing moves */
+.bp-static [data-draw] {
+  stroke-dashoffset: 0;
+}
+.bp-static [data-fade] {
+  opacity: 1;
+}
+.bp-static [data-grow] {
+  transform: none;
+}
+
+/* the orange signal running along a path (the opening's active edge) */
+.bp-runner {
+  stroke-dasharray: 0.06 0.94;
+  animation: bp-run 3.2s linear infinite;
+}
+@keyframes bp-run {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+.bp-static .bp-runner {
+  animation: none;
+  opacity: 0;
+}
+
+/* project imagery revealed through a clip as its frame draws */
+.bp-reveal {
+  clip-path: inset(0 0 100% 0);
+}
+.bp-static .bp-reveal {
+  clip-path: none;
+}
+/* the world's slots: empty when it is not drawn (reduced motion) */
+.bp-static .bp-slot {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-runner {
+    animation: none;
+  }
+}
+
+/* dense construction detail: desktop only */
+@media (max-width: 767px) {
+  .bp-dense {
+    display: none;
+  }
+}

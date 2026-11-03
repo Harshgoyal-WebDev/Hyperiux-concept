@@ -10,7 +10,9 @@ import * as THREE from "three";
 // SlabChunk_### }, with every Cracks_* strip parented to the stone it lies on.
 export const ASSETS = {
   forgeGlb: "/models/hyperiux-forging-assets.glb",
-  forgeMeta: "/models/hyperiux-forging-metadata.json",
+  // the GLB is Draco-compressed; the decoder is served from here (copied
+  // from three/examples/jsm/libs/draco/gltf), not fetched from a CDN
+  draco: "/draco/",
 };
 
 // The asset is authored in metres (10 × 12 × 2.4 m slab). It is scaled up
@@ -148,10 +150,8 @@ export const RAIL = [
 // Look
 // ---------------------------------------------------------------------------
 export const PALETTE = {
-  orange: "#FF5F00",
   basalt: "#3a332e",
   sand: "#b4683c",
-  white: "#FFFFFF",
 };
 
 // Low sunset sun, behind the slab and to the right of the hero view (the
@@ -171,7 +171,6 @@ export const TIERS = {
     pillarGrains: 60000, // sand the rocks turn into
     dust: 700,
     // soil swirl: most grains / dust it can draw (Leva picks how many)
-    maxGrains: 12000,
     maxCrumble: 60000, // sand the broken rock turns into
     maxGravel: 4000, // ...and gravel
     sandGrains: 16000,
@@ -185,7 +184,6 @@ export const TIERS = {
     terrainSegments: 350,
     pillarGrains: 32000,
     dust: 450,
-    maxGrains: 6000,
     maxCrumble: 30000,
     maxGravel: 2000,
     sandGrains: 10000,
@@ -199,7 +197,6 @@ export const TIERS = {
     terrainSegments: 240,
     pillarGrains: 12000,
     dust: 220,
-    maxGrains: 2000,
     maxCrumble: 10000,
     maxGravel: 600,
     sandGrains: 0, // no hover on touch
@@ -209,6 +206,23 @@ export const TIERS = {
   },
 };
 
+// The graphics card's name, as the browser reports it ("ANGLE (Intel, Intel(R)
+// UHD Graphics 620 Direct3D11 …)"), or "".
+function gpuName() {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl");
+    if (!gl) return "";
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || "");
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return name;
+  } catch {
+    return "";
+  }
+}
+
+// The quality the device starts at (the frame-rate governor, quality.js, can
+// still step it down as it runs). ?quality=high|medium|low forces it.
 export function detectTier() {
   if (typeof window === "undefined") return TIERS.medium;
   const params = new URLSearchParams(window.location.search);
@@ -219,7 +233,17 @@ export function detectTier() {
   const small = Math.min(window.innerWidth, window.innerHeight) < 600;
   if (coarse || small) return TIERS.low;
   const cores = navigator.hardwareConcurrency || 4;
-  if (cores <= 4) return TIERS.medium;
+  const memory = navigator.deviceMemory || 8; // GB (Chromium only; capped at 8)
+  const gpu = gpuName();
+  // software rendering, old and everyday integrated graphics (Intel HD / UHD,
+  // the typical older Windows laptop), very few cores or little memory: low
+  if (/swiftshader|llvmpipe|software|basic render/i.test(gpu)) return TIERS.low;
+  if (/intel/i.test(gpu) && /(hd|uhd) graphics|gma/i.test(gpu)) return TIERS.low;
+  if (cores <= 2 || memory <= 2) return TIERS.low;
+  // better integrated graphics (Intel Iris, AMD's Radeon / Vega in a laptop
+  // chip), four cores or 4 GB: medium
+  if (/intel/i.test(gpu) || /radeon\(tm\)? (graphics|vega|r[2-7])|vega \d/i.test(gpu)) return TIERS.medium;
+  if (cores <= 4 || memory <= 4) return TIERS.medium;
   return TIERS.high;
 }
 

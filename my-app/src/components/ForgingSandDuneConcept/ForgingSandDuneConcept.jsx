@@ -3,7 +3,6 @@
 import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Canvas } from "@react-three/fiber";
-import { PerformanceMonitor } from "@react-three/drei";
 import { useLenis } from "lenis/react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -15,7 +14,9 @@ import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, getAudio, setSound, soundOn, soundWanted } from "./audio";
-import { buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
+import Loader, { LoaderCover } from "./Loader";
+import { Q, QUALITY_EVENT } from "./quality";
+import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
 import { ASSETS, JOURNEY_VH, P, RAIL, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
 import { CTA } from "./content";
 
@@ -113,6 +114,8 @@ export default function ForgingSandDuneConcept() {
   }
   return (
     <main className="w-full">
+      {/* (until the client knows its setup, the server's loader covers the page) */}
+      {!env && <LoaderCover />}
       <Header nightToggle />
       <Journey env={env} />
       <WhiteWebsite />
@@ -243,10 +246,24 @@ const TRAVEL_VH = JOURNEY_VH - 100; // scroll travel of the pinned section
 // Keys that scroll the page natively; ignored while the event auto-scrolls.
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 const linear = (t) => t;
+// The loader (Loader.jsx) holds the page until the scene is in; a review
+// frame (?p=) skips it.
+const wantsLoader = () => typeof window !== "undefined" && !new URLSearchParams(window.location.search).has("p");
 
 function Journey({ env }) {
   // Plain state object written by the GSAP timeline, read by the scene.
-  const [J] = useState(createJourneyState);
+  // Behind the loader the beam's race waits and the camera waits far off.
+  const [J] = useState(() => {
+    const j = createJourneyState();
+    if (wantsLoader()) {
+      j.enterAt = Infinity;
+      j.arrive = 0;
+    }
+    return j;
+  });
+  const withLoader = useState(wantsLoader)[0];
+  const [entered, setEntered] = useState(() => !withLoader); // clicked in (or no loader)
+  const [settled, setSettled] = useState(() => !withLoader); // ...and the camera has (mostly) arrived: the scroll is free
   const [asset, setAsset] = useForgeAsset();
   const lenis = useLenis();
 
@@ -267,7 +284,28 @@ function Journey({ env }) {
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
   const [dpr, setDpr] = useState(null);
+  // the live quality's share of the device's pixel ratio (quality.js)
+  useEffect(() => {
+    if (!env?.tier) return;
+    const sync = () => setDpr(Math.min(window.devicePixelRatio || 1, env.tier.dpr[1]) * Q.dpr);
+    window.addEventListener(QUALITY_EVENT, sync);
+    return () => window.removeEventListener(QUALITY_EVENT, sync);
+  }, [env]);
   const [resizeKey, setResizeKey] = useState(0);
+
+  // Rebuild the timeline when the panel changes a value it is built from
+  useEffect(() => {
+    let t;
+    const retime = () => {
+      clearTimeout(t);
+      t = setTimeout(() => setResizeKey((k) => k + 1), 200);
+    };
+    window.addEventListener("forging-sand-dune-concept:retime", retime);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("forging-sand-dune-concept:retime", retime);
+    };
+  }, []);
 
   // Rebuild the timeline after resizes (the pinned section's length changes).
   useEffect(() => {
@@ -286,8 +324,11 @@ function Journey({ env }) {
     };
   }, []);
 
-  // Pause rendering when the hero is off screen; release the GPU entirely
-  // when it is far out of view, rebuild on approach.
+  // Pause rendering when the hero is off screen. On the low tier the GPU is
+  // released entirely when it is far out of view (rebuilt on approach);
+  // otherwise the scene is kept, so scrolling back up from the site lands
+  // straight in the journey as it was, with nothing to rebuild.
+  const releaseOffscreen = env?.tier?.name === "low";
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -297,7 +338,7 @@ function Journey({ env }) {
         clearTimeout(unmountTimer);
         setRendering(entry.isIntersecting);
         if (entry.isIntersecting) setMounted(true);
-        else unmountTimer = setTimeout(() => setMounted(false), 1500);
+        else if (releaseOffscreen) unmountTimer = setTimeout(() => setMounted(false), 1500);
       },
       { rootMargin: "100% 0px 100% 0px" }
     );
@@ -306,17 +347,38 @@ function Journey({ env }) {
       clearTimeout(unmountTimer);
       io.disconnect();
     };
-  }, []);
+  }, [releaseOffscreen]);
 
   // Hero entrance (time-based, independent of scroll): the copy reveals.
   // (The beam's own load-in race runs in ForgeBeam, on the page clock.)
+  // (after the loader: once the camera has mostly arrived)
   useGSAP(
     () => {
-      gsap.from("[data-hero-line]", { yPercent: 110, duration: 1.4, stagger: 0.12, ease: "power4.out", delay: 0.3 });
-      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, stagger: 0.1, ease: "power3.out", delay: 0.7 });
+      if (!entered) return;
+      const lead = withLoader ? T.arriveDuration * 0.45 : 0;
+      gsap.from("[data-hero-line]", { yPercent: 110, duration: 1.4, stagger: 0.12, ease: "power4.out", delay: lead + 0.3 });
+      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, stagger: 0.1, ease: "power3.out", delay: lead + 0.7 });
     },
-    { scope: heroRef, dependencies: [J] }
+    { scope: heroRef, dependencies: [J, entered, withLoader] }
   );
+
+  // Behind the loader the page stays at the top, its scroll held; entering
+  // starts the beam's race and brings the scene in from far off, and the
+  // scroll is handed back as the camera settles.
+  useEffect(() => {
+    if (settled || !lenis) return;
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    lenis.scrollTo(0, { immediate: true, force: true });
+    lenis.stop();
+    return () => lenis.start();
+  }, [settled, lenis]);
+  const enter = useCallback(() => {
+    startJourney(J);
+    // (the click is the gesture the browser needs before sound can start)
+    if (!soundOn()) setSound(true);
+    setEntered(true);
+    gsap.delayedCall(T.arriveDuration * 0.6, () => setSettled(true));
+  }, [J]);
 
   const lenisRef = useRef(null);
   useEffect(() => {
@@ -341,10 +403,10 @@ function Journey({ env }) {
   // progress is the scroll fraction p. The driver shapes the scroll itself:
   //   up to the core – free, smooth scrolling (the beam travels and climbs);
   //   past the core – the page takes over: it scrolls on (locked) through
-  //     the whole event to the forged logo, at a fixed pace, then hands
-  //     back;
-  //   scrolling back into the event – it scrolls (locked) back through it
-  //     to just short of the core.
+  //     the impact until the rock has ground into sand (brokenAt), at a fixed
+  //     pace, then hands back — the visitor scrolls the breakup themselves;
+  //   scrolling back up before that point – it scrolls (locked) back to
+  //     just short of the core.
   useGSAP(
     () => {
       const section = sectionRef.current;
@@ -431,12 +493,15 @@ function Journey({ env }) {
         if (lastGoal >= 0 && Math.abs(goal - lastGoal) > 1e-6) D.dir = Math.sign(goal - lastGoal);
         lastGoal = goal;
 
-        if (goal > P.core + EPS && goal < P.forged - EPS) {
-          // in the event: always auto-scrolled, forwards or back
+        // until the broken rock has ground into sand: always auto-scrolled,
+        // forwards or back; from there the visitor scrolls on themselves
+        const freeAt = brokenAt();
+        if (goal > P.core + EPS && goal < freeAt - EPS) {
           const forward = D.dir >= 0;
-          const to = forward ? P.forged : P.core - 2 * EPS;
+          const to = forward ? freeAt : P.core - 2 * EPS;
           const vhPerSecond = SCROLL_VH.event / (forward ? T.forgeDuration : T.forgeReverse);
           run(to, (Math.abs(to - goal) * TRAVEL_VH) / vhPerSecond, true, linear);
+          return;
         }
       };
 
@@ -566,8 +631,8 @@ function Journey({ env }) {
   useEffect(() => () => revealCall.current?.kill(), []);
 
   // Rail / panel jumps to a scroll fraction. A rail jump glides there and
-  // the driver picks up where it lands (inside the event it plays on to the
-  // forged logo); a panel scrub is held as a review frame.
+  // the driver picks up where it lands (inside the impact it plays on to the
+  // rock ground to sand); a panel scrub is held as a review frame.
   const jump = useCallback(
     (p, immediate = false) => {
       if (!sectionRef.current || focus.index >= 0) return;
@@ -615,7 +680,6 @@ function Journey({ env }) {
               aria-hidden="true"
             >
               <color attach="background" args={["#0e0b09"]} />
-              <PerformanceMonitor onDecline={() => setDpr(1)} />
               <SceneBoundary onError={(error) => setAsset({ problem: { kind: "incomplete", parts: [String(error?.message || error)] } })}>
                 <Scene J={J} tier={tier} withForge={!!asset.ok} onMissing={onMissing} focus={focus} pins={pinRefs} />
               </SceneBoundary>
@@ -626,6 +690,7 @@ function Journey({ env }) {
         {/* the light at the end of the flight: white, onto the site */}
         <div ref={outroRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-[#fff9f1] opacity-0" />
 
+        {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
         <HeroOverlay ref={heroRef} />
         <Pins pinRefs={pinRefs} onOpen={openPin} />
         <CloseUp index={panel.index} shown={panel.shown} onClose={closePin} />
@@ -641,6 +706,13 @@ function Journey({ env }) {
       <span data-journey-end className="absolute bottom-0 left-0 h-px w-px" aria-hidden="true" />
     </section>
   );
+}
+
+// The visitor clicks in: the beam's race starts, and the scene comes in
+// from far off (Rig.jsx).
+function startJourney(J) {
+  J.enterAt = performance.now() / 1000;
+  gsap.to(J, { arrive: 1, duration: T.arriveDuration, ease: "none" });
 }
 
 function clamp01(v) {

@@ -46,6 +46,12 @@ export default function Sky({ shared }) {
             p *= 17.0;
             return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
           }
+          // a round disc of the given angular radius (rad) round dir, with a
+          // crisp edge about a pixel wide (the sun, the moon)
+          float ncDisc(vec3 d, vec3 dir, float radius) {
+            float a = acos(clamp(dot(d, dir), -1.0, 1.0));
+            return 1.0 - smoothstep(radius - 0.0012, radius + 0.0012, a);
+          }
           vec3 ncNight(vec3 d, float h, float sun) {
             vec3 zenith = vec3(0.004, 0.007, 0.02);
             vec3 upper = vec3(0.012, 0.02, 0.045);
@@ -54,8 +60,9 @@ export default function Sky({ shared }) {
             col = mix(col, zenith, smoothstep(0.22, 0.8, h));
             // cool glow around the moon, the disc itself and a soft halo
             col += vec3(0.25, 0.32, 0.5) * pow(sun, 18.0) * 0.5;
-            col += vec3(0.6, 0.68, 0.9) * pow(sun, 300.0) * 1.2;
-            col += vec3(0.9, 0.93, 1.0) * smoothstep(0.99955, 0.99975, sun) * 5.0;
+            col += vec3(0.6, 0.68, 0.9) * pow(sun, 300.0) * 0.5;
+            // (bright enough to glow a little, not to bloom into a blob)
+            col = mix(col, vec3(0.92, 0.94, 1.0) * 1.6, ncDisc(d, uSunDir, 0.022));
             // stars: one candidate per cell of a direction grid
             vec3 g = d * 160.0;
             vec3 cell = floor(g);
@@ -80,8 +87,10 @@ export default function Sky({ shared }) {
             // warm band strongest on the sun side of the horizon
             float band = 1.0 - smoothstep(0.0, 0.32, abs(h));
             col += vec3(1.0, 0.42, 0.12) * pow(sun, 5.0) * band * 0.9;
-            col += vec3(1.0, 0.7, 0.4) * pow(sun, 60.0) * 1.6;
-            col += vec3(1.0, 0.9, 0.7) * smoothstep(0.99935, 0.99965, sun) * 14.0;
+            col += vec3(1.0, 0.7, 0.4) * pow(sun, 60.0) * 0.45;
+            // the disc: round and clean-edged (bright enough to glow, not to
+            // bloom into a blob)
+            col = mix(col, vec3(1.0, 0.94, 0.8) * 3.4, ncDisc(d, uSunDir, 0.03));
             if (h < 0.0) col = mix(col, vec3(0.62, 0.33, 0.17), smoothstep(0.0, -0.08, h));
             if (uNight > 0.001) col = mix(col, ncNight(d, h, sun), uNight);
             col = mix(col, vec3(mix(0.9, uWhiteLevel, uWhite * uWhite * uWhite)), uWhite);

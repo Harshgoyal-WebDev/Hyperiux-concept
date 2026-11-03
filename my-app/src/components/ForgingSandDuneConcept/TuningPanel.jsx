@@ -5,10 +5,12 @@ import { LevaPanel, button, folder, useControls, useCreateStore } from "leva";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { STATES } from "./config";
 
-// Two Leva panels for every look property in tuning.js: the forge (slab,
-// energy, soil swirl) on the right, atmosphere, sand and audio beside it.
-// Controls are transient (onChange writes into T), so tuning never
-// re-renders the page. Press "h" to show / hide both.
+// Three Leva panels for every look property in tuning.js, in one column down
+// the right: the forge (slab, energy, beam, past the mark, post), the
+// breakup (every stage's start and end, the blast, the streams of sand and
+// the sand and gravel), and atmosphere, sand and audio. Controls are
+// transient (onChange writes into T), so tuning never re-renders the page.
+// Press "h" to show / hide them all.
 const OBJECT_SCHEMA = {
   "Slab & core": {
     fissureGlow: [0, 8, 0.05],
@@ -23,8 +25,19 @@ const OBJECT_SCHEMA = {
   "Scroll sequence": {
     forgeDuration: [2, 14, 0.1],
     forgeReverse: [0.5, 8, 0.1],
-    breakStart: [0, 0.6, 0.005],
-    breakEnd: [0.2, 1, 0.005],
+  },
+  Entering: {
+    arriveDuration: [0.5, 8, 0.05],
+    arriveDistance: [0, 600, 1],
+    arriveLift: [0, 200, 1],
+    loaderReveal: [0.4, 5, 0.05],
+    revealWarp: [0, 3, 0.01],
+    revealBlur: [0, 3, 0.01],
+    revealChroma: [0, 3, 0.01],
+  },
+  "Beam to the core": {
+    beamAccel: [0, 0.9, 0.01],
+    cameraSettle: [0.01, 0.6, 0.01],
   },
   Beam: {
     trailIntensity: [0, 5, 0.01],
@@ -35,92 +48,9 @@ const OBJECT_SCHEMA = {
     beamDashLength: [0.02, 1, 0.01],
     beamBase: [0, 2, 0.01],
   },
-  "Soil swirl": {
-    swirlSpeed: [0, 3, 0.01],
-    crumbleSand: [0, 60000, 100],
-    crumbleSize: [0.2, 4, 0.01],
-    crumbleOpacity: [0, 1, 0.01],
-    gravelCount: [0, 4000, 10],
-    gravelSize: [0.2, 3, 0.01],
-    sandCount: [0, 12000, 10],
-    sandSize: [0.2, 4, 0.01],
-    sandSpeed: [0, 3, 0.01],
+  "Breakup sand": {
     sandBrightness: [0, 3, 0.01],
-  },
-  // the swirl's orbits: the whole swirl, then each orbit in its own folder
-  Orbits: {
-    orbitCount: [1, 8, 1],
-    orbitRadius: [15, 70, 0.1],
-    orbitGap: [0, 15, 0.1],
-    orbitThickness: [0, 25, 0.1],
-    orbitSpread: [0, 1, 0.01],
-    orbitTilt: [-90, 90, 1],
-    orbitRoll: [-90, 90, 1],
-    orbitTurn: [-180, 180, 1],
-    "Orbit 1": {
-      orbit1Tilt: [-90, 90, 1],
-      orbit1Roll: [-90, 90, 1],
-      orbit1Turn: [-180, 180, 1],
-      orbit1Height: [-20, 20, 0.1],
-      orbit1Speed: [-0.6, 0.6, 0.005],
-      orbit1Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 2": {
-      orbit2Tilt: [-90, 90, 1],
-      orbit2Roll: [-90, 90, 1],
-      orbit2Turn: [-180, 180, 1],
-      orbit2Height: [-20, 20, 0.1],
-      orbit2Speed: [-0.6, 0.6, 0.005],
-      orbit2Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 3": {
-      orbit3Tilt: [-90, 90, 1],
-      orbit3Roll: [-90, 90, 1],
-      orbit3Turn: [-180, 180, 1],
-      orbit3Height: [-20, 20, 0.1],
-      orbit3Speed: [-0.6, 0.6, 0.005],
-      orbit3Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 4": {
-      orbit4Tilt: [-90, 90, 1],
-      orbit4Roll: [-90, 90, 1],
-      orbit4Turn: [-180, 180, 1],
-      orbit4Height: [-20, 20, 0.1],
-      orbit4Speed: [-0.6, 0.6, 0.005],
-      orbit4Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 5": {
-      orbit5Tilt: [-90, 90, 1],
-      orbit5Roll: [-90, 90, 1],
-      orbit5Turn: [-180, 180, 1],
-      orbit5Height: [-20, 20, 0.1],
-      orbit5Speed: [-0.6, 0.6, 0.005],
-      orbit5Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 6": {
-      orbit6Tilt: [-90, 90, 1],
-      orbit6Roll: [-90, 90, 1],
-      orbit6Turn: [-180, 180, 1],
-      orbit6Height: [-20, 20, 0.1],
-      orbit6Speed: [-0.6, 0.6, 0.005],
-      orbit6Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 7": {
-      orbit7Tilt: [-90, 90, 1],
-      orbit7Roll: [-90, 90, 1],
-      orbit7Turn: [-180, 180, 1],
-      orbit7Height: [-20, 20, 0.1],
-      orbit7Speed: [-0.6, 0.6, 0.005],
-      orbit7Squash: [0.2, 1.2, 0.01],
-    },
-    "Orbit 8": {
-      orbit8Tilt: [-90, 90, 1],
-      orbit8Roll: [-90, 90, 1],
-      orbit8Turn: [-180, 180, 1],
-      orbit8Height: [-20, 20, 0.1],
-      orbit8Speed: [-0.6, 0.6, 0.005],
-      orbit8Squash: [0.2, 1.2, 0.01],
-    },
+    swirlSpeed: [0, 3, 0.01],
   },
   "Past the mark": {
     beamLeadScale: [0.2, 3, 0.01],
@@ -164,6 +94,8 @@ const WORLD_SCHEMA = {
     night: "bool",
     moonIntensity: [0, 6, 0.01],
     moonColor: "color",
+    nightAmbient: [0, 4, 0.01],
+    nightAmbientColor: "color",
     stars: [0, 3, 0.01],
   },
   "Lighting & atmosphere": {
@@ -214,6 +146,75 @@ const WORLD_SCHEMA = {
   },
 };
 
+// The breakup, in a panel of its own: every stage's start and end, the
+// impact, the streams of sand, the sand and gravel.
+const BREAK_SCHEMA = {
+  "Sequence on the scroll (vh after the beam reaches the core; 200 = forged)": {
+    seqBreak: [0, 120, 0.5],
+    seqImpactEnd: [0, 200, 0.5],
+    seqBlastEnd: [0, 200, 0.5],
+    seqGatherStart: [0, 200, 0.5],
+    seqGatherEnd: [0, 200, 0.5],
+    seqSpinStart: [0, 200, 0.5],
+    seqSpinEnd: [0, 200, 0.5],
+    seqGrindStart: [0, 200, 0.5],
+    seqGrindEnd: [0, 200, 0.5],
+    seqSandFlow: [2, 200, 0.5],
+    seqBreakEnd: [10, 200, 0.5],
+    breakGather: [0, 1, 0.01],
+  },
+  Impact: {
+    breakImpact: [0, 3, 0.01],
+    breakSpread: [0.2, 3, 0.01],
+    breakSandShare: [0.05, 1, 0.01],
+    breakShrink: [0.2, 1, 0.01],
+    breakTumble: [0, 3, 0.01],
+  },
+  Streams: {
+    breakSpin: [0, 4, 0.01],
+    streams: [1, 8, 1],
+    streamRadius: [8, 60, 0.1],
+    streamTilt: [-90, 90, 0.5],
+    streamWobble: [0, 60, 0.5],
+    streamHeight: [0, 20, 0.1],
+    streamTail: [0.02, 1, 0.01],
+    streamWidth: [0, 20, 0.1],
+    streamLoose: [0, 1, 0.01],
+  },
+  "Pointer stir": {
+    breakStirForce: [0, 4, 0.01],
+    breakStirRadius: [0.01, 0.3, 0.005],
+    breakStirLinger: [0.05, 4, 0.01],
+    breakStirAlong: [0, 2, 0.01],
+    breakStirApart: [0, 2, 0.01],
+    breakStirSmooth: [0.005, 0.5, 0.005],
+    breakStirWake: [0, 0.8, 0.01],
+    breakStirSpread: [0, 1, 0.01],
+    breakStirSand: [0, 3, 0.01],
+    breakStirGravel: [0, 3, 0.01],
+    breakStirEase: [0.01, 1, 0.01],
+    breakStirGlow: [0, 2, 0.01],
+  },
+  "Sand & gravel": {
+    crumbleSand: [0, 60000, 100],
+    crumbleSize: [0.2, 4, 0.01],
+    crumbleOpacity: [0, 1, 0.01],
+    gravelCount: [0, 4000, 10],
+    gravelSize: [0.2, 3, 0.01],
+    gravelEmbers: [0, 1, 0.01],
+    gravelEmberGlow: [0, 3, 0.01],
+  },
+};
+
+// values the master timeline is built from (the beam's run, the camera's
+// keyframes): changing one rebuilds it (ForgingConcept)
+export const RETIME_EVENT = "forging-sand-dune-concept:retime";
+const RETIME = new Set(["beamAccel", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+
+// half as wide again as Leva's default (280 px), the extra all for the labels
+const PANEL_WIDTH = 420;
+const THEME = { sizes: { rootWidth: `${PANEL_WIDTH}px`, controlWidth: "190px" } };
+
 function buildControls(schema) {
   const out = {};
   for (const [name, keys] of Object.entries(schema)) {
@@ -226,13 +227,12 @@ function buildControls(schema) {
       }
       const onChange = (v) => {
         T[key] = v;
+        // (values the scroll timeline is built from: rebuild it)
+        if (RETIME.has(key)) window.dispatchEvent(new Event(RETIME_EVENT));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };
-      else if (spec === "vec3") {
-        // vectors stay the same object in T; copy the components in
-        items[key] = { value: { ...T[key] }, step: 0.1, onChange: (v) => Object.assign(T[key], v) };
-      } else items[key] = { value: T[key], min: spec[0], max: spec[1], step: spec[2], onChange };
+      else items[key] = { value: T[key], min: spec[0], max: spec[1], step: spec[2], onChange };
     }
     out[name] = folder(items, { collapsed: true });
   }
@@ -253,6 +253,7 @@ export default function TuningPanel({ onScrub }) {
 
   const objectStore = useCreateStore();
   const worldStore = useCreateStore();
+  const breakStore = useCreateStore();
 
   useControls(
     () => ({
@@ -273,6 +274,18 @@ export default function TuningPanel({ onScrub }) {
     { store: objectStore }
   );
   useControls(() => buildControls(WORLD_SCHEMA), { store: worldStore });
+  useControls(
+    () => ({
+      ...buildControls(BREAK_SCHEMA),
+      "Copy breakup settings": button(() => {
+        const keys = Object.values(BREAK_SCHEMA).flatMap((f) => Object.keys(f));
+        const json = JSON.stringify(Object.fromEntries(keys.map((k) => [k, T[k]])), null, 2);
+        navigator.clipboard?.writeText(json);
+        console.info("[forging-sand-dune-concept] breakup:\n" + json);
+      }),
+    }),
+    { store: breakStore }
+  );
 
   // keep the checkbox in step with the header's day / night toggle
   useEffect(() => {
@@ -283,12 +296,34 @@ export default function TuningPanel({ onScrub }) {
     return () => window.removeEventListener(NIGHT_EVENT, sync);
   }, [worldStore]);
 
+  // one column down the right, half as wide again as Leva's default so the
+  // labels fit; it scrolls when the open panels run past the screen (its
+  // wheel and touch are kept from the page's smooth scroll: Lenis honours
+  // data-lenis-prevent, and the page's own wheel listener never hears it)
   return (
-    <>
-      <LevaPanel store={objectStore} hidden={hidden} collapsed titleBar={{ title: "Forge · energy · orbits (H)" }} />
-      <div style={{ position: "fixed", top: 10, right: 300, width: 280, zIndex: 1000 }}>
-        <LevaPanel store={worldStore} hidden={hidden} fill collapsed titleBar={{ title: "Atmosphere · sand · audio" }} />
-      </div>
-    </>
+    <div
+      data-lenis-prevent
+      onWheel={(e) => e.stopPropagation()}
+      style={{
+        position: "fixed",
+        top: 84, // (below the header's controls)
+        right: 10,
+        width: PANEL_WIDTH,
+        maxHeight: "calc(100vh - 94px)",
+        overflowY: "auto",
+        display: hidden ? "none" : "flex",
+        flexDirection: "column",
+        gap: 8,
+        zIndex: 1000,
+      }}
+    >
+      {[
+        [objectStore, "Forge · energy (H)"],
+        [breakStore, "Breakup · sand streams"],
+        [worldStore, "Atmosphere · sand · audio"],
+      ].map(([store, title]) => (
+        <LevaPanel key={title} store={store} hidden={hidden} fill collapsed theme={THEME} titleBar={{ title, drag: false }} />
+      ))}
+    </div>
   );
 }

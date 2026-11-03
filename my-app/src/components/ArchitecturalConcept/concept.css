@@ -1,15 +1,17 @@
 /* HYPERIUX — architectural concept: the page's shared layers and type.
-   Chapter overlays add their own classes (chapters/<key>.css), prefixed .ac-<key>-.
-   Colours: paper #E7E6E2, sheet #F3F2EE, ink #141413, graphite #5D5B56,
-   orange #FF5F00 (Hyperiux only; #B9440A for small orange text on paper), night #0C0C0D.
+   Minimal: one face (Aeonik Pro, Light for display, Regular for text) and a
+   regular-weight mono for labels; no bold anywhere. Hairline rules instead of
+   boxes, one accent (the mark's #FF5F00), lots of air.
+   Chapter overlays add their own classes (chapters/overlays.css), prefixed .ac-<key>-.
    --fg, --fg2, --rule, --bar, --panel and --hi follow the scene (Stage.jsx). */
 
 .ac-root {
   --paper: #e7e6e2; --sheet: #f3f2ee; --ink: #141413; --graphite: #5d5b56; --mute: #8e8b85;
   --or: #ff5f00; --or-ink: #b9440a; --night: #0c0c0d;
   --fg: #141413; --fg2: #5d5b56; --rule: rgba(20, 20, 19, 0.16); --bar: #e7e6e2; --panel: #f3f2ee; --hi: #b9440a;
-  --display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
-  --body: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
+  --sans: var(--font-aeonikpro), "Helvetica Neue", Arial, sans-serif;
+  --display: var(--sans);
+  --body: var(--sans);
   --mono: var(--font-plex-mono), ui-monospace, Menlo, Consolas, monospace;
   --gut: max(28px, env(safe-area-inset-left, 0px));
   --gutR: max(28px, env(safe-area-inset-right, 0px));
@@ -17,17 +19,18 @@
   width: 100%;
   background: var(--paper);
   color: var(--fg);
-  font: 400 16px/1.5 var(--body);
+  font: 400 16px/1.55 var(--body);
   -webkit-font-smoothing: antialiased;
 }
 .ac-root *, .ac-root *::before, .ac-root *::after { box-sizing: border-box; }
+.ac-root b, .ac-root strong, .ac-root h1, .ac-root h2, .ac-root h3 { font-weight: inherit; }
 
 /* fixed layers, back to front */
 .ac-sky { position: fixed; inset: 0; background: var(--paper); }
 .ac-gl { z-index: 1; }
-.ac-vig { position: fixed; inset: 0; pointer-events: none; z-index: 2; background: radial-gradient(120% 95% at 50% 45%, transparent 58%, rgba(0, 0, 0, 0.22)); }
+.ac-vig { display: none; }
 .ac-grain {
-  position: fixed; inset: 0; pointer-events: none; opacity: 0.24; mix-blend-mode: overlay; z-index: 2;
+  position: fixed; inset: 0; pointer-events: none; opacity: 0.12; mix-blend-mode: overlay; z-index: 2;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 /* off-screen chapters are display:none: their elements keep inline visibility from setO, which would show through a hidden parent */
@@ -35,52 +38,50 @@
 .ac-ch[data-on="true"] { display: block; }
 
 /* shared type */
-.ac-mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.ac-mono { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
 .ac-or { color: var(--or); }
 .ac-hi { color: var(--hi); }
-.ac-hl { margin: 0; font: 700 clamp(40px, 5vw, 92px)/0.93 var(--display); letter-spacing: -0.035em; font-stretch: 96%; text-wrap: balance; }
-.ac-hl .ln { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.ac-hl { margin: 0; font: 300 clamp(36px, 4.2vw, 76px)/1.02 var(--display); letter-spacing: -0.03em; text-wrap: balance; }
+.ac-hl .ln { display: block; overflow: hidden; padding-bottom: 0.08em; }
 .ac-hl .ln > span { display: block; will-change: transform; transform: translateY(108%); }
 .ac-hl em { font-style: normal; color: var(--or); }
-.ac-eb { margin: 0 0 16px; color: var(--hi); }
+.ac-eb { margin: 0 0 18px; color: var(--fg2); }
 .ac-lbl { position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform; visibility: hidden; }
-.ac-panel { background: var(--panel); border: 1px solid var(--fg); color: var(--fg); }
-.ac-next { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); color: var(--or); visibility: hidden; }
+.ac-panel { background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--rule); color: var(--fg); backdrop-filter: blur(8px); }
+.ac-next { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); color: var(--fg2); visibility: hidden; }
 .ac-root button { font: inherit; color: inherit; }
-.ac-root :focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+.ac-root :focus-visible { outline: 1px solid var(--or); outline-offset: 3px; }
 
 /* site chrome */
 .ac-top {
   position: fixed; left: 0; right: 0; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px;
-  padding: calc(16px + env(safe-area-inset-top, 0px)) var(--gutR) 14px var(--gut);
-  border-bottom: 1px solid var(--rule); color: var(--fg);
-  background: color-mix(in srgb, var(--bar) 72%, transparent); backdrop-filter: blur(6px);
+  padding: calc(18px + env(safe-area-inset-top, 0px)) var(--gutR) 16px var(--gut);
+  color: var(--fg);
 }
-.ac-top svg { width: 26px; height: 26px; flex: none; }
-.ac-top .ac-b { font-weight: 600; }
+.ac-top svg { width: 22px; height: 22px; flex: none; }
+.ac-top .ac-b { font: 400 15px/1 var(--sans); letter-spacing: 0; text-transform: none; }
 .ac-top .ac-sp { flex: 1; }
-.ac-top .ac-pill { border: 1px solid currentColor; border-radius: 20px; padding: 7px 14px; }
-.ac-top .ac-c { position: absolute; left: 50%; transform: translateX(-50%); }
+.ac-top .ac-pill { border: 1px solid var(--rule); border-radius: 20px; padding: 8px 14px; }
+.ac-top .ac-c { position: absolute; left: 50%; transform: translateX(-50%); color: var(--fg2); }
 
 .ac-strip {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; color: var(--fg);
-  border-top: 1px solid var(--rule); backdrop-filter: blur(6px); background: color-mix(in srgb, var(--bar) 72%, transparent);
   padding: 0 var(--gutR) env(safe-area-inset-bottom, 0px) var(--gut);
-  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) auto; gap: 10px;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) auto; gap: 14px;
 }
-.ac-strip button { all: unset; cursor: pointer; padding: 10px 0 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.ac-strip .ac-bar { height: 3px; background: var(--rule); position: relative; overflow: hidden; }
-.ac-strip .ac-bar i { position: absolute; inset: 0; background: var(--or); transform-origin: left; transform: scaleX(0); }
-.ac-strip .ac-lab { font: 500 10.5px/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ac-strip button.on .ac-lab { color: var(--hi); }
-.ac-strip button:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
-.ac-strip .ac-pct { align-self: center; font: 600 12px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+.ac-strip button { all: unset; cursor: pointer; padding: 12px 0 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ac-strip .ac-bar { height: 1px; background: var(--rule); position: relative; overflow: hidden; }
+.ac-strip .ac-bar i { position: absolute; inset: 0; background: var(--fg); transform-origin: left; transform: scaleX(0); }
+.ac-strip .ac-lab { font: 400 10px/1.2 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-strip button.on .ac-lab { color: var(--fg); }
+.ac-strip button:focus-visible { outline: 1px solid var(--or); outline-offset: 3px; }
+.ac-strip .ac-pct { align-self: center; font: 400 11px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; color: var(--fg2); }
 
 @media (max-width: 760px) {
   .ac-root { --gut: max(16px, env(safe-area-inset-left, 0px)); --gutR: max(16px, env(safe-area-inset-right, 0px)); }
   .ac-top .ac-c, .ac-top .ac-hide-s { display: none; }
-  .ac-hl { font-size: clamp(32px, 9.5vw, 50px); }
-  .ac-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+  .ac-hl { font-size: clamp(30px, 8.6vw, 44px); }
+  .ac-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
   .ac-strip .ac-pct, .ac-strip .ac-t { display: none; }
   .ac-next { bottom: 70px; }
 }

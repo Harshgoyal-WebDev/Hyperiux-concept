@@ -1,13 +1,22 @@
-import { Archivo, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
+import localFont from "next/font/local";
+import { IBM_Plex_Mono } from "next/font/google";
 import "@/components/ArchitecturalConcept/concept.css";
 import "@/components/ArchitecturalConcept/chapters/overlays.css";
 
-// The concept's three faces: Archivo for display (with its width axis),
-// Instrument Sans for body copy, IBM Plex Mono for drawing labels.
-const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-archivo", display: "swap" });
-const instrument = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap" });
-const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
+// The site's own typeface, Aeonik Pro, in its two light weights only (the
+// concept uses no bold): Light for display, Regular for text. Labels use
+// IBM Plex Mono at regular weight.
+const aeonikPro = localFont({
+  src: [
+    { path: "../../../public/assets/fonts/AeonikPro-Light.woff2", weight: "300" },
+    { path: "../../../public/assets/fonts/AeonikPro-Regular.woff2", weight: "400" },
+  ],
+  variable: "--font-aeonikpro",
+  display: "swap",
+  fallback: ["Helvetica Neue", "Arial", "sans-serif"],
+});
+const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400"], variable: "--font-plex-mono", display: "swap" });
 
 export default function ArchitecturalConceptLayout({ children }) {
-  return <div className={`${archivo.variable} ${instrument.variable} ${plexMono.variable} contents`}>{children}</div>;
+  return <div className={`${aeonikPro.variable} ${plexMono.variable} contents`}>{children}</div>;
 }

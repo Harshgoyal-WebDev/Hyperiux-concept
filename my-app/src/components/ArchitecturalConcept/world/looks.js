@@ -41,7 +41,7 @@ function fam() {
   if (fonts) return fonts;
   const st = getComputedStyle(document.querySelector(".ac-root") || document.body);
   const v = (n, fb) => (st.getPropertyValue(n).trim() || "") + (st.getPropertyValue(n).trim() ? ", " : "") + fb;
-  fonts = { d: v("--font-archivo", "Arial, sans-serif"), b: v("--font-instrument", "Arial, sans-serif"), m: v("--font-plex-mono", "Menlo, monospace") };
+  fonts = { d: v("--font-aeonikpro", "Arial, sans-serif"), b: v("--font-aeonikpro", "Arial, sans-serif"), m: v("--font-plex-mono", "Menlo, monospace") };
   return fonts;
 }
 function canvas([w, h]) {
@@ -62,20 +62,20 @@ function wrap(x, s, a, b, size, maxW, lh, o) {
   if (line) text(x, line, a, y, size, o);
   return y;
 }
-const frame = (x, w, h, c = C.ink, lw = 3) => { x.strokeStyle = c; x.lineWidth = lw; x.strokeRect(lw / 2, lw / 2, w - lw, h - lw); };
+const frame = (x, w, h, c = "rgba(20,20,19,.22)", lw = 2) => { x.strokeStyle = c; x.lineWidth = lw; x.strokeRect(lw / 2, lw / 2, w - lw, h - lw); };
 
 // a small page layout, reused by the design pages and the project sites
 function page(x, w, h, { name = "Hyperiux", line1 = "Your brand,", line2 = "built to be", line3 = "experienced.", col = [C.or, "#FFB48A"], tag = null, cols = 2 } = {}) {
   const u = w / 100;
   rect(x, C.sheet, 0, 0, w, h);
-  text(x, name.toUpperCase(), 5 * u, 7 * u, 2.6 * u, { w: 600, f: "m", ls: 1 });
+  text(x, name.toUpperCase(), 5 * u, 7 * u, 2.6 * u, { w: 400, f: "m", ls: 1 });
   [0, 1, 2].forEach((i) => rect(x, C.mute, w - 30 * u + i * 7 * u, 4.8 * u, 5 * u, 1.2 * u));
   rect(x, C.or, w - 8 * u, 4 * u, 4 * u, 3 * u);
   const tall = h > w * 1.2, hs = tall ? 9.5 * u : 7.2 * u, hy = tall ? 24 * u : 21 * u;
-  [line1, line2, line3].forEach((l, i) => text(x, l, 5 * u, hy + i * hs, hs * 0.95, { w: 700, f: "d", c: i === 2 ? C.or : C.ink }));
+  [line1, line2, line3].forEach((l, i) => text(x, l, 5 * u, hy + i * hs, hs * 0.95, { w: 300, f: "d", c: i === 2 ? C.or : C.ink }));
   const by = hy + 2 * hs + 6 * u;
   rect(x, C.or, 5 * u, by, (tall ? 34 : 17) * u, (tall ? 7 : 4.6) * u);
-  text(x, "EXPLORE →", 7.5 * u, by + (tall ? 4.6 : 3) * u, (tall ? 3.4 : 2) * u, { w: 600, f: "m", c: "#fff", ls: 1 });
+  text(x, "EXPLORE →", 7.5 * u, by + (tall ? 4.6 : 3) * u, (tall ? 3.4 : 2) * u, { w: 400, f: "m", c: "#fff", ls: 1 });
   const ix = tall ? 5 * u : 52 * u, iy = tall ? by + 12 * u : 15 * u, iw = tall ? w - 10 * u : 43 * u, ih = tall ? h * 0.24 : by - 15 * u + 4.6 * u;
   const g = x.createLinearGradient(ix, iy, ix + iw, iy + ih); g.addColorStop(0, col[0]); g.addColorStop(1, col[1]);
   x.fillStyle = g; x.fillRect(ix, iy, iw, ih);
@@ -88,71 +88,71 @@ function page(x, w, h, { name = "Hyperiux", line1 = "Your brand,", line2 = "buil
     rect(x, "rgba(20,20,19,.12)", cx + 2 * u, cy + 2.5 * u, cw * 0.5, 1.6 * u);
     rect(x, "rgba(20,20,19,.08)", cx + 2 * u, cy + 6 * u, cw * 0.7, 1.2 * u);
   }
-  if (tag) { x.font = `500 ${2.2 * u}px ${fam().m}`; const tw = x.measureText(tag).width + 3 * u; rect(x, C.ink, w - tw - 4 * u, h - 7 * u, tw, 4 * u); text(x, tag, w - tw - 2.5 * u, h - 4.2 * u, 2.2 * u, { f: "m", c: C.sheet, w: 500, ls: 1 }); }
+  if (tag) { x.font = `500 ${2.2 * u}px ${fam().m}`; const tw = x.measureText(tag).width + 3 * u; rect(x, C.ink, w - tw - 4 * u, h - 7 * u, tw, 4 * u); text(x, tag, w - tw - 2.5 * u, h - 4.2 * u, 2.2 * u, { f: "m", c: C.sheet, w: 400, ls: 1 }); }
 }
 
 const DRAW = {
   face([x, w, h]) { rect(x, C.sheet, 0, 0, w, h); },
   facet([x, w, h], i) {
-    rect(x, C.sheet, 0, 0, w, h); frame(x, w, h, C.or, 10);
-    text(x, `F${i + 1}`, 40, 70, 30, { w: 600, f: "m", c: C.or, ls: 2 });
-    text(x, FACETS[i][0].toUpperCase(), 40, 300, 62, { w: 700, f: "d" });
+    rect(x, C.sheet, 0, 0, w, h); frame(x, w, h, C.or, 4);
+    text(x, `F${i + 1}`, 40, 70, 24, { w: 400, f: "m", c: C.or, ls: 2 });
+    text(x, FACETS[i][0], 40, 300, 66, { w: 300, f: "d" });
     wrap(x, FACETS[i][1], 40, 360, 28, w - 80, 36, { c: C.graphite });
   },
   node([x, w, h], i) {
-    rect(x, C.sheet, 0, 0, w, h); frame(x, w, h, C.ink, 4);
-    rect(x, C.ink, 0, 0, w, 64);
-    text(x, `${String(i + 1).padStart(2, "0")} / 06`, 30, 42, 24, { w: 500, f: "m", c: C.sheet, ls: 2 });
-    rect(x, C.or, w - 70, 18, 40, 28);
-    const y = wrap(x, SERVICES[i][0], 30, 150, 54, w - 60, 58, { w: 700, f: "d" });
-    SERVICES[i][2].forEach((s, k) => text(x, "→ " + s.toUpperCase(), 30, y + 70 + k * 40, 22, { w: 500, f: "m", c: C.graphite, ls: 1 }));
+    rect(x, C.sheet, 0, 0, w, h); frame(x, w, h);
+    text(x, `${String(i + 1).padStart(2, "0")} / 06`, 30, 48, 20, { w: 400, f: "m", c: C.graphite, ls: 3 });
+    rect(x, "rgba(20,20,19,.14)", 30, 70, w - 60, 2);
+    x.fillStyle = C.or; x.beginPath(); x.arc(w - 44, 41, 9, 0, 7); x.fill();
+    const y = wrap(x, SERVICES[i][0], 30, 160, 52, w - 60, 58, { w: 300, f: "d" });
+    SERVICES[i][2].forEach((s, k) => text(x, "— " + s.toUpperCase(), 30, y + 74 + k * 38, 18, { w: 400, f: "m", c: C.graphite, ls: 2 }));
   },
   layer([x, w, h], k) {
     x.fillStyle = k < 3 ? "rgba(243,242,238,.8)" : C.sheet; x.fillRect(0, 0, w, h);
-    frame(x, w, h, k < 3 ? "rgba(20,20,19,.35)" : C.ink, 3);
+    frame(x, w, h, k < 3 ? "rgba(20,20,19,.2)" : "rgba(20,20,19,.25)", 2);
     if (k === 0) { // tokens: colour, type and space
       [C.or, C.ink, C.graphite, C.paper, "#FFB48A"].forEach((c, i) => { rect(x, c, 40 + i * 120, 60, 96, 96); x.strokeStyle = "rgba(20,20,19,.3)"; x.strokeRect(40 + i * 120, 60, 96, 96); text(x, ["#FF5F00", "#141413", "#5D5B56", "#E7E6E2", "#FFB48A"][i], 40 + i * 120, 186, 16, { f: "m", c: C.graphite }); });
-      [96, 64, 40, 24].forEach((s, i) => text(x, "Aa", 40 + i * 150, 330, s, { w: 700, f: "d" }));
+      [96, 64, 40, 24].forEach((s, i) => text(x, "Aa", 40 + i * 150, 330, s, { w: 300, f: "d" }));
       [8, 16, 24, 32, 48, 64].forEach((s, i) => rect(x, C.or, 40 + i * 110, 400, s * 1.4, 14));
-      text(x, "COLOUR · TYPE · SPACE", 40, 460, 20, { f: "m", c: C.graphite, w: 500, ls: 2 });
+      text(x, "COLOUR · TYPE · SPACE", 40, 460, 20, { f: "m", c: C.graphite, w: 400, ls: 2 });
     } else if (k === 1) { // components
-      const pill = (a, b, ww, fill, label, tc) => { x.fillStyle = fill; x.beginPath(); x.roundRect(a, b, ww, 56, 28); x.fill(); if (fill === "transparent") { x.strokeStyle = C.ink; x.lineWidth = 2; x.stroke(); } text(x, label, a + 26, b + 36, 20, { f: "m", w: 600, c: tc, ls: 1 }); };
+      const pill = (a, b, ww, fill, label, tc) => { x.fillStyle = fill; x.beginPath(); x.roundRect(a, b, ww, 56, 28); x.fill(); if (fill === "transparent") { x.strokeStyle = C.ink; x.lineWidth = 2; x.stroke(); } text(x, label, a + 26, b + 36, 20, { f: "m", w: 400, c: tc, ls: 1 }); };
       pill(40, 50, 220, C.or, "START A PROJECT", "#fff"); pill(290, 50, 160, "transparent", "SAY HI ↗", C.ink);
       x.strokeStyle = C.ink; x.lineWidth = 2; x.strokeRect(40, 140, 410, 60); text(x, "you@company.com", 60, 178, 22, { c: C.mute });
-      x.strokeRect(500, 50, 260, 300); rect(x, "#FFD3B5", 516, 66, 228, 130); text(x, "Card title", 516, 240, 30, { w: 700, f: "d" }); rect(x, "rgba(20,20,19,.12)", 516, 262, 200, 12); rect(x, "rgba(20,20,19,.12)", 516, 284, 160, 12);
+      x.strokeRect(500, 50, 260, 300); rect(x, "#FFD3B5", 516, 66, 228, 130); text(x, "Card title", 516, 240, 30, { w: 300, f: "d" }); rect(x, "rgba(20,20,19,.12)", 516, 262, 200, 12); rect(x, "rgba(20,20,19,.12)", 516, 284, 160, 12);
       x.fillStyle = C.or; x.beginPath(); x.roundRect(40, 240, 92, 48, 24); x.fill(); x.fillStyle = "#fff"; x.beginPath(); x.arc(108, 264, 18, 0, 7); x.fill();
-      ["Branding", "UX", "WebGL"].forEach((s, i) => { x.strokeStyle = C.ink; x.strokeRect(160 + i * 110, 244, 100, 40); text(x, s.toUpperCase(), 172 + i * 110, 270, 16, { f: "m", w: 500 }); });
-      text(x, "BUTTON · INPUT · CARD · TOGGLE · CHIP", 40, 460, 20, { f: "m", c: C.graphite, w: 500, ls: 2 });
+      ["Branding", "UX", "WebGL"].forEach((s, i) => { x.strokeStyle = C.ink; x.strokeRect(160 + i * 110, 244, 100, 40); text(x, s.toUpperCase(), 172 + i * 110, 270, 16, { f: "m", w: 400 }); });
+      text(x, "BUTTON · INPUT · CARD · TOGGLE · CHIP", 40, 460, 20, { f: "m", c: C.graphite, w: 400, ls: 2 });
     } else if (k === 2) { // patterns: the page's sections as wireframe
       x.strokeStyle = "rgba(20,20,19,.55)"; x.lineWidth = 2; x.setLineDash([10, 8]);
       x.strokeRect(30, 26, w - 60, 44); x.strokeRect(30, 90, w * 0.44, 200); x.strokeRect(w * 0.52, 90, w * 0.44, 200);
       [0, 1, 2].forEach((i) => x.strokeRect(30 + i * ((w - 60) / 3 + 0), 310, (w - 60) / 3 - 16, 130));
       x.setLineDash([]);
-      text(x, "NAV", 44, 56, 18, { f: "m", w: 600, c: C.graphite }); text(x, "HERO", 44, 120, 18, { f: "m", w: 600, c: C.graphite }); text(x, "MEDIA", w * 0.52 + 14, 120, 18, { f: "m", w: 600, c: C.graphite }); text(x, "CARD GRID", 44, 340, 18, { f: "m", w: 600, c: C.graphite });
-      text(x, "12 COLUMNS · 8 PT GRID", 30, 478, 20, { f: "m", c: C.graphite, w: 500, ls: 2 });
+      text(x, "NAV", 44, 56, 18, { f: "m", w: 400, c: C.graphite }); text(x, "HERO", 44, 120, 18, { f: "m", w: 400, c: C.graphite }); text(x, "MEDIA", w * 0.52 + 14, 120, 18, { f: "m", w: 400, c: C.graphite }); text(x, "CARD GRID", 44, 340, 18, { f: "m", w: 400, c: C.graphite });
+      text(x, "12 COLUMNS · 8 PT GRID", 30, 478, 20, { f: "m", c: C.graphite, w: 400, ls: 2 });
       x.fillStyle = "rgba(255,95,0,.07)"; for (let i = 0; i < 12; i++) x.fillRect(30 + i * ((w - 60) / 12) + 4, 0, (w - 60) / 12 - 8, h);
     } else page(x, w, h, { cols: 3 });
   },
-  tablet([x, w, h]) { page(x, w, h, { cols: 2 }); frame(x, w, h, C.ink, 6); },
-  mobile([x, w, h]) { page(x, w, h, { cols: 1 }); frame(x, w, h, C.ink, 6); },
+  tablet([x, w, h]) { page(x, w, h, { cols: 2 }); frame(x, w, h, "rgba(20,20,19,.3)", 4); },
+  mobile([x, w, h]) { page(x, w, h, { cols: 1 }); frame(x, w, h, "rgba(20,20,19,.3)", 4); },
   code([x, w, h], i) {
     rect(x, "#121214", 0, 0, w, h); rect(x, "#1C1C20", 0, 0, w, 60);
     [0, 1, 2].forEach((k) => { x.fillStyle = ["#3A3A40", "#3A3A40", C.or][k]; x.beginPath(); x.arc(30 + k * 26, 30, 8, 0, 7); x.fill(); });
-    text(x, CODE[i][0], 120, 39, 22, { f: "m", c: "#A8A6A1", w: 500 });
+    text(x, CODE[i][0], 120, 39, 22, { f: "m", c: "#A8A6A1", w: 400 });
     CODE[i][1].forEach((l, k) => {
       text(x, String(k + 1).padStart(2, " "), 30, 120 + k * 42, 22, { f: "m", c: "#55555B" });
       const kw = /^(\s*)(export|const|uniform|varying|void|return|async|function|await)\b/.exec(l);
       if (kw) { text(x, kw[1] + kw[2], 90, 120 + k * 42, 22, { f: "m", c: C.or }); x.font = `400 22px ${fam().m}`; const off = x.measureText(kw[1] + kw[2]).width; text(x, l.slice(kw[0].length), 90 + off, 120 + k * 42, 22, { f: "m", c: "#EDEBE6" }); }
       else text(x, l, 90, 120 + k * 42, 22, { f: "m", c: l.startsWith("✓") || l.startsWith("▲") ? "#C6F25A" : "#EDEBE6" });
     });
-    frame(x, w, h, "#3A3A40", 3);
+    frame(x, w, h, "rgba(237,235,230,.14)", 2);
   },
   site([x, w, h], j) {
-    if (j < 5) { const p = PROJECTS[j]; page(x, w, h, { name: p[0], line1: p[0], line2: "Designed and", line3: "built by Hyperiux", col: p[3], tag: "MOCK-UP", cols: 3 }); frame(x, w, h, C.ink, 4); return; }
+    if (j < 5) { const p = PROJECTS[j]; page(x, w, h, { name: p[0], line1: p[0], line2: "Designed and", line3: "built by Hyperiux", col: p[3], tag: "MOCK-UP", cols: 3 }); frame(x, w, h); return; }
     rect(x, C.sheet, 0, 0, w, h);
-    x.strokeStyle = C.or; x.lineWidth = 6; x.setLineDash([24, 16]); x.strokeRect(10, 10, w - 20, h - 20); x.setLineDash([]);
-    text(x, "06 / NEXT", 50, 80, 24, { f: "m", w: 600, c: C.or, ls: 2 });
-    text(x, "Your brand", 50, 300, 92, { w: 700, f: "d" }); text(x, "goes here.", 50, 400, 92, { w: 700, f: "d", c: C.or });
+    x.strokeStyle = C.or; x.lineWidth = 2; x.setLineDash([14, 12]); x.strokeRect(10, 10, w - 20, h - 20); x.setLineDash([]);
+    text(x, "06 / NEXT", 50, 80, 24, { f: "m", w: 400, c: C.or, ls: 2 });
+    text(x, "Your brand", 50, 300, 86, { w: 300, f: "d" }); text(x, "goes here.", 50, 396, 86, { w: 300, f: "d", c: C.or });
   },
 };
 

@@ -24,7 +24,7 @@ export function Overlay() {
       <div className="ac-handover-cta" data-k="cta">
         <p className="ac-eb ac-mono">Let’s build yours</p>
         <h2 className="ac-hl"><span className="ln"><span>Let’s bring your</span></span><span className="ln"><span><em>ideas to life.</em></span></span></h2>
-        <p className="ac-handover-sub">Your brand is the cube. We build the experience around it.</p>
+        <p className="ac-handover-sub ac-lede">Your brand is the cube. We build the experience around it.</p>
       </div>
       <div className="ac-handover-hi" data-k="hi">
         <span className="ac-handover-pill ac-mono">Say Hi ↗</span>

@@ -27,7 +27,7 @@ export function Overlay() {
       <div className="ac-design-hd" data-k="hd">
         <p className="ac-eb ac-mono">UI/UX design · Design systems</p>
         <h2 className="ac-hl"><span className="ln"><span>Design systems</span></span><span className="ln"><span>are <em>load-bearing.</em></span></span></h2>
-        <p className="ac-design-sub">One system of tokens, components and patterns, so every page and every screen size holds together.</p>
+        <p className="ac-design-sub ac-lede">One system of tokens, components and patterns, so every page and every screen size holds together.</p>
       </div>
       <div className="ac-next ac-mono" data-k="next">[ Design → Engineering ]</div>
     </>

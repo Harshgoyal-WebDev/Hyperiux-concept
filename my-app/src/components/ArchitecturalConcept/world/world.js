@@ -85,8 +85,8 @@ const STAGGER = 0.022;
 // [T, target, yaw, pitch, half view height at the target, fov]
 const MC = MARK_CENTER, CC = CUBE.center;
 const KEYS = [
-  [0, MC, 0, 0, 9.4, 3.5], [0.3, MC, 0, 0, 9.4, 3.5],
-  [0.62, V([-0.5, 7, 0]), -0.6, 0.14, 9.4, 30], [0.72, V([-4.2, 7, 0]), -0.45, 0.16, 9.2, 30], [0.86, V([-4, 7, 0]), -0.3, 0.18, 9, 30],
+  [0, MC, 0, 0, 9.4, 3.5], [0.06, MC, 0, 0, 9.4, 3.5],
+  [0.5, V([-0.5, 7, 0]), -0.6, 0.14, 9.4, 30], [0.64, V([-4.2, 7, 0]), -0.45, 0.16, 9.2, 30], [0.86, V([-4, 7, 0]), -0.3, 0.18, 9, 30],
   [0.97, CC, -0.15, 0.35, 2.2, 34], [1.0, CC, -0.1, 0.5, 2.2, 34],
   [1.12, POSE_GROUND.p, 0, 1.05, 3.4, 34], [1.3, V([0, 0, 12.4]), 0, 1.32, 6.2, 34], [1.42, V([0, 0, 12.4]), 0, 1.36, 10.6, 34], [1.8, V([0, 0, 12.4]), 0.06, 1.33, 10.6, 34],
   [2.08, V([0.6, 6.5, 5]), 0.04, 0.06, 7.3, 30], [2.86, V([0.6, 6.5, 5]), -0.06, 0.05, 7.3, 30],
@@ -130,9 +130,9 @@ export function buildWorld() {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; root.add(ground);
   const gp = [];
-  for (let v = -60; v <= 60; v += 2) gp.push(v, 0.01, -60, v, 0.01, 60, -60, 0.01, v, 60, 0.01, v);
+  for (let v = -60; v <= 60; v += 4) gp.push(v, 0.01, -60, v, 0.01, 60, -60, 0.01, v, 60, 0.01, v);
   const gridGeo = new THREE.BufferGeometry(); gridGeo.setAttribute("position", new THREE.Float32BufferAttribute(gp, 3));
-  const gridMat = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.1 });
+  const gridMat = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.05 });
   root.add(new THREE.LineSegments(gridGeo, gridMat));
 
   // the mark
@@ -142,7 +142,11 @@ export function buildWorld() {
   // the cube's twelve edges (orange, the mark's 7-unit stroke)
   const edgeMat = new THREE.MeshBasicMaterial({ color: C.or, transparent: true });
   const EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
-  const cubeEdges = EDGES.map(() => { const m = bar([0, 0, 0], [1, 0, 0], 0.2, edgeMat); root.add(m); return m; });
+  const EW = 0.2;
+  const cubeEdges = EDGES.map(() => { const m = bar([0, 0, 0], [1, 0, 0], EW, edgeMat); root.add(m); return m; });
+  // a round joint at each corner, like the mark's own stroke (its top corner is rounded)
+  const joint = new THREE.SphereGeometry(EW * 0.6, 16, 12);
+  const cubeCorners = Array.from({ length: 8 }, () => { const m = new THREE.Mesh(joint, edgeMat); root.add(m); return m; });
   const corner = (pose, k) => place(pose, V([k & 1 ? 1 : -1, k & 2 ? 1 : -1, k & 4 ? 1 : -1]));
 
   // the six faces: two coplanar meshes each, so one look can cross-fade into the next
@@ -150,7 +154,7 @@ export function buildWorld() {
   const panels = Array.from({ length: 6 }, (_, i) => {
     const mk = (top) => {
       const m = new THREE.Mesh(plane, new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: top, polygonOffsetFactor: top ? -1 : 0, polygonOffsetUnits: top ? -4 : 0, depthWrite: !top }));
-      m.matrixAutoUpdate = false; m.castShadow = true; m.userData.i = i; m.renderOrder = top ? 2 : 1; root.add(m); return m;
+      m.matrixAutoUpdate = false; m.userData.i = i; m.renderOrder = top ? 2 : 1; root.add(m); return m;
     };
     return { a: mk(false), b: mk(true), frame: null };
   });
@@ -165,11 +169,11 @@ export function buildWorld() {
   }
 
   // points: research data, then user flow, data packets and visitors
-  const NP = 320, R = rng(7), seeds = Array.from({ length: NP }, () => [R(), R(), R()]);
+  const NP = 200, R = rng(7), seeds = Array.from({ length: NP }, () => [R(), R(), R()]);
   const pPos = new Float32Array(NP * 3), pCol = new Float32Array(NP * 3);
   const pGeo = new THREE.BufferGeometry();
   pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute("color", new THREE.BufferAttribute(pCol, 3));
-  const pMat = new THREE.PointsMaterial({ size: 6, sizeAttenuation: false, vertexColors: true, map: dotTexture(), transparent: true, alphaTest: 0.4, depthWrite: false });
+  const pMat = new THREE.PointsMaterial({ size: 4, sizeAttenuation: false, vertexColors: true, map: dotTexture(), transparent: true, alphaTest: 0.4, depthWrite: false });
   const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; root.add(points);
   const cInk = new THREE.Color(), cOr = new THREE.Color(C.or), tmp = new THREE.Vector3();
 
@@ -217,12 +221,12 @@ export function buildWorld() {
     f.theme(seg(T, 4.2, 4.3) * (1 - seg(T, 6.22, 6.32)));
     rig.fog.color.set(bot);
     const warm = Math.max(dusk * (1 - night), dawnA * (1 - dawnB));
-    rig.sun.color.set(mixHex("#ffffff", "#ffb27a", warm)); rig.sun.intensity = lerp(0.85, 0.08, dark) * LI;
+    rig.sun.color.set(mixHex("#ffffff", "#ffb27a", warm)); rig.sun.intensity = lerp(0.55, 0.06, dark) * LI; // soft light: faint shadows
     rig.sun.position.set(lerp(-16, -30, warm), lerp(30, 12, warm), 22); rig.sun.target.position.set(0, 0, 4);
-    rig.hemi.intensity = lerp(0.62, 0.16, dark) * LI; rig.hemi.color.set(mixHex("#ffffff", "#7b88b0", dark)); rig.hemi.groundColor.set(mixHex("#d6cfc2", "#111113", dark));
+    rig.hemi.intensity = lerp(0.82, 0.16, dark) * LI; rig.hemi.color.set(mixHex("#ffffff", "#7b88b0", dark)); rig.hemi.groundColor.set(mixHex("#d6cfc2", "#111113", dark));
     rig.rim.color.set(0x9fb4ff); rig.rim.intensity = 0.5 * dark * LI;
     groundMat.color.set(mixHex(C.paper, "#111113", dark));
-    gridMat.color.set(mixHex(C.ink, "#ffffff", dark)); gridMat.opacity = lerp(0.1, 0.06, dark);
+    gridMat.color.set(mixHex(C.ink, "#ffffff", dark)); gridMat.opacity = lerp(0.05, 0.045, dark);
 
     // camera
     const yaw = CAM.yaw(T) + f.px * 0.04, pitch = CAM.pitch(T) - f.py * 0.03, fov = CAM.fov(T);
@@ -230,10 +234,11 @@ export function buildWorld() {
     let h = CAM.h(T);
     if (f.narrow) { // tall screens: centre what sits off to one side, and keep a little more in view
       const flatEnd = seg(T, 7.3, 7.46);
-      tg.x = lerp(tg.x, 0, Math.max(seg(T, 0.62, 0.72) * (1 - seg(T, 0.86, 0.97)), flatEnd));
+      tg.x = lerp(tg.x, 0, Math.max(seg(T, 0.5, 0.64) * (1 - seg(T, 0.86, 0.97)), flatEnd));
       tg.y = lerp(tg.y, MC.y - 4.2, flatEnd); h *= lerp(1, 1.3, flatEnd);
       const wk = seg(T, 5.1, 5.16) * (1 - seg(T, 5.86, 5.92)); // work stops: screen centred, above the card
       tg.x -= 1.9 * wk; tg.y -= 1.4 * wk;
+      tg.z += 4.5 * seg(T, 1.1, 1.22) * (1 - seg(T, 1.84, 1.95)); // research: the mark stays above the frame
     }
     const dist = h / Math.tan((fov * Math.PI) / 360);
     const dir = V([Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)]);
@@ -243,19 +248,19 @@ export function buildWorld() {
     rig.fog.near = dist + 30; rig.fog.far = dist + 150; // the flat logo view is ~280 away
 
     // the mark: drafted, assembled, orange by day; edges and lit risers at night
-    const draft = seg(T, 0.3, 0.46), gf = 1 - seg(T, 0.62, 0.72);
+    const draft = seg(T, 0.06, 0.24), gf = 1 - seg(T, 0.46, 0.56);
     mark.ghosts.forEach((g) => { g.geometry.setDrawRange(0, Math.ceil(g.userData.n * draft)); g.visible = draft > 0 && gf > 0; });
     mark.ghostMat.opacity = gf;
-    const ks = [0.44, 0.47, 0.5, 0.48].map((a) => io(seg(T, a, a + 0.16)));
+    const ks = [0.22, 0.25, 0.28, 0.26].map((a) => io(seg(T, a, a + 0.16)));
     mark.pieces.forEach((m, i) => { m.position.copy(flyFrom[i]).multiplyScalar(1 - ks[i]); m.visible = ks[i] > 0; });
-    const orange = io(seg(T, 0.66, 0.82)), wire = dark;
+    const orange = io(seg(T, 0.46, 0.62)), wire = dark;
     // seen flat (the telephoto logo views) the mark is unlit, so it reads as the logo's exact #FF5F00
     const flatK = clamp((12 - fov) / 8) * orange * (1 - wire);
     mark.slabMat.color.set(mixHex(mixHex(mixHex("#FAF9F6", C.or, orange), "#151517", wire), "#000000", flatK));
     mark.slabMat.emissive.set(C.or); mark.slabMat.emissiveIntensity = flatK;
     mark.slabMat.opacity = Math.min(1, (ks[0] + ks[1] + ks[2] + ks[3]) / 3) * lerp(1, 0.35, wire);
     mark.slabMat.depthWrite = wire < 0.5;
-    mark.edgeMat.color.set(mixHex(mixHex(C.ink, C.orD, orange), "#9A9AA2", wire)); mark.edgeMat.opacity = lerp(lerp(0.9, 0.25, orange), 0.9, wire);
+    mark.edgeMat.color.set(mixHex(mixHex(C.ink, C.orD, orange), "#9A9AA2", wire)); mark.edgeMat.opacity = lerp(lerp(0.3, 0, orange), 0.7, wire); // no ink edges by day
     const rs = seg(T, 4.2, 4.32) * (1 - seg(T, 5.9, 6.1));
     mark.risers.forEach((m, i) => { const g = io(seg(T, 4.24 + i * 0.03, 4.36 + i * 0.03)); m.scale.y = Math.max(0.001, g); m.visible = rs > 0; });
     mark.riserMat.opacity = rs;
@@ -268,6 +273,7 @@ export function buildWorld() {
       if (eo2 <= 0) { m.visible = false; return; }
       const [a, b] = EDGES[k]; m.userData.bar.a.copy(corner(pose, a)); m.userData.bar.b.copy(corner(pose, b)); setBar(m, 1);
     });
+    cubeCorners.forEach((m, k) => { m.visible = eo2 > 0; if (m.visible) { m.position.copy(corner(pose, k)); } });
 
     // the six faces
     panels.forEach((p, i) => {

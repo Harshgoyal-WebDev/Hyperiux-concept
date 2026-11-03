@@ -41,7 +41,7 @@ export function Overlay() {
       </div>
       <div className="ac-research-bio" data-k="bio">
         <p>{bionic("We unravel complex design challenges through meticulous user research, expert analysis, prototyping and collaborative design.")}</p>
-        <span className="ac-mono ac-hi">What you just read is called bionic reading.</span>
+        <span className="ac-mono ac-hi">Bionic reading: the eye anchors on the first half of each word.</span>
       </div>
       <div className="ac-next ac-mono" data-k="next">[ Research → Strategy ]</div>
     </>

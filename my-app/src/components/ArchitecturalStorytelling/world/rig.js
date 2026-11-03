@@ -5,11 +5,23 @@ import { KEYS } from "./layout";
 // the same value, so the mark's view is held exactly while it is held. The
 // lens and the framing are interpolated in log space (a dolly zoom from 34°
 // to 0.6° is even all the way).
+// The keys are tunable (TuningPanel.jsx edits them in place): rebuildRig()
+// reads them again, sorted by time.
 const CH = ["tx", "ty", "tz", "yaw", "pitch", "size", "fov", "sx", "sy", "mx", "my"];
-const T = KEYS.map((k) => k.t);
-const V = KEYS.map((k) => [k.target[0], k.target[1], k.target[2], k.yaw, k.pitch, Math.log(k.size), Math.log(k.fov), k.sx ?? 0, k.sy ?? 0, k.mx ?? 0, k.my ?? 0]);
+let T = [];
+let V = [];
+let slopes = [];
 
-const slopes = CH.map((_, c) => {
+export function rebuildRig() {
+  const keys = [...KEYS].sort((a, b) => a.t - b.t);
+  // (two keys at one time: nudge the later, so no segment has zero length)
+  T = keys.map((k) => k.t);
+  for (let i = 1; i < T.length; i++) if (T[i] <= T[i - 1]) T[i] = T[i - 1] + 1e-3;
+  V = keys.map((k) => [k.target[0], k.target[1], k.target[2], k.yaw, k.pitch, Math.log(Math.max(k.size, 1e-3)), Math.log(Math.max(k.fov, 0.1)), k.sx ?? 0, k.sy ?? 0, k.mx ?? 0, k.my ?? 0]);
+  slopes = CH.map((_, c) => pchip(c));
+}
+
+function pchip(c) {
   const n = T.length;
   const d = [];
   for (let i = 0; i < n - 1; i++) d.push((V[i + 1][c] - V[i][c]) / (T[i + 1] - T[i]));
@@ -30,7 +42,8 @@ const slopes = CH.map((_, c) => {
   if (d[0] === 0) m[0] = 0;
   if (d[n - 2] === 0) m[n - 1] = 0;
   return m;
-});
+}
+rebuildRig();
 
 const out = {};
 export function cameraAt(t) {

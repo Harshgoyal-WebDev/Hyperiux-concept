@@ -1,6 +1,7 @@
 import { Lines } from "./lines";
 import { CORE_CENTRE, CUBE_D, CUBE_H, LOGO_PITCH, LOGO_YAW, MARK_CENTRE, MARK_HALF, markToWorld } from "./space";
-import { CONNECTIONS, JOURNEY, PROCESS, SERVICES } from "../content";
+import { CLIENTS, CONNECTIONS, JOURNEY, PROCESS, SERVICES } from "../content";
+import { LAYOUT } from "./tuning";
 
 // The world: one city of the mark's cube, built along the page.
 //
@@ -49,6 +50,23 @@ function box(L, [a, b], { t0, t1, open = false, ...o }) {
   if (!open) solid(a, b, t0 + d * 0.25, d * 0.5, o.out);
 }
 
+// A prism: a polygon on the ground ([x, z] in world units) risen from y0 by
+// h — its plan drawn, its corners rising, its top closing; and its body
+// (World.jsx), collected into PRISMS.
+let PRISMS = [];
+function prism(L, poly, y0, h, { t0, t1, out, ...o }) {
+  const d = t1 - t0;
+  const n = poly.length;
+  const at = (k, y) => [poly[k % n][0], y, poly[k % n][1]];
+  for (let k = 0; k < n; k++) {
+    const s = t0 + d * 0.3 * (k / n);
+    L.seg(at(k, y0 + 0.012), at(k + 1, y0 + 0.012), { t0: s, t1: s + d * 0.3, out, ...o });
+    L.seg(at(k, y0), at(k, y0 + h), { t0: t0 + d * 0.3, t1: t0 + d * 0.75, out, ...o });
+    L.seg(at(k, y0 + h), at(k + 1, y0 + h), { t0: t0 + d * (0.7 + 0.3 * (k / n)), t1: t0 + d * (0.72 + 0.28 * ((k + 1) / n)), out, ...o });
+  }
+  PRISMS.push({ poly, y0, h, t0: t0 + d * 0.3, dur: d * 0.45, out });
+}
+
 // A flat panel standing in a plane of constant z, just behind its outline
 // (seen from +z), so what is behind the panel is hidden but its own lines
 // are not.
@@ -86,20 +104,10 @@ function dim(L, a, b, tick, o) {
   for (const p of [a, b]) L.seg([p[0] - tick[0], p[1] - tick[1], p[2] - tick[2]], [p[0] + tick[0], p[1] + tick[1], p[2] + tick[2]], o);
 }
 
-const mulberry = (seed) => () => {
-  seed |= 0;
-  seed = (seed + 0x6d2b79f5) | 0;
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-
 // ---------------------------------------------------------------------------
 // The places along the thread (grid coordinates)
 // ---------------------------------------------------------------------------
-const STREET_Z = 4.5;
-const STREET = [7, 43]; // the journey's street, x from → to
-const GATES = [12, 18, 24, 30, 36];
+const STREET_Z = 4.5; // the corridor the thread takes to the hub
 const HUB = [43, 3.5]; // 2 × 2
 // the four disciplines, round the hub: each an 8 × 8 site (corner x, z),
 // entered from the side facing it
@@ -121,7 +129,9 @@ const STATION_T = { strategy: 8.6, design: 9.6, technology: 10.6, marketing: 11.
 export function buildWorld(mark) {
   const L = new Lines();
   SOLIDS = [];
+  PRISMS = [];
   const solids = SOLIDS;
+  const A = LAYOUT;
   const labels = [];
   const label = (p, text, t0, t1, accent = false, dense = false) => labels.push({ p, text, t0, t1, accent, dense });
 
@@ -221,7 +231,7 @@ export function buildWorld(mark) {
     box(L, cellBox(-1, -2, 3, 3, 3), { t0, t1: t0 + 0.35, w: 1.2, out, open: true });
     box(L, cellBox(-3, -4, 7, 7, 7), { t0: t0 + 0.15, t1: t0 + 0.55, tone: "guide", out, open: true });
   };
-  nests(4.25, [5.6, 6.0]);
+  nests(4.25, [A.planStart - 0.05, A.planStart + 0.3]);
   nests(18.05, [18.95, 19.25]); // and again on coming home (19)
   for (let i = -3; i <= 4; i++) {
     const t0 = 4.45 + (i + 3) * 0.02;
@@ -229,49 +239,95 @@ export function buildWorld(mark) {
     L.seg(P(-3, 0.01, i - 1), P(4, 0.01, i - 1), { t0, t1: t0 + 0.3, tone: "guide", out: [6.4, 6.8] });
   }
 
-  // ---- 06 structure: modules round the core, wired face to face ---------
-  const mods = [
-    [-2, -3, 2], [0, -3, 1], [2, -3, 3],
-    [-2, -1, 1], [2, -1, 1],
-    [-2, 1, 1], [0, 1, 2], [2, 1, 1],
+  // ---- 06 structure: the mark itself, as the plan of a building --------
+  // Its two uprights and two bridges laid on the ground round the core (the
+  // mark's cube is where the core stands), risen into walls, and wired:
+  // upright to bridge, bridge into the core. The brand is the structure.
+  const mk = (lx, ly) => [0.5 + (lx - 250) * A.planScale, -0.5 + (ly - 250.4) * A.planScale]; // grid
+  const mw = (lx, ly) => {
+    const [x, z] = mk(lx, ly);
+    return [x, z * CUBE_D];
+  };
+  const PIECES = [
+    { h: A.planUprightH, pts: [[40, 13], [106.261, 13], [106.261, 222.826], [40, 222.826]] },
+    { h: A.planUprightH, pts: [[393.394, 278.043], [459.654, 278.043], [459.654, 487.869], [393.394, 487.869]] },
+    { h: A.planBridgeH, pts: [[40.14, 278.043], [198.062, 223.931], [198.062, 287.983], [106.401, 322.217], [106.401, 487.869], [40.14, 487.869]] },
+    { h: A.planBridgeH, pts: [[393.527, 13], [460.892, 13], [460.892, 222.826], [291.927, 290.889], [291.927, 222.826], [393.527, 178.653]] },
   ];
-  mods.forEach(([x, z, n], k) => {
-    for (let y = 0; y < n; y++) {
-      const t0 = 5.05 + k * 0.04 + y * 0.08;
-      box(L, cellBox(x, z, 1, 1, 1, y), { t0, t1: t0 + 0.3, w: 1.1, out: [6.55, 6.95] });
-    }
+  // (cleared as the thread comes home, before the view becomes the mark)
+  const planOut = [17.95, 18.3];
+  PIECES.forEach((pc, k) => {
+    const t0 = A.planStart + k * 0.07;
+    prism(L, pc.pts.map(([x, y]) => mw(x, y)), 0, pc.h, { t0, t1: t0 + A.planRise, w: 1.3, out: planOut });
   });
-  const wy = H / 2;
-  const wires = [
-    [[1, -0.5], [2, -0.5]], [[0, -0.5], [-1, -0.5]], [[0.5, -1], [0.5, -2]], [[0.5, 0], [0.5, 1]],
-    [[-1, -2.5], [0, -2.5]], [[1, -2.5], [2, -2.5]], [[-1, 1.5], [0, 1.5]], [[1, 1.5], [2, 1.5]],
-    [[-1.5, -2], [-1.5, -1]], [[2.5, -2], [2.5, -1]], [[-1.5, 0], [-1.5, 1]], [[2.5, 0], [2.5, 1]],
-  ];
-  wires.forEach(([a, b], k) => L.seg(P(a[0], wy, a[1]), P(b[0], wy, b[1]), { t0: 5.4 + k * 0.025, t1: 5.55 + k * 0.025, out: [6.55, 6.9], tone: k < 4 ? "accent" : "ink" }));
+  // the joints: upright to bridge (ink), bridge into the core (orange)
+  const wy = Math.min(A.planBridgeH, H) / 2;
+  const wire = (a, b, t0, tone) => L.seg(P(a[0], wy, a[1]), P(b[0], wy, b[1]), { t0, t1: t0 + 0.14, tone, w: tone === "accent" ? 2 : 1.2, out: planOut });
+  const tw = A.planStart + A.planRise + 0.12;
+  wire(mk(73, 222.826), mk(73, 266.8), tw, "ink");
+  wire(mk(426.5, 278.043), mk(426.5, 236.9), tw + 0.04, "ink");
+  wire(mk(198.062, 256), [0, mk(198.062, 256)[1]], tw + 0.1, "accent");
+  wire(mk(291.927, 256.8), [1, mk(291.927, 256.8)[1]], tw + 0.14, "accent");
+  label(P(mk(73, 13)[0], A.planUprightH + 0.35, mk(73, 13)[1]), "The mark, as a plan", A.planStart + 0.4, 6.0, false, true);
 
-  // ---- 07 the five connections leave it; Growth becomes the thread ------
-  const nodes = [
-    { at: [-8, -6], route: [[0, -0.5], [-7.5, -0.5], [-7.5, -5]] },
-    { at: [-5, -10], route: [[0.5, -1], [0.5, -4], [-4.5, -4], [-4.5, -9]] },
-    { at: [3, -10], route: [[0.5, -1], [0.5, -4], [3.5, -4], [3.5, -9]] },
-    { at: [8, -6], route: [[1, -0.5], [8.5, -0.5], [8.5, -5]] },
-    { at: [6, 4], route: null },
+  // ---- 07 the five connections leave it, the ring closes, Growth leads ---
+  // each from a face of the mark's plan, straight out to its node; then one
+  // ring through all five closes the network (a signal runs round it);
+  // only then does Growth light and the thread leave from it
+  const o = A.nodeOut;
+  const SRC = [
+    [mk(40, 118), [-1, 0]], // Human behaviour: the left upright's side
+    [mk(73, 13), [0, -1]], // Strategy: its top
+    [mk(427, 13), [0, -1]], // Design: the right bridge's top
+    [mk(459.654, 383), [1, 0]], // Technology: the right upright's side
+    [mk(426.5, 487.869), [0, 1]], // Growth: its foot
   ];
-  nodes.forEach((n, k) => {
-    const t0 = 6.05 + k * 0.06;
-    if (n.route) L.path(ground(n.route), { t0, t1: t0 + 0.4, out: [18.6, 18.95] });
-    box(L, cellBox(n.at[0], n.at[1], 1, 1, 2), { t0: t0 + 0.3, t1: t0 + 0.6, w: 1.2, out: [18.6, 18.95] });
-    label(P(n.at[0] + 0.5, lv(2) + 0.35, n.at[1] + 0.5), CONNECTIONS[k], t0 + 0.4, 7.25, k === 4);
+  const NODE = SRC.map(([p, d]) => [p[0] + d[0] * o, p[1] + d[1] * o]);
+  SRC.forEach(([p, d], k) => {
+    const t0 = 6.02 + k * 0.05;
+    const c = NODE[k];
+    L.path(ground([p, [c[0] - d[0] * 0.5, c[1] - d[1] * 0.5]]), { t0, t1: t0 + 0.2, w: 1.2, out: planOut });
+    box(L, cellBox(c[0] - 0.5, c[1] - 0.5, 1, 1, A.nodeH), { t0: t0 + 0.12, t1: t0 + 0.38, w: 1.2, out: planOut, hi: k === 4 ? [A.growthAt, 1e6] : undefined });
+    label(P(c[0], lv(A.nodeH) + 0.35, c[1]), CONNECTIONS[k], t0 + 0.25, 7.25, k === 4);
   });
+  {
+    const [hb, st, de, te, gr] = NODE;
+    const left = hb[0];
+    const right = te[0];
+    const top = st[1];
+    const bottom = gr[1];
+    const ring = [hb, [left, top], st, de, [right, top], te, [right, bottom], gr, [left, bottom], hb];
+    L.path(ground(ring, 0.025), { t0: A.ringAt - 0.24, t1: A.ringAt, w: 1.3, out: planOut });
+    // the signal round the closed ring, once it closes
+    const lens = ring.slice(1).map((q, i) => Math.hypot(q[0] - ring[i][0], q[1] - ring[i][1]));
+    const total = lens.reduce((x, y) => x + y, 0);
+    let acc = 0;
+    ring.slice(1).forEach((q, i) => {
+      L.seg(P(ring[i][0], 0.03, ring[i][1]), P(q[0], 0.03, q[1]), { t0: A.ringAt, t1: A.ringAt + 0.02, out: [A.growthAt + 0.05, A.growthAt + 0.15], tone: "accent", w: 2.2, run: [acc / total, lens[i] / total] });
+      acc += lens[i];
+    });
+  }
+  const GROW = NODE[4];
 
   // ---- the thread --------------------------------------------------------
-  // [grid point, the time its head passes it]
+  // [grid point, the time its head passes it]: from Growth, round the
+  // people's ring (08), on to the hub
+  const HX = A.humanX;
+  const HZ = A.humanZ;
+  const HR = A.humanRing;
+  const ARC = [7.05, 7.82]; // its run round the ring
   const thread = [
-    [[0.5, 0], 6.05],
-    [[0.5, STREET_Z], 6.3],
-    [[6, STREET_Z], 6.5],
-    [[STREET[0], STREET_Z], 7.02],
-    [[STREET[1], STREET_Z], 7.95],
+    [[GROW[0], GROW[1] + 0.5], A.growthAt + 0.02],
+    [[GROW[0], GROW[1] + 1.2], A.growthAt + 0.08],
+    [[HX - HR - 1.2, GROW[1] + 1.2], 6.95],
+    [[HX - HR - 1.2, HZ], 7.0],
+    [[HX - HR, HZ], 7.05],
+  ];
+  const thread1b = [
+    [[HX + HR, HZ], ARC[1]],
+    [[27, HZ], 7.9],
+    [[27, STREET_Z], 7.97],
+    [[43, STREET_Z], 8.2],
     // through the hub, out to Marketing's side (09: the four wires)
     [[44, STREET_Z], 8.25],
     [[44, 8], 8.4],
@@ -291,7 +347,7 @@ export function buildWorld(mark) {
     [[0.5, -16], 18.2],
     [[0.5, -1], 18.55],
   ];
-  for (const t of [thread, thread2]) {
+  for (const t of [thread, thread1b, thread2]) {
     for (let i = 1; i < t.length; i++) {
       const [a, ta] = t[i - 1];
       const [b, tb] = t[i];
@@ -299,17 +355,58 @@ export function buildWorld(mark) {
     }
   }
 
-  // ---- 08 the journey: the street, its five gates -------------------------
-  GATES.forEach((x, k) => {
-    const t = 7.02 + ((x - STREET[0]) / (STREET[1] - STREET[0])) * 0.93; // when the head reaches it
-    const o = { t0: t - 0.16, t1: t - 0.02, w: 1.3 };
-    const g = 0.22;
-    const gh = 2.5;
-    box(L, [P(x, 0, 2.8), P(x + g, gh, 2.8 + g)], o);
-    box(L, [P(x, 0, 6.2 - g), P(x + g, gh, 6.2)], o);
-    box(L, [P(x, gh, 2.8), P(x + g, gh + g, 6.2)], { ...o, tone: k === 4 ? "accent" : "ink" });
-    label(P(x + 0.11, gh + 0.55, 4.5), `${JOURNEY[k].n} ${JOURNEY[k].label}`, t - 0.14, t + 0.12, true);
-  });
+  // ---- 08 human first: a person at the centre of the journey ------------
+  // An architect's scale figure stands in a ring; the thread walks round it
+  // through the five moments of the journey (each a touchpoint, growing),
+  // and each is seen: a sight line from the eye to it.
+  {
+    const ring = [];
+    for (let k = 0; k <= 48; k++) {
+      const f = (k / 48) * Math.PI * 2;
+      ring.push(P(HX + HR * Math.cos(f), 0.012, HZ + HR * Math.sin(f)));
+    }
+    L.path(ring, { t0: 6.82, t1: 7.02, tone: "guide" });
+    // the thread round the far half: φ from 180° to 360°
+    const steps = 36;
+    for (let k = 0; k < steps; k++) {
+      const f0 = Math.PI + (k / steps) * Math.PI;
+      const f1 = Math.PI + ((k + 1) / steps) * Math.PI;
+      const s0 = ARC[0] + ((ARC[1] - ARC[0]) * k) / steps;
+      L.seg(P(HX + HR * Math.cos(f0), 0.03, HZ + HR * Math.sin(f0)), P(HX + HR * Math.cos(f1), 0.03, HZ + HR * Math.sin(f1)), { t0: s0, t1: s0 + (ARC[1] - ARC[0]) / steps, tone: "accent", w: 2.2 });
+    }
+    // the figure: a standing person, in the plane facing the camera
+    const fh = A.humanHeight;
+    const yaw = (A.humanFacing * Math.PI) / 180;
+    const rx = Math.cos(yaw);
+    const rz = -Math.sin(yaw);
+    const fig = (x, y) => [HX + rx * x * fh, y * fh, HZ * CUBE_D + rz * x * fh];
+    const half = [[0.03, 0.86], [0.11, 0.82], [0.135, 0.72], [0.14, 0.47], [0.115, 0.45], [0.105, 0.6], [0.085, 0.74], [0.08, 0.56], [0.09, 0.5], [0.075, 0.26], [0.07, 0.04], [0.1, 0], [0.02, 0], [0.025, 0.27], [0, 0.45]];
+    const body = [...half, ...half.slice(0, -1).reverse().map(([x, y]) => [-x, y])].map(([x, y]) => fig(x, y));
+    body.push(body[0]);
+    L.path(body, { t0: 6.88, t1: 7.12, w: 1.45 });
+    const head = [];
+    for (let k = 0; k <= 20; k++) {
+      const f = (k / 20) * Math.PI * 2;
+      head.push(fig(0.065 * Math.sin(f), 0.93 + 0.065 * Math.cos(f)));
+    }
+    L.path(head, { t0: 7.0, t1: 7.12, w: 1.45 });
+    const eye = fig(0, 0.93);
+    // its eye level, drawn across the ring
+    L.seg([HX - HR, eye[1], HZ * CUBE_D], [HX + HR, eye[1], HZ * CUBE_D], { t0: 7.02, t1: 7.2, tone: "guide" });
+    label([HX - HR - 0.2, eye[1] + 0.1, HZ * CUBE_D], "Eye level", 7.1, 7.95, false, true);
+    // the five moments, round its far side
+    JOURNEY.forEach((j, k) => {
+      const f = Math.PI + ((k + 1) / 6) * Math.PI;
+      const t = ARC[0] + ((ARC[1] - ARC[0]) * (k + 1)) / 6; // when the thread reaches it
+      const cx = HX + HR * Math.cos(f);
+      const cz = HZ + HR * Math.sin(f);
+      const s2 = A.touchSize / 2;
+      const hgt = 0.35 + k * A.touchStep;
+      box(L, [P(cx - s2, 0, cz - s2), P(cx + s2, hgt, cz + s2)], { t0: t - 0.14, t1: t, w: 1.25, tone: k === 4 ? "accent" : "ink" });
+      L.seg(eye, P(cx, hgt, cz), { t0: t - 0.04, t1: t + 0.08, tone: "guide" });
+      label(P(cx, hgt + 0.3, cz), `${j.n} ${j.label}`, t - 0.08, 7.95, k === 4);
+    });
+  }
 
   // ---- 09 the hub, the four disciplines' sites, their wires -------------
   box(L, cellBox(HUB[0], HUB[1], 2, 2, 2), { t0: 7.85, t1: 8.2, w: 1.6 });
@@ -487,66 +584,38 @@ export function buildWorld(mark) {
     L.path([P(x1, 0.8, z0 + 1.2), P(x1, 0.8, z1 - 1.2), P(x1, 4.0, z1 - 1.2), P(x1, 4.0, z0 + 1.2), P(x1, 0.8, z0 + 1.2)], { t0: 14.5, t1: 14.9, w: 1.5 });
   }
 
-  // ---- 17 the clients: twelve modules on one plinth ----------------------
+  // ---- 17 the clients: a grid of cubes rising in a wave, a logo on each top
+  const logos = [];
   {
     const [x, z] = CLIENTS_AT;
-    L.path(ground([[x, z], [x + 8, z], [x + 8, z + 8], [x, z + 8], [x, z]], 0.01), { t0: 16.0, t1: 16.3, w: 1.2 });
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 3; j++) {
-        const t0 = 16.1 + (i + j * 4) * 0.035;
-        box(L, cellBox(x + 0.75 + i * 1.9, z + 1.25 + j * 2.25, 1, 1, 1), { t0, t1: t0 + 0.25, w: 1.2 });
-      }
-    }
+    const s2 = A.clientSize;
+    const w = 0.5 + 3 * A.clientGapX + s2 + 0.5;
+    const d = 0.5 + 2 * A.clientGapZ + s2 + 0.5;
+    L.path(ground([[x, z], [x + w, z], [x + w, z + d], [x, z + d], [x, z]], 0.01), { t0: A.clientStart - 0.1, t1: A.clientStart + 0.2, w: 1.2 });
+    CLIENTS.forEach((c, k) => {
+      const i = k % 4;
+      const j = Math.floor(k / 4);
+      const cx = x + 0.5 + i * A.clientGapX;
+      const cz = z + 0.5 + j * A.clientGapZ;
+      const levels = A.clientBase + (i + j) * A.clientStep;
+      const t0 = A.clientStart + (i + j) * A.clientStagger * 2 + i * 0.012;
+      const dur = 0.32;
+      box(L, cellBox(cx, cz, s2, s2, levels), { t0, t1: t0 + dur, w: 1.2 });
+      logos.push({ src: c.logo, name: c.name, p: P(cx + s2 / 2, lv(levels), cz + s2 / 2), size: s2 * A.logoSize, turn: A.logoTurn, t0: t0 + dur * 0.72, t1: t0 + dur * 1.05 });
+    });
   }
 
   // ---- 18 the bigger picture: the places, named from above ---------------
   [
     [P(0.5, 0.5, -6), "Origin"],
-    [P(25, 0.5, STREET_Z), "Journey"],
+    [P(A.humanX, 0.5, A.humanZ), "People"],
     [P(44, 0.5, 4.5 - 12), "Capabilities"],
     [P(52, 0.5, PROC_Z), "Process"],
     [P(84, 0.5, PROC_Z), "Work"],
     [P(106, 0.5, PROC_Z), "Clients"],
   ].forEach(([p, text], k) => label(p, text, 17.1 + k * 0.05, 18.05, k === 0));
 
-  // ---- the city: rising round the street as the journey runs through it --
-  const keep = [
-    [-12, -14, 12, 8],
-    [-28, 0, 0, 30], // (the line of sight to the mark)
-    [6, 1.5, 47, 7.5],
-    [39, -1, 49, 10],
-    [31, -11, 41, -1],
-    [47, -11, 57, -1],
-    [47, 10, 57, 20],
-    [31, 10, 41, 20],
-    [34, -3, 54, 0.5],
-    [34, 7, 54, 10],
-    [34, 18, 70, 36],
-    [68, 18, 100, 30],
-    [100, 18, 118, 30],
-    [113, -18, 119, 30],
-    [-2, -18, 119, -14],
-    [-1, -18, 2, -1],
-  ];
-  const rand = mulberry(7);
-  for (let x = -36; x < 128; x += 3) {
-    for (let z = -40; z < 56; z += 3) {
-      if (rand() > 0.56) continue;
-      const r = rand();
-      const sx = r < 0.6 ? 1 : 2;
-      const sz = r < 0.75 ? 1 : 2;
-      if (keep.some(([a, b, c, d]) => x + sx > a - 0.5 && x < c + 0.5 && z + sz > b - 0.5 && z < d + 0.5)) continue;
-      const far = Math.min(Math.hypot(x - 25, z - STREET_Z) / 50, 1);
-      const street = x > 4 && x < 48 && Math.abs(z - STREET_Z) < 12; // lining the journey
-      const tall = rand() < (street ? 0.16 : 0.07);
-      const levels = tall ? 8 + Math.floor(rand() * 7) : (street ? 3 : 1) + Math.floor(rand() * (street ? 5 : 2 + far * 5));
-      // rising just ahead of the camera as it runs the street
-      const t0 = 6.6 + Math.min(Math.max((x + 6) / 60, 0), 1) * 0.62 + rand() * 0.1;
-      tower(L, x, z, sx, sz, levels, t0, 0.22 + levels * 0.015, { tone: "guide", w: 1 });
-    }
-  }
-
-  return { lines: L, solids, labels };
+  return { lines: L, solids, prisms: PRISMS, labels, logos };
 }
 
 // ---------------------------------------------------------------------------
@@ -572,12 +641,13 @@ export const KEYS = [
   { t: 2.75, ...MARK, sx: 0.3, my: -0.3 },
   { t: 3.8, ...MARK, sx: 0.3, my: -0.3 },
   { t: 4.6, target: [0.5, 1.8, -0.5], yaw: -62, pitch: 20, size: 4.3, fov: 34, sx: 0.3, my: -0.3 },
-  { t: 5.55, target: [0.5, 1.2, -0.5], yaw: -24, pitch: 30, size: 4.6, fov: 36, sx: 0.3, my: -0.3 },
-  { t: 6.5, target: [0.5, 0, -2.5], yaw: -30, pitch: 56, size: 11.5, fov: 36, sx: 0.3, my: -0.25 },
-  { t: 7.12, target: [12, 1.6, STREET_Z], yaw: -90, pitch: 17, size: 3.6, fov: 50, sx: 0.12 },
-  { t: 7.92, target: [42, 1.6, STREET_Z], yaw: -90, pitch: 17, size: 3.6, fov: 50, sx: 0.12 },
-  { t: 8.6, target: [44, 0.5, 4.5], yaw: -34, pitch: 50, size: 12, fov: 38, sx: 0.28, my: -0.2 },
-  { t: 8.95, target: [44, 0.5, 4.5], yaw: -30, pitch: 52, size: 12.5, fov: 38, sx: 0.28, my: -0.2 },
+  { t: 5.55, target: [0.5, 1.0, -0.5], yaw: -24, pitch: 40, size: 6.6, fov: 36, sx: 0.3, my: -0.3 },
+  { t: 6.5, target: [0.5, 0, -0.5], yaw: -28, pitch: 58, size: 13.5, fov: 36, sx: 0.3, my: -0.25 },
+  { t: 6.8, target: [0.5, 0, -0.5], yaw: -26, pitch: 58, size: 13.8, fov: 36, sx: 0.3, my: -0.25 },
+  { t: 7.25, target: [LAYOUT.humanX, 1, LAYOUT.humanZ * CUBE_D], yaw: LAYOUT.humanFacing, pitch: 22, size: 3.9, fov: 40, sx: 0.3, my: -0.25 },
+  { t: 7.88, target: [LAYOUT.humanX, 1, LAYOUT.humanZ * CUBE_D], yaw: 8, pitch: 26, size: 4.2, fov: 40, sx: 0.3, my: -0.25 },
+  { t: 8.6, target: [44, 0, 4.5], yaw: -12, pitch: 68, size: 20.5, fov: 36, sx: 0.24, my: -0.2 },
+  { t: 8.95, target: [44, 0, 4.5], yaw: -8, pitch: 70, size: 21, fov: 36, sx: 0.24, my: -0.2 },
   { t: 9.5, target: site("strategy", 1.2), yaw: -36, pitch: 34, size: 4.8, fov: 34, sx: 0.42 },
   { t: 10.5, target: site("design", 2.2), yaw: -24, pitch: 16, size: 6, fov: 34, sx: -0.45 },
   { t: 11.5, target: [52, 2.6, 15 * CUBE_D], yaw: -36, pitch: 20, size: 5.8, fov: 34, sx: 0.45 },
@@ -586,7 +656,7 @@ export const KEYS = [
   { t: 14.15, target: [73, 2.1, PROC_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 },
   { t: 15.05, target: [90, 2.1, PROC_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 },
   { t: 15.55, target: [98, 2.4, PROC_Z], yaw: -90, pitch: 3, size: 2.6, fov: 48, sx: -0.35 },
-  { t: 16.5, target: [CLIENTS_AT[0] + 4, 0.6, (PROC_Z) * CUBE_D], yaw: -42, pitch: 40, size: 5, fov: 34, sx: 0.4 },
+  { t: 16.5, target: [CLIENTS_AT[0] + 4.3, 1.2, (CLIENTS_AT[1] + 3.5) * CUBE_D], yaw: -20, pitch: 56, size: 6, fov: 34, sx: 0.4 },
   { t: 17.5, target: [42, 0, 6], yaw: -28, pitch: 58, size: 44, fov: 32 },
   { t: 18.5, target: [0.5, 1.6, -0.5], yaw: -62, pitch: 22, size: 4.6, fov: 34, sx: 0.4 },
   { t: 19.5, ...MARK, size: MARK_HALF * 2, sx: -0.5 },

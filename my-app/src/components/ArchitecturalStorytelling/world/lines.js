@@ -78,6 +78,7 @@ export function worldUniforms() {
     uTime: { value: 0 },
     uRes: { value: new THREE.Vector2(1, 1) },
     uPx: { value: 1 },
+    uWidth: { value: 1 },
     uNear: { value: 0.1 },
     uInk: { value: new THREE.Color("#ffffff") },
     uGuide: { value: new THREE.Color("#777777") },
@@ -99,6 +100,7 @@ const vertexShader = /* glsl */ `
   uniform float uW;
   uniform vec2 uRes;
   uniform float uPx;
+  uniform float uWidth;
   uniform float uNear;
   uniform vec3 uInk;
   uniform vec3 uGuide;
@@ -139,7 +141,7 @@ const vertexShader = /* glsl */ `
     if (position.y < 0.0) off -= dir;
     else if (position.y > 1.0) off += dir;
     off.x /= aspect;
-    off *= (aStyle.y * uPx) / uRes.y;
+    off *= (aStyle.y * uPx * uWidth) / uRes.y;
     vec4 clip = position.y < 0.5 ? ca : cb;
     clip.xy += off * clip.w;
     gl_Position = vis > 0.5 ? clip : vec4(2.0, 2.0, 2.0, 1.0);

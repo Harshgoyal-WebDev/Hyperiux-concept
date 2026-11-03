@@ -226,16 +226,14 @@ export function ImpactSection() {
         </figure>
         <div data-scene="" className="md:col-span-6">
           <p className="bp-mono mb-4 text-[0.72rem] uppercase tracking-[0.18em] text-[var(--bp-muted)]">Clients</p>
-          <ul className="grid grid-cols-4 max-md:grid-cols-3">
+          {/* the logos stand in the world, on their cubes' tops (world/layout.js, 17);
+              here they are named for screen readers, and the space is left to the scene */}
+          <ul className="sr-only">
             {CLIENTS.map((c) => (
-              <li key={c.name} className="relative flex aspect-[4/3] items-center justify-center p-[18%]">
-                <Rule className="bottom-0 left-0" />
-                <Rule dir="y" className="right-0 top-0" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.logo} alt={c.name} loading="lazy" className="max-h-full max-w-full opacity-70 transition-opacity [filter:brightness(0)] hover:opacity-100" />
-              </li>
+              <li key={c.name}>{c.name}</li>
             ))}
           </ul>
+          <div className="aspect-[4/3]" aria-hidden="true" />
           <p className="bp-mono mt-10 text-[0.72rem] uppercase tracking-[0.18em] text-[var(--bp-muted)]">Industries</p>
           <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
             {INDUSTRIES.map((n) => (

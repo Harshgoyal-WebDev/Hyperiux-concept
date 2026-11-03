@@ -1,0 +1,453 @@
+/* HYPERIUX — From Curiosity to Impact (components/CuriosityToImpact) */
+
+.cti-root {
+  --gutter: max(20px, 5.5vw);
+  --cti-unit: 85svh; /* one beat of the opening, in scroll */
+  --cti-ink: rgb(247, 247, 245);
+  --cti-bg: rgb(8, 9, 11);
+  --cti-line: rgb(60, 61, 64);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  color: #111214;
+}
+@media (max-width: 767px) {
+  .cti-root {
+    --cti-unit: 60svh;
+  }
+}
+
+.cti-container {
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---- type ---------------------------------------------------------------- */
+.cti-hero {
+  font-size: clamp(2.6rem, 5.2vw, 5.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+.cti-display {
+  font-size: clamp(2.2rem, 3.9vw, 4.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.032em;
+  font-weight: 500;
+}
+.cti-display-sm {
+  font-size: clamp(1.7rem, 2.6vw, 2.7rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+.cti-display-xl {
+  font-size: clamp(2.5rem, 5.4vw, 5.8rem);
+  line-height: 1;
+  letter-spacing: -0.038em;
+  font-weight: 500;
+}
+.cti-body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+.cti-eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.cti-caps {
+  font-size: 13px;
+  line-height: 2;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+.cti-beat .cti-eyebrow {
+  color: #ff5f1f;
+}
+.cti-beat .cti-body {
+  color: color-mix(in srgb, var(--cti-ink) 62%, transparent);
+}
+
+/* a line that rises out of its own mask */
+.cti-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.cti-line-in {
+  display: inline-block;
+  transform: translateY(110%);
+  will-change: transform;
+}
+.cti-beat {
+  visibility: hidden;
+  will-change: opacity, transform;
+}
+
+/* ---- the opening's chrome ------------------------------------------------ */
+.cti-vignette {
+  opacity: var(--cti-dark, 1);
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+.cti-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -8px 0 0 -4px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  color: var(--cti-ink);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.cti-label-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff5f1f;
+  box-shadow: 0 0 10px 2px rgba(255, 95, 31, 0.55);
+}
+.cti-tick {
+  display: block;
+  height: 1px;
+  width: 8px;
+  background: currentColor;
+  opacity: 0.2;
+  transition: width 0.4s, opacity 0.4s, background-color 0.4s;
+}
+.cti-tick.is-act {
+  opacity: 0.55;
+}
+.cti-tick.is-on {
+  width: 20px;
+  opacity: 1;
+  background: #ff5f1f;
+}
+.cti-scroll-line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 42px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+.cti-scroll-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ff5f1f;
+  animation: cti-drip 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes cti-drip {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+.cti-glow {
+  background: radial-gradient(40% 50% at 72% 55%, rgba(255, 95, 31, 0.22), transparent 70%), radial-gradient(60% 40% at 20% 100%, rgba(169, 170, 173, 0.08), transparent 70%);
+}
+
+/* ---- links and buttons --------------------------------------------------- */
+.cti-nav {
+  position: relative;
+  opacity: 0.82;
+  transition: opacity 0.3s;
+}
+.cti-nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 1px;
+  background: #ff5f1f;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.cti-nav:hover,
+.cti-nav:focus-visible {
+  opacity: 1;
+}
+.cti-nav:hover::after,
+.cti-nav:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.cti-cta-dark,
+.cti-cta-orange {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 999px;
+  padding: 14px 24px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: background-color 0.35s, color 0.35s, border-color 0.35s, transform 0.35s;
+}
+.cti-cta-dark {
+  border: 1px solid color-mix(in srgb, var(--cti-ink) 35%, transparent);
+  color: var(--cti-ink);
+  background: color-mix(in srgb, var(--cti-bg) 30%, transparent);
+  backdrop-filter: blur(6px);
+}
+.cti-cta-dark:hover {
+  border-color: #ff5f1f;
+}
+.cti-cta-orange {
+  background: #ff5f1f;
+  color: #fff;
+}
+.cti-cta-orange:hover {
+  background: #111214;
+}
+.cti-link {
+  display: inline-flex;
+  gap: 8px;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+  transition: color 0.3s;
+}
+.cti-link:hover {
+  color: #ff5f1f;
+}
+.cti-root :focus-visible {
+  outline: 2px solid #ff5f1f;
+  outline-offset: 4px;
+}
+
+/* ---- reveals (2D) ------------------------------------------------------- */
+.cti-root [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cti-root [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- work ------------------------------------------------------------------ */
+.cti-card {
+  isolation: isolate;
+  border: 1px solid #e8e8e5;
+}
+.cti-card-img {
+  transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s;
+}
+.cti-card:hover .cti-card-img,
+.cti-card:focus-visible .cti-card-img {
+  transform: scale(1.045);
+}
+.cti-arrow {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cti-card:hover .cti-arrow {
+  transform: translate(3px, -3px);
+}
+.cti-view {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.cti-card:hover .cti-view,
+.cti-card:focus-visible .cti-view {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .cti-view {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cti-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100svh - 48px);
+  margin: auto;
+  overflow: auto;
+  border-radius: 22px;
+  background: #f7f7f5;
+  color: #111214;
+}
+.cti-dialog::backdrop {
+  background: rgba(8, 9, 11, 0.6);
+  backdrop-filter: blur(6px);
+}
+.cti-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #e8e8e5;
+  font-size: 22px;
+  line-height: 1;
+  transition: border-color 0.3s, color 0.3s;
+}
+.cti-close:hover {
+  border-color: #ff5f1f;
+  color: #ff5f1f;
+}
+
+/* ---- capabilities -------------------------------------------------------- */
+.cti-plus {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.cti-plus::before,
+.cti-plus::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: currentColor;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.cti-plus::after {
+  transform: rotate(90deg);
+}
+.cti-plus.is-open::after {
+  transform: rotate(0deg);
+}
+.cti-acc {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.cti-acc.is-open {
+  grid-template-rows: 1fr;
+}
+
+/* the process: a rail filling with the scroll, each step lit as it passes */
+.cti-process-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 1px;
+  background: linear-gradient(to right, #ff5f1f calc(var(--p) * 100%), #e8e8e5 calc(var(--p) * 100%));
+}
+.cti-process-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid #a9aaad;
+  background: #f7f7f5;
+  transition: background-color 0.4s, border-color 0.4s, box-shadow 0.4s;
+}
+.cti-process li {
+  --lit: clamp(0, (var(--p) * 5 - var(--i)) * 4, 1);
+}
+.cti-process li .cti-process-dot {
+  background: color-mix(in srgb, #ff5f1f calc(var(--lit) * 100%), #f7f7f5);
+  border-color: color-mix(in srgb, #ff5f1f calc(var(--lit) * 100%), #a9aaad);
+}
+@media (max-width: 767px) {
+  .cti-process-rail {
+    left: 4px;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    height: auto;
+    background: linear-gradient(to bottom, #ff5f1f calc(var(--p) * 100%), #e8e8e5 calc(var(--p) * 100%));
+  }
+  .cti-process li {
+    padding-left: 32px;
+  }
+  .cti-process-dot {
+    top: 4px;
+  }
+}
+
+/* ---- the vault ----------------------------------------------------------- */
+.cti-pane {
+  border-radius: 16px;
+  border: 1px solid rgba(247, 247, 245, 0.12);
+  background: linear-gradient(160deg, rgba(247, 247, 245, 0.08), rgba(247, 247, 245, 0.02));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+}
+.cti-pane-label {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 1;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247, 247, 245, 0.5);
+}
+.cti-magnetic {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: #ff5f1f;
+  color: #fff;
+  font-size: 13px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cti-switch {
+  position: relative;
+  width: 64px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(247, 247, 245, 0.16);
+  transition: background-color 0.35s;
+}
+.cti-switch span {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f7f7f5;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.cti-switch.is-on {
+  background: #ff5f1f;
+}
+.cti-switch.is-on span {
+  transform: translateX(30px);
+}
+.cti-wave {
+  stroke-dasharray: 6 10;
+  animation: cti-flow 9s linear infinite;
+}
+@keyframes cti-flow {
+  to {
+    stroke-dashoffset: -160;
+  }
+}
+
+/* ---- reduced motion: nothing moves on its own --------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .cti-root *,
+  .cti-root *::before,
+  .cti-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cti-root [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}

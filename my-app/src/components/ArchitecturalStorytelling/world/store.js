@@ -1,6 +1,7 @@
 "use client";
 
 import gsap from "gsap";
+import { LOOK } from "./tuning";
 
 // World time, from the scroll.
 //
@@ -76,7 +77,7 @@ let introTween = null;
 function tick(time, dt) {
   WORLD.T = tOf(window.scrollY);
   // eased: quick enough to feel attached to the wheel, slow enough to glide
-  const k = WORLD.reduced ? 1 : 1 - Math.exp(-(dt / 1000) * 7);
+  const k = WORLD.reduced ? 1 : 1 - Math.exp(-(dt / 1000) * LOOK.scrollEase);
   WORLD.Ts += (WORLD.T - WORLD.Ts) * k;
   if (Math.abs(WORLD.T - WORLD.Ts) < 1e-4) WORLD.Ts = WORLD.T;
   // reduced motion: one still, the mark

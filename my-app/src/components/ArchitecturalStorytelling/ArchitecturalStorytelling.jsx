@@ -11,9 +11,14 @@ import { FRAMES } from "./content";
 import { FrameLabel, Headline } from "./FrameText";
 import { useDraw } from "./useDraw";
 import { measure, onWorld, smooth, startWorld } from "./world/store";
+import { LOOK } from "./world/tuning";
 
 // WebGL, in the browser only
 const World = dynamic(() => import("./world/World"), { ssr: false });
+// the Leva panels: in development, or with ?tune in the address
+const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
+const tuneQuery = () => process.env.NODE_ENV !== "production" || new URLSearchParams(window.location.search).has("tune");
+const noop = () => () => {};
 
 // HYPERIUX — The Connected Blueprint. Twenty frames on one page, over one
 // world (world/): a city of the mark's own cube, drawn line by line as the
@@ -48,6 +53,7 @@ const THEME = [
 export default function ArchitecturalStorytelling() {
   const reduced = useSyncExternalStore(subscribe, () => window.matchMedia(motionQuery).matches, () => false);
   const mobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(mobileQuery).matches, () => false);
+  const tune = useSyncExternalStore(noop, tuneQuery, () => false);
   const rootRef = useRef(null);
   const lightRef = useRef(null);
 
@@ -60,7 +66,7 @@ export default function ArchitecturalStorytelling() {
     const root = rootRef.current;
     let last = -1;
     return onWorld(({ W }) => {
-      const m = Math.round(smooth(8.05, 8.6, W) * 200) / 200;
+      const m = Math.round(smooth(LOOK.lightFrom, LOOK.lightTo, W) * 200) / 200;
       if (m === last) return;
       last = m;
       THEME.forEach(([name, a, b]) => {
@@ -92,6 +98,7 @@ export default function ArchitecturalStorytelling() {
         Skip to content
       </a>
       <World mobile={mobile} />
+      {tune && <TuningPanel />}
       <Header />
       <ScrollProgress />
       <main id="main" className="relative z-10">

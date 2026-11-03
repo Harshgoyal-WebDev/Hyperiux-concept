@@ -41,7 +41,7 @@ export function Header() {
     scrollTo(to);
   };
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 bg-[var(--bp-bg)] text-[var(--bp-fg)] ${light ? "bp-light" : ""}`}>
+    <header className={`fixed inset-x-0 top-0 z-50 bg-transparent text-[var(--bp-fg)] ${light ? "bp-light" : ""}`}>
       <div className="flex h-[72px] items-center justify-between px-[6vw]">
         <Link href="/" className="flex items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--bp-accent)]" aria-label="Hyperiux home">
           <span className="block size-7" style={mask("/hyperiux-icon-white.svg")} aria-hidden="true" />

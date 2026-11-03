@@ -1,19 +1,19 @@
 import * as arrival from "./arrival";
-import * as survey from "./survey";
-import * as blueprint from "./blueprint";
-import * as structure from "./structure";
-import * as material from "./material";
-import * as systems from "./systems";
-import * as district from "./district";
-import * as occupancy from "./occupancy";
+import * as research from "./research";
+import * as strategy from "./strategy";
+import * as design from "./design";
+import * as engineering from "./engineering";
+import * as work from "./work";
+import * as impact from "./impact";
 import * as handover from "./handover";
 
-// The nine chapters in scroll order. Each module exports:
-//   key, name     — CSS prefix (.ac-<key>-…) and the chapter's display name
-//   build(kit)    — builds its three.js objects once → { root: Group, update(t, f), bind?(els, f) }
-//   Overlay()     — its DOM layer (copy, cards, labels); elements the update drives carry data-k="…"
-// update(t, f) runs every frame while the chapter is on screen, t = 0–1 (the
-// storyboard's ten frames sit at t = i/9). f is the frame context (Stage.jsx).
-export const CHAPTERS = [arrival, survey, blueprint, structure, material, systems, district, occupancy, handover].map((m) => ({
-  key: m.key, name: m.name, build: m.build, Overlay: m.Overlay,
+// The eight chapters in scroll order. The world (../world/world.js) is one
+// continuous scene; a chapter owns only its DOM layer. Each module exports:
+//   key, name            — CSS prefix (.ac-<key>-…) and the chapter's name
+//   Overlay()            — its DOM; elements it drives carry data-k="…"
+//   dom(t, f, w, st)     — runs every frame while the chapter is on screen, t = 0–1;
+//                          f is the frame context (Stage.jsx), w the world's api, st its own state
+//   bind?(els, f, w, st) — once, to wire clicks
+export const CHAPTERS = [arrival, research, strategy, design, engineering, work, impact, handover].map((m) => ({
+  key: m.key, name: m.name, Overlay: m.Overlay, dom: m.dom, bind: m.bind,
 }));

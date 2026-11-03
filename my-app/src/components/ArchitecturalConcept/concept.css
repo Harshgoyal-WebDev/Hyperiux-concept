@@ -1,12 +1,12 @@
 /* HYPERIUX — architectural concept: the page's shared layers and type.
    Chapter overlays add their own classes (chapters/<key>.css), prefixed .ac-<key>-.
    Colours: paper #E7E6E2, sheet #F3F2EE, ink #141413, graphite #5D5B56,
-   orange #FF6A13 (Hyperiux only; #B9440A for small orange text on paper), night #0C0C0D.
+   orange #FF5F00 (Hyperiux only; #B9440A for small orange text on paper), night #0C0C0D.
    --fg, --fg2, --rule, --bar, --panel and --hi follow the scene (Stage.jsx). */
 
 .ac-root {
   --paper: #e7e6e2; --sheet: #f3f2ee; --ink: #141413; --graphite: #5d5b56; --mute: #8e8b85;
-  --or: #ff6a13; --or-ink: #b9440a; --night: #0c0c0d;
+  --or: #ff5f00; --or-ink: #b9440a; --night: #0c0c0d;
   --fg: #141413; --fg2: #5d5b56; --rule: rgba(20, 20, 19, 0.16); --bar: #e7e6e2; --panel: #f3f2ee; --hi: #b9440a;
   --display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
   --body: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
@@ -33,7 +33,6 @@
 /* off-screen chapters are display:none: their elements keep inline visibility from setO, which would show through a hidden parent */
 .ac-ch { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; display: none; }
 .ac-ch[data-on="true"] { display: block; }
-.ac-wash { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; }
 
 /* shared type */
 .ac-mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -67,7 +66,7 @@
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; color: var(--fg);
   border-top: 1px solid var(--rule); backdrop-filter: blur(6px); background: color-mix(in srgb, var(--bar) 72%, transparent);
   padding: 0 var(--gutR) env(safe-area-inset-bottom, 0px) var(--gut);
-  display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)) auto; gap: 10px;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) auto; gap: 10px;
 }
 .ac-strip button { all: unset; cursor: pointer; padding: 10px 0 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ac-strip .ac-bar { height: 3px; background: var(--rule); position: relative; overflow: hidden; }
@@ -81,7 +80,7 @@
   .ac-root { --gut: max(16px, env(safe-area-inset-left, 0px)); --gutR: max(16px, env(safe-area-inset-right, 0px)); }
   .ac-top .ac-c, .ac-top .ac-hide-s { display: none; }
   .ac-hl { font-size: clamp(32px, 9.5vw, 50px); }
-  .ac-strip { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 5px; }
+  .ac-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
   .ac-strip .ac-pct, .ac-strip .ac-t { display: none; }
   .ac-next { bottom: 70px; }
 }

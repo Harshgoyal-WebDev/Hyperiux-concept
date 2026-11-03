@@ -1,14 +1,6 @@
 import { Archivo, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
 import "@/components/ArchitecturalConcept/concept.css";
-import "@/components/ArchitecturalConcept/chapters/arrival.css";
-import "@/components/ArchitecturalConcept/chapters/survey.css";
-import "@/components/ArchitecturalConcept/chapters/blueprint.css";
-import "@/components/ArchitecturalConcept/chapters/structure.css";
-import "@/components/ArchitecturalConcept/chapters/material.css";
-import "@/components/ArchitecturalConcept/chapters/systems.css";
-import "@/components/ArchitecturalConcept/chapters/district.css";
-import "@/components/ArchitecturalConcept/chapters/occupancy.css";
-import "@/components/ArchitecturalConcept/chapters/handover.css";
+import "@/components/ArchitecturalConcept/chapters/overlays.css";
 
 // The concept's three faces: Archivo for display (with its width axis),
 // Instrument Sans for body copy, IBM Plex Mono for drawing labels.

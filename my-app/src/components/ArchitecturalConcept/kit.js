@@ -27,24 +27,33 @@ export const mixHex = (a, b, t) => "#" + cA.set(a).lerp(cB.set(b), clamp(t)).get
 // app runs three r186, where the same look needs every intensity × π
 export const LI = Math.PI;
 
-// palette (style rules in HANDOFF.md)
+// palette (style rules in HANDOFF.md; orange is the mark's own #FF5F00)
 export const C = {
   paper: "#E7E6E2", sheet: "#F3F2EE", ink: "#141413", graphite: "#5D5B56", mute: "#8E8B85",
-  or: "#FF6A13", orInk: "#B9440A", orD: "#B5470D", night: "#0C0C0D",
+  or: "#FF5F00", orInk: "#B9440A", orD: "#B5470D", night: "#0C0C0D",
 };
 
-// the logo in its 240×240 px space
-export const LA = [[15, 0], [47, 0], [47, 78], [15, 78]];
-export const LB = [[15, 240], [15, 108], [192, 70], [192, 0], [225, 0], [225, 99], [47, 137], [47, 240]];
-export const LC = [[192, 133], [225, 133], [225, 240], [192, 240]];
-export const LOGO = [LA, LB, LC];
+// The official mark (public/hyperiux-icon-white.svg, viewBox 500 × 501),
+// path for path: two verticals, two bridges and the outlined centre cube.
+export const MARK = {
+  verticalTL: "M40 13H106.261V222.826H40V13Z",
+  verticalBR: "M459.654 487.869H393.394V278.043H459.654V487.869Z",
+  bridgeBL: "M40.1406 278.043V487.869H106.401V322.217L198.062 287.983V223.931L40.1406 278.043Z",
+  bridgeTR: "M393.527 178.653V13.0007H460.892V222.826L291.927 290.889V222.826L393.527 178.653Z",
+  cube: "M246.651 306.756L295.242 285.774C295.242 263.779 295.242 249.995 295.242 228L257.334 210.358C254.732 209.147 251.761 208.996 249.051 209.938L201.373 226.5V285.774L246.651 306.756ZM201.373 226.5L246.651 249.33M295.242 228L246.651 249.33M246.651 249.33V306.756",
+};
+// the four orange pieces as polygons (mark units, y down)
+export const MARK_POLYS = [
+  [[40, 13], [106.261, 13], [106.261, 222.826], [40, 222.826]],
+  [[40.1406, 278.043], [40.1406, 487.869], [106.401, 487.869], [106.401, 322.217], [198.062, 287.983], [198.062, 223.931]],
+  [[393.527, 178.653], [393.527, 13.0007], [460.892, 13.0007], [460.892, 222.826], [291.927, 290.889], [291.927, 222.826]],
+  [[393.394, 278.043], [459.654, 278.043], [459.654, 487.869], [393.394, 487.869]],
+];
 
-// the mark as SVG markup (columns + beam in orange, the cube in the joint)
-export function logoSVG(cube = "#F3F2EE") {
-  const P = (a) => a.map((p) => p.join(",")).join(" "), k = 0.866 * 19, c = [120, 101];
-  const hx = [[120, 82], [120 + k, 91.5], [120 + k, 110.5], [120, 120], [120 - k, 110.5], [120 - k, 91.5]];
-  return LOGO.map((p) => `<polygon points="${P(p)}" fill="#FF6A13"/>`).join("") +
-    `<g fill="${cube}" stroke="#FF6A13" stroke-width="9" stroke-linejoin="round"><polygon points="${P(hx)}"/><polyline points="${P([hx[5], c, hx[1]])}" fill="none"/><line x1="120" y1="101" x2="120" y2="120"/></g>`;
+// the mark as SVG markup, exactly as supplied
+export function logoSVG(color = C.or) {
+  return ["verticalTL", "verticalBR", "bridgeBL", "bridgeTR"].map((k) => `<path d="${MARK[k]}" fill="${color}"/>`).join("") +
+    `<path d="${MARK.cube}" stroke="${color}" stroke-width="7" fill="none"/>`;
 }
 
 // point in polygon (2D)

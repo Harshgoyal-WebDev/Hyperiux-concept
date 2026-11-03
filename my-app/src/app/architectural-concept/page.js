@@ -2,7 +2,7 @@ import ArchitecturalConcept from "@/components/ArchitecturalConcept/Architectura
 
 export const metadata = {
   title: "Your Brand Is the Cube · Hyperiux",
-  description: "A scroll journey in nine chapters: how Hyperiux turns a brand identity into a web experience, told as architecture.",
+  description: "A scroll journey in eight chapters: how Hyperiux turns a brand into a web experience, from research to launch.",
   robots: {
     index: false,
     follow: false,

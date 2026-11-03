@@ -10,13 +10,13 @@ import { CHAPTER_VH, timeline } from "./timeline";
 // WebGL, in the browser only
 const Stage = dynamic(() => import("./Stage"), { ssr: false });
 
-// HYPERIUX — Your brand is the cube. We build the world around it.
-// Nine chapters on one scroll (see HANDOFF.md in the repo root): Arrival,
-// Survey, Blueprint, Structure, Material, Systems, District, Occupancy,
-// Handover — one camera through one day, day → dusk → night → dawn → day.
+// HYPERIUX — Your brand is the cube. We build the experience around it.
+// Eight chapters on one scroll, one camera through one day (day → dusk →
+// night → dawn → day): Arrival, Research, Strategy, Design, Engineering,
+// Work, Impact, Handover. The mark's cube is the client's brand; its six
+// faces become everything Hyperiux makes from it (world/world.js).
 // The page is a tall spacer under fixed layers: a CSS sky, the WebGL stage,
-// each chapter's DOM overlay (copy, cards, projected labels), a wash that
-// covers the change of scene between chapters, and the site chrome.
+// each chapter's DOM overlay (copy, cards, projected labels) and the chrome.
 export default function ArchitecturalConcept() {
   const rootRef = useRef(null);
   const lenis = useLenis();
@@ -38,10 +38,8 @@ export default function ArchitecturalConcept() {
         </section>
       ))}
 
-      <div className="ac-wash" data-wash="" />
-
       <header className="ac-top">
-        <svg viewBox="0 0 240 240" aria-hidden="true" dangerouslySetInnerHTML={{ __html: logoSVG("transparent") }} />
+        <svg viewBox="0 0 500 501" aria-hidden="true" dangerouslySetInnerHTML={{ __html: logoSVG() }} />
         <span className="ac-mono ac-b">Hyperiux</span>
         <span className="ac-mono ac-c" data-chap="">01 / Arrival</span>
         <span className="ac-sp" />
@@ -59,7 +57,7 @@ export default function ArchitecturalConcept() {
         <span className="ac-pct" data-pct="">0%</span>
       </nav>
 
-      <div aria-hidden="true" style={{ height: `${9 * CHAPTER_VH}vh` }} />
+      <div aria-hidden="true" style={{ height: `${CHAPTERS.length * CHAPTER_VH}vh` }} />
     </div>
   );
 }

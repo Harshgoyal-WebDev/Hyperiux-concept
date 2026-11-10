@@ -15,7 +15,7 @@ export const THEME = {
   primary: "#34e8a6", // buttons, lines, active states
   primaryHover: "#5cf0bd",
   primaryLight: "#5effc6", // highlights, numbers, glows
-  primaryDeep: "#0a7a62", // accents on light sections
+  primaryDeep: "#087259", // accents on light sections
   onPrimary: "#05090c", // text and marks on a primary fill
 };
 

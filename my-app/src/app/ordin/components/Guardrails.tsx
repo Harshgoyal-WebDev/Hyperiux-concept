@@ -10,6 +10,7 @@ import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useResizeKey } from "./Animations/useResizeKey";
 import LineReveal from "./Animations/LineReveal";
 import { THEME, alpha } from "../theme";
+import { pinnedHeight } from "../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -151,7 +152,7 @@ const Guardrails = () => {
   );
 
   return (
-    <section ref={root} id="governance" data-ord-orb="guard" className="relative h-[300vh] pt-[7%]">
+    <section ref={root} id="governance" data-ord-orb="guard" className="relative pt-[7%]" style={{ height: pinnedHeight(300, 200) }}>
       <div data-ord-stage className="sticky top-0 h-screen overflow-hidden">
         <div
           data-ord-rings

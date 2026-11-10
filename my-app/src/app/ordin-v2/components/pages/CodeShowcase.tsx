@@ -126,7 +126,7 @@ const CodeShowcase = ({ orb, chapter, id, heading, copy, points, cta, ctaHref, f
               {lang}
             </span>
           </div>
-          <pre className="relative overflow-x-auto px-[1.4vw] py-[2.4vh] text-22 leading-[1.9] max-lg:px-[3vw] max-md:px-[4vw]">
+          <pre className="relative overflow-x-auto px-[1.4vw] py-[2.4vh] text-[0.95vw] leading-[1.9] max-lg:text-[1.8vw] max-md:text-[3vw] max-lg:px-[3vw] max-md:px-[4vw]">
             <span data-pl-caret aria-hidden className="absolute block w-[0.5ch] bg-(--ord-primary-light)/70" />
             <code>
               {code.map((line, i) => (

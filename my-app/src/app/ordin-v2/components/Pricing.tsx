@@ -86,7 +86,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
         <h3 className="text-30">{plan.name}</h3>
         <p className="text-22 text-(--ord-text-muted)">{plan.blurb}</p>
       </div>
-      <div className="relative flex items-end gap-3">
+      <div className="relative flex flex-wrap items-end gap-x-3 gap-y-1">
         <p className="text-64 leading-none">
           {/* Switching tabs mounts the other grid, so each price rolls over from the other billing period */}
           {price === "Custom" ? price : <Roll value={`$${price}`} from={`$${annual ? plan.monthly : plan.annual}`} />}
@@ -113,7 +113,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
 };
 
 const Grid = ({ annual }: { annual: boolean }) => (
-  <div className="grid grid-cols-3 gap-4 max-lg:mx-auto max-lg:w-[70%] max-lg:grid-cols-1 max-md:w-full">
+  <div className="grid grid-cols-3 gap-4 max-lg:gap-3 max-md:grid-cols-1 max-md:gap-4">
     {PLANS.map((p) => (
       <PlanCard key={p.name} plan={p} annual={annual} />
     ))}

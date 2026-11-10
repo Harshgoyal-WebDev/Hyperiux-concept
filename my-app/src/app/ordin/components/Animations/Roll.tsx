@@ -47,7 +47,11 @@ export default function Roll({ value, reveal = false, from, className = "" }: Ro
   // Taller lines give each digit column room above and below, so a rolling digit fades out instead of clipping
   return (
     <span ref={ref} className={`-my-[0.12em] inline-flex leading-[1.24] tabular-nums tracking-[0.01em] ${className}`}>
-      <RollingNumber value={shown} />
+      {/* Screen readers (and the server-rendered HTML) get the final value, never the digit columns */}
+      <span className="sr-only">{text}</span>
+      <span aria-hidden className="inline-flex">
+        <RollingNumber value={shown} />
+      </span>
     </span>
   );
 }

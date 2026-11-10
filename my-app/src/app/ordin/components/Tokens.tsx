@@ -11,6 +11,7 @@ import { useResizeKey } from "./Animations/useResizeKey";
 import { PROMPT } from "./Hero";
 import LineReveal from "./Animations/LineReveal";
 import { THEME, alpha } from "../theme";
+import { pinnedHeight } from "../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -81,7 +82,7 @@ const Tokens = () => {
   );
 
   return (
-    <section ref={root} data-ord-orb="tokens" className="relative h-[240vh] pt-[10%]">
+    <section ref={root} data-ord-orb="tokens" className="relative pt-[10%]" style={{ height: pinnedHeight(240) }}>
       <div
         data-ord-stage
         className="sticky top-0 flex h-screen flex-col gap-14 overflow-hidden ord-container py-[7%] max-md:gap-10 max-md:py-[14vh]"
@@ -104,12 +105,12 @@ const Tokens = () => {
             <span
               key={i}
               data-ord-chip
-              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1vw] text-(--ord-stone) max-lg:px-[1vw] max-md:px-[1.4vw]"
+              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1vw] text-(--ord-stone) max-lg:px-[1.4vw] max-lg:text-[1.9vw] max-md:px-[2vw] max-md:text-[3.6vw]"
             >
               <span
                 data-ord-id
                 aria-hidden
-                className="absolute left-0 top-0 -translate-y-full ord-label text-[0.5vw] text-ord-primary-light opacity-0"
+                className="absolute left-0 top-0 -translate-y-full ord-label text-[0.5vw] text-ord-primary-light opacity-0 max-lg:text-[1vw] max-md:text-[2vw]"
               >
                 {IDS[i % IDS.length]}
               </span>

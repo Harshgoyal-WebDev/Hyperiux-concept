@@ -12,6 +12,7 @@ import LineReveal from "../Animations/LineReveal";
 import Roll from "../Animations/Roll";
 import { POLICY_TOUR } from "./content";
 import { THEME, alpha } from "../../theme";
+import { pinnedHeight } from "../../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -113,7 +114,7 @@ const PolicyGate = () => {
   );
 
   return (
-    <section ref={root} data-ord-orb="governance-gate" data-ord-chapter="Policy gate" className="relative h-[320vh] motion-reduce:h-auto!">
+    <section ref={root} data-ord-orb="governance-gate" data-ord-chapter="Policy gate" className="relative motion-reduce:h-auto!" style={{ height: pinnedHeight(320) }}>
       <div className="sticky top-0 flex h-screen items-stretch motion-reduce:static motion-reduce:h-auto motion-reduce:items-start justify-between gap-10 overflow-hidden ord-container py-[12vh] max-lg:flex-col max-lg:py-[10vh]">
         {/* Top-aligned, so the heading holds still while the rules below open and close */}
         <div className="flex w-[30%] flex-col justify-start gap-10 pt-[4vh] max-lg:w-full max-lg:gap-4 max-lg:pt-0">

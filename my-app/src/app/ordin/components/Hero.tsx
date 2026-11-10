@@ -55,7 +55,7 @@ const Hero = () => {
     >
       <div className="relative flex w-[58%] flex-col gap-10 max-lg:w-[80%] max-md:w-full max-md:gap-6">
         <h1 data-ord-hero-title data-ord-hide className="ord-hero-title">
-          Agents that
+          Agents that{" "}
           <br />
           <span className="text-ord-primary-light">finish the job.</span>
         </h1>

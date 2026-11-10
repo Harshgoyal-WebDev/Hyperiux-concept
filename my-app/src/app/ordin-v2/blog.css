@@ -117,7 +117,7 @@
   left: 0;
   top: calc(0.9vw + 0.35em);
   color: var(--prose-accent);
-  font-size: 0.7vw;
+  font-size: max(0.7vw, 12px);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -136,7 +136,7 @@
 
 .ord-page .ord-prose blockquote cite {
   color: var(--prose-muted);
-  font-size: 0.7vw;
+  font-size: max(0.7vw, 12px);
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.04vw;
@@ -155,7 +155,7 @@
 
 .ord-page .ord-prose .prose-callout-title {
   color: var(--prose-accent);
-  font-size: 0.7vw;
+  font-size: max(0.7vw, 12px);
   font-weight: 500;
   letter-spacing: 0.04vw;
   text-transform: uppercase;
@@ -175,7 +175,7 @@
   padding: 0.8vw 1.4vw;
   border-bottom: 1px solid color-mix(in srgb, var(--ord-bone) 10%, transparent);
   color: var(--ord-stone);
-  font-size: 0.7vw;
+  font-size: max(0.7vw, 12px);
   font-weight: 500;
   letter-spacing: 0.04vw;
   text-transform: uppercase;
@@ -216,25 +216,25 @@
 
 .ord-page .ord-prose .prose-stat-label {
   color: var(--prose-muted);
-  font-size: 0.7vw;
+  font-size: max(0.7vw, 12px);
   font-weight: 500;
   letter-spacing: 0.04vw;
   text-transform: uppercase;
 }
 
-@media (max-width: 1025px) {
+@media (max-width: 1023px) {
   .ord-page .ord-prose { gap: 3vw; font-size: 2.1vw; }
-  .ord-page .ord-prose .prose-lead { font-size: 2.8vw; }
+  .ord-page .ord-prose .prose-lead { font-size: max(2.8vw, 12px); }
   .ord-page .ord-prose h2 { margin-top: 4vw; font-size: 3.8vw; }
-  .ord-page .ord-prose h3 { font-size: 2.8vw; }
+  .ord-page .ord-prose h3 { font-size: max(2.8vw, 12px); }
   .ord-page .ord-prose li { padding: 1.8vw 0 1.8vw 4vw; }
   .ord-page .ord-prose ul > li::before { width: 0.9vw; top: calc(1.8vw + 0.62em); }
-  .ord-page .ord-prose ol > li::before { font-size: 1.3vw; top: calc(1.8vw + 0.35em); }
+  .ord-page .ord-prose ol > li::before { font-size: max(1.3vw, 12px); top: calc(1.8vw + 0.35em); }
   .ord-page .ord-prose blockquote { gap: 2vw; padding-left: 3.4vw; font-size: 3.4vw; }
   .ord-page .ord-prose blockquote cite,
   .ord-page .ord-prose .prose-callout-title,
   .ord-page .ord-prose .prose-code-bar,
-  .ord-page .ord-prose .prose-stat-label { font-size: 1.3vw; }
+  .ord-page .ord-prose .prose-stat-label { font-size: max(1.3vw, 12px); }
   .ord-page .ord-prose .prose-callout { gap: 1vw; padding: 3vw; }
   .ord-page .ord-prose .prose-code-bar { padding: 1.6vw 2.6vw; }
   .ord-page .ord-prose pre { padding: 2.6vw; font-size: 1.7vw; }
@@ -242,19 +242,19 @@
   .ord-page .ord-prose .prose-stat-value { font-size: 5vw; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ord-page .ord-prose { gap: 6vw; font-size: 4.1vw; }
   .ord-page .ord-prose .prose-lead { font-size: 5.2vw; }
   .ord-page .ord-prose h2 { margin-top: 6vw; font-size: 7vw; }
   .ord-page .ord-prose h3 { font-size: 5.2vw; }
   .ord-page .ord-prose li { padding: 3.6vw 0 3.6vw 7vw; }
   .ord-page .ord-prose ul > li::before { width: 1.8vw; top: calc(3.6vw + 0.62em); }
-  .ord-page .ord-prose ol > li::before { font-size: 2.8vw; top: calc(3.6vw + 0.35em); }
+  .ord-page .ord-prose ol > li::before { font-size: max(2.8vw, 12px); top: calc(3.6vw + 0.35em); }
   .ord-page .ord-prose blockquote { gap: 3vw; padding-left: 5vw; font-size: 6vw; }
   .ord-page .ord-prose blockquote cite,
   .ord-page .ord-prose .prose-callout-title,
   .ord-page .ord-prose .prose-code-bar,
-  .ord-page .ord-prose .prose-stat-label { font-size: 2.8vw; }
+  .ord-page .ord-prose .prose-stat-label { font-size: max(2.8vw, 12px); }
   .ord-page .ord-prose .prose-callout { gap: 2vw; padding: 5vw; }
   .ord-page .ord-prose .prose-code-bar { padding: 3vw 4vw; }
   .ord-page .ord-prose pre { padding: 4vw; font-size: 3.2vw; }

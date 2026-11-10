@@ -12,6 +12,7 @@ import LineReveal from "../Animations/LineReveal";
 import Icon from "../Icon";
 import { AGENT_TOUR } from "./content";
 import { THEME, alpha } from "../../theme";
+import { pinnedHeight } from "../../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -75,7 +76,7 @@ const RelayTrack = () => {
   );
 
   return (
-    <section ref={root} data-ord-orb="agents-relay" data-ord-chapter="Relay" className="relative h-[240vh] max-md:h-[420vh] motion-reduce:h-auto!">
+    <section ref={root} data-ord-orb="agents-relay" data-ord-chapter="Relay" className="relative h-(--pin) max-md:h-(--pin-md) motion-reduce:h-auto!" style={{ "--pin": pinnedHeight(240), "--pin-md": pinnedHeight(420) } as React.CSSProperties}>
       <div className="sticky top-0 flex h-screen flex-col justify-center gap-[7vh] overflow-hidden max-md:gap-[5vh] motion-reduce:static motion-reduce:h-auto motion-reduce:py-[14vh]">
         <div className="flex items-end justify-between gap-10 ord-container max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[46%] max-lg:w-full">

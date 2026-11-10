@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey, useResizeKey } from "./Animations/useResizeKey";
 import { intro } from "./Animations/intro";
+import { MOTION } from "../config";
 import { THEME, alpha, rgb } from "../theme";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
@@ -62,12 +63,21 @@ const MOBILE: Record<string, OrbStage> = {
   footer: { enter: pose({ scale: 0.9, opacity: 0, energy: 1 }) },
 };
 
+// Portrait tablets stack the hero copy at the bottom, so the globe floats above it instead of beside it
+const PORTRAIT_TABLET = "(min-width: 768px) and (max-width: 1024px) and (orientation: portrait)";
+const TABLET_HERO: OrbStage = { enter: pose({ x: 0, y: -16, scale: 1 }) };
+
+function homeStages() {
+  if (isMobile()) return MOBILE;
+  return window.matchMedia(PORTRAIT_TABLET).matches ? { ...DESKTOP, hero: TABLET_HERO } : DESKTOP;
+}
+
 const MIST = rgb(THEME.bone).split(",").map(Number);
 const PRIMARY = rgb(THEME.primaryLight).split(",").map(Number);
 const mix = (t: number) => MIST.map((v, i) => Math.round(PRIMARY[i] + (v - PRIMARY[i]) * t)).join(",");
 
 export function heroPose() {
-  const p = (isMobile() ? MOBILE : DESKTOP).hero.enter;
+  const p = homeStages().hero.enter;
   return { x: (p.x * window.innerWidth) / 100, y: (p.y * window.innerHeight) / 100, scale: p.scale };
 }
 
@@ -100,7 +110,7 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     const ctx = canvas?.getContext("2d");
     if (!wrap || !canvas || !ctx) return;
 
-    const count = isMobile() ? 700 : 1100;
+    const count = isMobile() ? MOTION.particles.mobile : MOTION.particles.desktop;
     const golden = Math.PI * (3 - Math.sqrt(5));
     const pts = Array.from({ length: count }, (_, i) => {
       const y = 1 - (i / (count - 1)) * 2;
@@ -401,7 +411,7 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     () => {
       const wrap = wrapRef.current;
       if (!wrap) return;
-      const stages = poses ? (isMobile() ? poses.mobile : poses.desktop) : isMobile() ? MOBILE : DESKTOP;
+      const stages = poses ? (isMobile() ? poses.mobile : poses.desktop) : homeStages();
       const vw = window.innerWidth / 100;
       const vh = window.innerHeight / 100;
       const place = (p: OrbPose) => ({ x: p.x * vw, y: p.y * vh, scale: p.scale, opacity: p.opacity });

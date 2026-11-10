@@ -11,6 +11,7 @@ import { useResizeKey } from "./Animations/useResizeKey";
 import Spotlight from "./Animations/Spotlight";
 import LineReveal from "./Animations/LineReveal";
 import { THEME, alpha } from "../theme";
+import { pinnedHeight } from "../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -145,7 +146,7 @@ const Swarm = () => {
   );
 
   return (
-    <section ref={root} id="agents" data-ord-orb="swarm" className="relative h-[320vh]">
+    <section ref={root} id="agents" data-ord-orb="swarm" className="relative" style={{ height: pinnedHeight(320) }}>
       <div data-ord-stage className="sticky top-0 h-screen overflow-hidden">
         <svg aria-hidden className="absolute inset-0 h-full w-full max-md:hidden">
           {AGENTS.map((a) => (

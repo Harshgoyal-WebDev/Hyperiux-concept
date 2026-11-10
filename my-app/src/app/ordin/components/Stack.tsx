@@ -10,6 +10,7 @@ import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useResizeKey } from "./Animations/useResizeKey";
 import LineReveal from "./Animations/LineReveal";
 import { THEME } from "../theme";
+import { pinnedHeight } from "../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -88,7 +89,7 @@ const Stack = () => {
   );
 
   return (
-    <section ref={root} data-ord-orb="stack" data-ord-light className="relative z-1 -mt-[100vh] h-[300vh] bg-ord-bone text-ord-ink">
+    <section ref={root} data-ord-orb="stack" style={{ height: pinnedHeight(300, 200) }} data-ord-light className="relative z-1 -mt-[100vh] bg-ord-bone text-ord-ink">
       <div className="sticky top-0 flex h-screen items-center justify-between gap-10 overflow-hidden ord-container max-md:flex-col max-md:justify-center max-md:gap-4">
         <div className="relative h-[86vh] w-[46%] max-md:h-[44vh] max-md:w-full">
           {LAYERS.map((l, i) => (

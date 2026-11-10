@@ -35,8 +35,13 @@ const Cta = () => {
     <section
       ref={root}
       data-ord-orb="cta"
-      className="relative flex h-[120vh] flex-col items-center justify-center gap-12 ord-container text-center max-md:gap-8"
+      className="relative z-1 flex h-[120vh] flex-col items-center justify-center gap-12 ord-container text-center max-md:gap-8"
     >
+      {/* A soft ink pool under the copy, so the globe glows around the text instead of through it */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 -z-1 h-[70vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(var(--ord-ink-rgb),0.85),rgba(var(--ord-ink-rgb),0.55)_55%,transparent)] max-md:h-[80vh] max-md:w-[120vw]"
+      />
       <LineReveal className="w-[64%] max-lg:w-full">
         <h2 className="text-128">
           Hand it the job. <span className="text-ord-primary-light">Keep the rules.</span>
@@ -50,7 +55,7 @@ const Cta = () => {
       </LineReveal>
       <div data-ord-cta className="flex flex-wrap justify-center gap-3">
         <OrdButton href={ROUTES.pricing}>Start building</OrdButton>
-        <OrdButton href={ENQUIRE.demo} variant="line">
+        <OrdButton href={ENQUIRE.demo} variant="line" className="bg-(--ord-ink)/60 backdrop-blur-sm">
           Talk to an engineer
         </OrdButton>
       </div>

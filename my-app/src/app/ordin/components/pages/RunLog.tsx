@@ -7,6 +7,7 @@ import LineReveal from "../Animations/LineReveal";
 import { prefersReducedMotion } from "../Animations/reducedMotion";
 import { HX_LIGHT_PRIMARY } from "../hxPalette";
 import { ThemedDataTable } from "../effects/animated-data-table";
+import { useIsMobile } from "../Animations/useIsMobile";
 
 const STEPS: Record<string, string[]> = {
   R8821: ["Planner split the job into 9 steps", "Guard denied wire_transfer, spend ceiling", "Courier queued 14 drafts for sign-off"],
@@ -36,6 +37,13 @@ const COLUMNS = [
   { key: "cost", header: "Cost", kind: "currency" as const },
 ];
 
+// Phones keep only the job, outcome and cost, so nothing is cut off
+const MOBILE_COLUMNS = [
+  { key: "job", header: "Job", className: "w-[44%]" },
+  { key: "status", header: "Outcome", kind: "status" as const, className: "w-[30%]" },
+  { key: "cost", header: "Cost", kind: "currency" as const },
+];
+
 const STATUSES = [
   { value: "Settled", tone: "success" as const },
   { value: "Held", tone: "warning" as const, pulse: true },
@@ -48,6 +56,7 @@ const STATUSES = [
 const RunLog = () => {
   const root = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
+  const mobile = useIsMobile();
 
   // Like the Vault demo: the table loads in with its skeleton the first time it scrolls into view
   useEffect(() => {
@@ -87,8 +96,8 @@ const RunLog = () => {
         <ThemedDataTable
           palette={HX_LIGHT_PRIMARY}
           mode="light"
-          className="text-22"
-          columns={COLUMNS}
+          className="ord-fit-table text-22"
+          columns={mobile ? MOBILE_COLUMNS : COLUMNS}
           rows={ROWS}
           statusKey="status"
           statuses={STATUSES}

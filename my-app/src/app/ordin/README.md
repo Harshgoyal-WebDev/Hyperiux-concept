@@ -203,9 +203,18 @@ There is no contact page: every "Talk to sales", "Talk to security" and "Book a 
 
 The form validates and shows a success state, but has no backend. In `onSubmit`, replace the `setTimeout` with a `fetch` to your CRM, email service or API route, then call `setState("sent")` when it succeeds.
 
+### Motion settings - one file
+
+`config.ts` holds every motion setting, so you can tone the template down for your brand without touching components:
+
+- **`introLoader`** - when the boot loader plays: `"session"` (first page view per browser tab, the default), `"always"` or `"off"`.
+- **`introSeconds`** - how long the loader's progress bar takes to fill (default `1.2`).
+- **`pinnedScroll`** - multiplies the scroll length of every pinned section (default `0.7`; `1` is the original pacing, lower is snappier). Each section keeps its own pinned screen and only the scrubbed part scales.
+- **`particles`** - how many particles the signal globe draws on desktop and on phones. Lower it for slower devices.
+
 ### Rolling numbers
 
-Every number that reveals or changes (stats, prices, counters, the estimator, the usage meter, the trace clock, the loader) uses `components/Animations/Roll.tsx`, built on the Animated Slider's odometer digits. Use `<Roll value="2.4" reveal />` to roll up from zero on scroll, or pass changing values and it springs between them.
+Every number that reveals or changes (stats, prices, counters, the estimator, the usage meter, the trace clock, the loader) uses `components/Animations/Roll.tsx`, built on the Animated Slider's odometer digits. Screen readers and the server-rendered HTML get the final value; the digit columns are visual only. Use `<Roll value="2.4" reveal />` to roll up from zero on scroll, or pass changing values and it springs between them.
 
 ### The pricing estimator
 

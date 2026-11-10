@@ -12,7 +12,7 @@ export function prefersReducedMotion() {
 }
 
 export function isMobile() {
-  return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
 }
 
 export function hasFinePointer() {

@@ -55,7 +55,7 @@ html:has(.ord-page) {
   letter-spacing: -0.42vw;
 }
 
-@media (min-width: 1026px) {
+@media (min-width: 1024px) {
   .ord-page .ord-hero-title {
     font-size: 5.4vw;
     letter-spacing: -0.32vw;
@@ -91,7 +91,8 @@ html:has(.ord-page) {
 }
 
 .ord-page .text-14 {
-  font-size: 0.7vw;
+  /* Labels never drop below 12px, so small caps stay legible */
+  font-size: max(0.7vw, 12px);
 }
 
 .ord-page .text-ord-stone {
@@ -185,7 +186,7 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
   color: var(--ord-ink);
 }
 
-@media (max-width: 1025px) {
+@media (max-width: 1023px) {
   .ord-page h1,
   .ord-page .text-128 { font-size: 8.8vw; letter-spacing: -0.5vw; }
   .ord-page h2,
@@ -195,12 +196,12 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
   .ord-page .text-28 { font-size: 2.1vw; }
   .ord-page .text-24 { font-size: 1.9vw; }
   .ord-page .text-22 { font-size: 1.8vw; }
-  .ord-page .text-14 { font-size: 1.3vw; }
+  .ord-page .text-14 { font-size: max(1.3vw, 12px); }
   .ord-page .ord-container { padding-inline: 4vw; }
   .ord-page .ord-section { padding-block: 12vw; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ord-page h1,
   .ord-page .text-128 { font-size: 12.6vw; letter-spacing: -0.7vw; }
   .ord-page h2,
@@ -210,7 +211,7 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
   .ord-page .text-28 { font-size: 4.1vw; }
   .ord-page .text-24 { font-size: 3.7vw; }
   .ord-page .text-22 { font-size: 3.7vw; }
-  .ord-page .text-14 { font-size: 2.8vw; }
+  .ord-page .text-14 { font-size: max(2.8vw, 12px); }
   .ord-page .ord-container { padding-inline: 5vw; }
   .ord-page .ord-section { padding-block: 20vw; }
 }
@@ -249,4 +250,25 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
 
 .ord-page header[data-light] a {
   --scramble-hover-color: var(--ord-primary-deep) !important;
+}
+
+/* Data tables fit the screen instead of scrolling sideways; on phones they drop or switch columns */
+.ord-page .ord-fit-table table[data-slot="table"] {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .ord-page .ord-fit-table td {
+    white-space: normal;
+  }
+}
+
+/* Keyboard focus: a crisp primary ring instead of the browser default */
+.ord-page :focus-visible {
+  outline: 2px solid var(--ord-primary);
+  outline-offset: 3px;
+}
+
+.ord-page [data-ord-light] :focus-visible {
+  outline-color: var(--ord-primary-deep);
 }

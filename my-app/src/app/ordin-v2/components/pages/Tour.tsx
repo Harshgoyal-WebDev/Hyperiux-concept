@@ -11,6 +11,7 @@ import { useResizeKey } from "../Animations/useResizeKey";
 import LineReveal from "../Animations/LineReveal";
 import Icon from "../Icon";
 import { THEME, alpha } from "../../theme";
+import { pinnedHeight } from "../../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -53,7 +54,13 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
       const faces = gsap.utils.toArray<HTMLElement>("[data-tt-face]", section);
       const vh = window.innerHeight / 100;
       const vw = window.innerWidth / 100;
-      const place = (i: number, gap: number) => ((slabs.length - 1) / 2 - i) * gap * vh;
+      // The open tower spreads 6.4vh per layer on desktop; on smaller screens it shrinks to fit its box, so it never climbs into the heading
+      const tower = section.querySelector<HTMLElement>("[data-tt-tower]");
+      const fit = tower && slabs.length > 1 ? (tower.clientHeight * 0.62) / (slabs.length - 1) / vh : 6.4;
+      const open = Math.min(6.4, fit);
+      // The lit layer slides out the same visible distance on every screen
+      const slide = Math.max(3.4 * vw, 24);
+      const place = (i: number, gap: number) => ((slabs.length - 1) / 2 - i) * gap * (open / 6.4) * vh;
       const light = { backgroundColor: THEME.primary, borderColor: THEME.primary, color: THEME.ink };
       const dark = { backgroundColor: THEME.carbon, borderColor: alpha(THEME.primary, 0.35), color: THEME.ash };
       if (slabs.length) gsap.set(slabs, { xPercent: -50, yPercent: -50, y: (i) => place(i, 3.2) });
@@ -85,7 +92,7 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
       // The tower opens up as the stage pins, then the first layer slides out lit
       if (slabs.length) {
         tl.to(slabs, { y: (i) => place(i, 6.4), duration: 0.6, ease: "expo.out" }, 0)
-          .to(slabs[0], { x: 3.4 * vw, duration: 0.5, ease: "expo.out" }, 0.2)
+          .to(slabs[0], { x: slide, duration: 0.5, ease: "expo.out" }, 0.2)
           .to(faces[0], { ...light, duration: 0.3 }, 0.2);
       }
 
@@ -100,7 +107,7 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
           if (slabs.length) {
             tl.to(slabs[i], { x: 0, duration: 0.5, ease: "power3.inOut" }, out)
               .to(faces[i], { ...dark, duration: 0.3 }, out)
-              .to(slabs[i + 1], { x: 3.4 * vw, duration: 0.6, ease: "expo.out" }, out + 0.15)
+              .to(slabs[i + 1], { x: slide, duration: 0.6, ease: "expo.out" }, out + 0.15)
               .to(faces[i + 1], { ...light, duration: 0.3 }, out + 0.15);
           }
         }
@@ -111,16 +118,16 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
   );
 
   return (
-    <section ref={root} data-ord-orb={orb} data-ord-chapter={chapter} className="relative motion-reduce:h-auto!" style={{ height: `${items.length * 80 + 80}vh` }}>
+    <section ref={root} data-ord-orb={orb} data-ord-chapter={chapter} className="relative motion-reduce:h-auto!" style={{ height: pinnedHeight(items.length * 80 + 80) }}>
       <div className="sticky top-0 flex h-screen items-center justify-between gap-12 overflow-hidden ord-container motion-reduce:static motion-reduce:h-auto motion-reduce:items-start motion-reduce:py-[14vh] max-lg:flex-col max-lg:items-start max-lg:justify-center max-lg:gap-8">
         <div className="flex w-[40%] flex-col gap-12 max-lg:w-full max-lg:gap-6">
           <LineReveal>
             <h2>{heading}</h2>
           </LineReveal>
           {aside === "tower" ? (
-            <div aria-hidden className="relative h-[50vh] w-full max-lg:h-[30vh]">
+            <div data-tt-tower aria-hidden className="relative h-[50vh] w-full max-lg:h-[30vh] max-md:h-[26vh]">
               {items.map((l, i) => (
-                <div key={l.name} data-tt-slab className={`absolute left-1/2 top-1/2 w-[12vw] aspect-square max-lg:w-[18vw] max-md:w-[26vw] ${Z[i]}`}>
+                <div key={l.name} data-tt-slab className={`absolute left-1/2 top-1/2 w-[12vw] aspect-square max-lg:w-[16vw] max-md:w-[24vw] ${Z[i]}`}>
                   <div className={`absolute inset-0 rounded-sm border border-(--ord-primary)/25 bg-[color-mix(in_srgb,var(--ord-ink),var(--ord-primary)_4%)] ${FACE} [translate:0_0.7vh]`} />
                   <div
                     data-tt-face

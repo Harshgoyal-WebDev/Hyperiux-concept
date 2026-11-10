@@ -2,6 +2,7 @@
 import "./ordin-styles.css";
 import "./blog.css";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Geist } from "next/font/google";
 import Header from "./components/Header";
@@ -19,6 +20,9 @@ const bodyFont = Geist({
   variable: "--font-ord-body",
   display: "swap",
 });
+
+// Fallback for any page without its own metadata, such as the 404, so the server title is never the framework default
+export const metadata: Metadata = { title: "Page not found | Ordin" };
 
 // Shared by every Ordin page: fonts, smooth scroll, grain, header and the parallax footer
 const layout = ({ children }: { children: ReactNode }) => {

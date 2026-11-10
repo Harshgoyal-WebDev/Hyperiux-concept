@@ -11,6 +11,24 @@ import { scrambleTo } from "./effects/scramble-text";
 import Roll from "./Animations/Roll";
 import { heroPose } from "./SignalOrb";
 import { THEME, alpha } from "../theme";
+import { MOTION } from "../config";
+
+const SEEN = "ord-intro-seen";
+
+// True when the loader should be skipped: turned off, or already shown in this tab.
+// Decided once per page load, so a React dev remount doesn't skip the first showing.
+let skip: boolean | null = null;
+function skipIntro() {
+  if (skip !== null) return skip;
+  skip = MOTION.introLoader === "off";
+  if (MOTION.introLoader === "session") {
+    try {
+      skip = sessionStorage.getItem(SEEN) === "1";
+      sessionStorage.setItem(SEEN, "1");
+    } catch {}
+  }
+  return skip;
+}
 
 gsap.registerPlugin(useGSAP);
 
@@ -36,7 +54,7 @@ const IntroLoader = () => {
         return;
       }
 
-      if (prefersReducedMotion()) {
+      if (prefersReducedMotion() || skipIntro()) {
         finishIntro();
         hide();
         return;
@@ -96,13 +114,13 @@ const IntroLoader = () => {
       };
 
       let lastCount = 0;
-      const tl = gsap.timeline({ delay: 0.2 });
-      tl.fromTo(texts, { yPercent: 110, y: 0 }, { yPercent: 0, y: 0, duration: 0.9, stagger: 0.04, ease: "expo.out" })
+      const tl = gsap.timeline({ delay: 0.1 });
+      tl.fromTo(texts, { yPercent: 110, y: 0 }, { yPercent: 0, y: 0, duration: 0.6, stagger: 0.03, ease: "expo.out" })
         .to(
           progress,
           {
             p: 1,
-            duration: 2.8,
+            duration: MOTION.introSeconds,
             ease: "power2.inOut",
             onUpdate: () => {
               const p = progress.p;
@@ -126,9 +144,9 @@ const IntroLoader = () => {
           },
           0.3,
         )
-        .to(texts, { yPercent: -110, duration: 0.7, stagger: 0.025, ease: "expo.in" }, "+=0.15")
-        .to(inner, { x: 0, y: 0, scale: 1, duration: 1.7, ease: "expo.inOut" }, "<0.2")
-        .add(() => finishIntro(), "<0.7")
+        .to(texts, { yPercent: -110, duration: 0.5, stagger: 0.02, ease: "expo.in" }, "+=0.1")
+        .to(inner, { x: 0, y: 0, scale: 1, duration: 1.3, ease: "expo.inOut" }, "<0.1")
+        .add(() => finishIntro(), "<0.4")
         .to(fillRef.current, { backgroundColor: alpha(THEME.primary, 0.4), duration: 0.6 }, "<")
         .to(loader, { autoAlpha: 0, duration: 0.6, ease: "power2.out" }, "<0.3")
         .add(() => {

@@ -218,7 +218,9 @@ export default function ScrambleLinkButton({
       className={`group inline-flex w-fit items-center gap-2 cursor-pointer text-[1.1vw] ${textColor ? "text-(--scramble-text-color)" : "text-inherit"} no-underline transition-colors duration-350 ease-in-out motion-reduce:transition-none hover:text-(--scramble-hover-color) group-data-[pressed=true]:text-(--scramble-hover-color) max-lg:text-[3vw] max-md:text-[4.2vw] ${className}`}
       style={{ "--scramble-hover-color": hoverColor, ...(textColor ? { "--scramble-text-color": textColor } : {}) } as CSSProperties & Record<string, string>}
     >
-      <span className={innerClassName} style={activeLineStyle}>
+      {/* One clean name for screen readers; the sizer and the scrambling copy below are visual only */}
+      <span className="sr-only">{finalText}</span>
+      <span aria-hidden className={innerClassName} style={activeLineStyle}>
         <span
           className={`pointer-events-none inline-block select-none whitespace-pre invisible [font-variant-ligatures:none] ${textClassName}`}
           style={activeTextStyle}
@@ -230,7 +232,6 @@ export default function ScrambleLinkButton({
           ref={scrambleRef}
           className={`absolute inset-0 inline-block whitespace-pre text-left text-current [font-variant-ligatures:none] ${textClassName}`}
           style={activeTextStyle}
-          aria-label={finalText}
         >
           {finalText}
         </span>

@@ -65,9 +65,9 @@ const Hero = () => {
             record.
           </p>
           <div data-ord-hero-fade className="flex flex-wrap gap-3">
-            <OrdButton href={ROUTES.pricing}>Start building</OrdButton>
+            <OrdButton href={ROUTES.pricing}>Start Building</OrdButton>
             <OrdButton href={ROUTES.platform} variant="line">
-              See the platform
+              See the Platform
             </OrdButton>
           </div>
         </div>

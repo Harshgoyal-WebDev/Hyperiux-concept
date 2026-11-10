@@ -58,7 +58,7 @@ const Metrics = () => {
         <LineReveal className="w-[64%] max-lg:w-full">
           <h2>
             Built for the work agents actually create.{" "}
-            <span className="text-(--ord-text-muted)">Measured, not promised.</span>
+            <span className="text-ord-primary-deep">Measured, not promised.</span>
           </h2>
         </LineReveal>
         <div className={`grid grid-cols-4 border ${LINE} max-md:grid-cols-2`}>
@@ -73,9 +73,9 @@ const Metrics = () => {
                 className="h-[2.6vh] aspect-square self-start text-ord-primary-deep max-lg:h-[2vh] max-md:h-[2.8vh]"
               />
               <div className="flex flex-col gap-2">
-                <div className="flex items-end leading-none">
+                <div className="flex items-end leading-none text-ord-primary-deep">
                   <span className="text-64"><Roll reveal value={s.value.toFixed(s.decimals)} /></span>
-                  <span className="text-64 text-ord-primary-deep">{s.suffix}</span>
+                  <span className="text-64">{s.suffix}</span>
                 </div>
                 <p className="text-22 text-(--ord-text-muted)">{s.label}</p>
               </div>
@@ -89,7 +89,7 @@ const Metrics = () => {
                 <span aria-hidden className="h-[0.8vh] aspect-square bg-(--ord-primary) max-md:h-[1vh]" />
                 <ScrambleText text="Execution report / job_8821" />
               </span>
-              <span className="ord-label text-14 uppercase text-(--ord-text-muted)">Completed in 4.2s</span>
+              <span className="ord-label text-22 text-(--ord-text-muted)">Completed in 4.2s</span>
             </div>
             <ul className="flex flex-col">
               {REPORT.map((row) => (
@@ -102,7 +102,7 @@ const Metrics = () => {
                     {row.agent}
                   </span>
                   <span className="flex-1 text-22 text-(--ord-text-muted) max-md:hidden">{row.summary}</span>
-                  <span className="ord-label text-14 text-(--ord-text-muted)">{row.time}</span>
+                  <span className="ord-label text-22 text-(--ord-text-muted)">{row.time}</span>
                   <span data-ord-tick className="flex h-[2.4vh] aspect-square items-center justify-center bg-(--ord-primary) text-ord-ink max-lg:h-[1.8vh] max-md:h-[2.6vh]">
                     <Icon name="check" className="h-[70%] aspect-square" />
                   </span>
@@ -120,7 +120,7 @@ const Metrics = () => {
                 <span className="text-22 text-(--ord-text-muted)">14 drafts waiting for sign-off.</span>
               </div>
             </div>
-            <div className="flex flex-col gap-2 ord-label text-14 uppercase text-(--ord-text-muted)">
+            <div className="flex flex-col gap-2 ord-label text-22 text-(--ord-text-muted)">
               <span className={`flex justify-between border-t ${LINE} pt-3`}>
                 <span>Cost</span>
                 <span className="text-ord-ink">USD 0.031</span>
@@ -131,7 +131,7 @@ const Metrics = () => {
               </span>
             </div>
             <OrdButton href={ROUTES.governance} variant="inkLine" className="justify-between">
-              Open the trace
+              Open the Trace
             </OrdButton>
           </div>
         </div>

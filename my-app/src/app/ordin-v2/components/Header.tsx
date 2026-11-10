@@ -171,7 +171,7 @@ const Header = () => {
         </nav>
         <div className="flex w-[20%] items-center justify-end gap-3 max-lg:w-auto">
           <span className="max-md:hidden">
-            <OrdButton href={ROUTES.pricing}>Get started</OrdButton>
+            <OrdButton href={ROUTES.pricing}>Get Started</OrdButton>
           </span>
           <MobileMenu />
         </div>

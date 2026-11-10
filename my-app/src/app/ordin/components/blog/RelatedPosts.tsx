@@ -22,11 +22,11 @@ export default function RelatedPosts({ posts }: { posts: Post[] }) {
         <div className="flex items-end justify-between gap-10 max-md:flex-col max-md:items-start max-md:gap-6">
           <LineReveal>
             <h2>
-              Keep <span className="text-(--ord-text-muted)">reading.</span>
+              Keep <span className="text-ord-primary-deep">reading.</span>
             </h2>
           </LineReveal>
           <OrdButton href={ROUTES.blog} variant="inkLine">
-            All articles
+            All Articles
           </OrdButton>
         </div>
         <ul className="grid grid-cols-3 gap-[1.2vw] max-lg:grid-cols-2 max-lg:gap-[2.4vw] max-md:grid-cols-1 max-md:gap-[5vw]">

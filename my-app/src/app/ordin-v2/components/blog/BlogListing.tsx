@@ -32,7 +32,7 @@ export default function BlogListing({ posts }: { posts: Post[] }) {
         <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-6">
           <LineReveal className="w-[46%] max-lg:w-full">
             <h2>
-              Every article, <span className="text-(--ord-text-muted)">filed by topic.</span>
+              Every article, <span className="text-ord-primary-deep">filed by topic.</span>
             </h2>
           </LineReveal>
           <div className="flex flex-col items-end gap-4 max-lg:items-start">

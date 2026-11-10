@@ -128,7 +128,7 @@ const Social = () => {
               <span aria-hidden className="text-64 leading-none text-ord-primary-deep">
                 &ldquo;
               </span>
-              <span className="ord-label text-14 text-(--ord-text-muted)">
+              <span className="ord-label text-22 text-(--ord-text-muted)">
                 <Roll value={String(index + 1).padStart(2, "0")} /> / {String(QUOTES.length).padStart(2, "0")}
               </span>
             </div>
@@ -145,7 +145,7 @@ const Social = () => {
                   {initialsOf(quote.name)}
                 </span>
                 <span className="flex flex-col">
-                  <span data-ord-q-split className="text-24 font-medium">
+                  <span data-ord-q-split className="text-22 font-medium">
                     {quote.name}
                   </span>
                   <span data-ord-q-split className="text-22 text-(--ord-text-muted)">

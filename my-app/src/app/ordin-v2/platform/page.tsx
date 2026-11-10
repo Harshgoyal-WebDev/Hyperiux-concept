@@ -33,7 +33,7 @@ const page = () => {
           </>
         }
         copy="Execution, memory, tools, policies, evals and traces in one platform, so a prototype agent and a production one run on exactly the same rails."
-        primary={{ label: "Start building", href: ROUTES.pricing }}
+        primary={{ label: "Start Building", href: ROUTES.pricing }}
         secondary={{ label: "See the SDK", href: "#platform-sdk" }}
         visual={<TraceViewer />}
         arc={{ flipY: true, speed: 0.7, flow: 0.7, softness: 1.35 }}
@@ -55,7 +55,7 @@ const page = () => {
         chapter="Capabilities"
         heading={
           <>
-            Built in, <span className="text-(--ord-text-muted)">not bolted on.</span>
+            Built in, <span className="text-ord-primary-deep">not bolted on.</span>
           </>
         }
         copy="The pieces every team ends up building around an LLM, shipped as one runtime and maintained for you."
@@ -73,7 +73,7 @@ const page = () => {
         }
         copy="Describe the job, name the agents and the policies, set a budget. The runtime handles planning, retries, memory and the audit trail."
         points={["TypeScript and Python SDKs", "Runs locally against the real runtime", "Same code in staging and production"]}
-        cta="See pricing"
+        cta="See Pricing"
         ctaHref={ROUTES.pricing}
         file="reconcile.ts"
         lang="TypeScript"

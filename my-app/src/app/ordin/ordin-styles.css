@@ -79,15 +79,18 @@ html:has(.ord-page) {
 }
 
 .ord-page .text-28 {
-  font-size: 1.2vw;
+  /* 18px on a 1440 screen: lead paragraphs */
+  font-size: 1.25vw;
 }
 
 .ord-page .text-24 {
-  font-size: 1vw;
+  /* 18px on a 1440 screen: descriptions and answers */
+  font-size: 1.25vw;
 }
 
 .ord-page .text-22 {
-  font-size: 0.95vw;
+  /* 16px on a 1440 screen: links, buttons, labels and lists */
+  font-size: 1.111vw;
 }
 
 .ord-page .text-14 {

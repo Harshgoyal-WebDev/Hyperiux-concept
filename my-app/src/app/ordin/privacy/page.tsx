@@ -31,8 +31,8 @@ const page = () => {
           </>
         }
         copy={`What we collect, why we collect it and what you can do about it. Last updated ${formatDate(PRIVACY_UPDATED)}.`}
-        primary={{ label: "Read the policy", href: "#privacy-policy" }}
-        secondary={{ label: "Ask a question", href: ENQUIRE.security }}
+        primary={{ label: "Read the Policy", href: "#privacy-policy" }}
+        secondary={{ label: "Ask a Question", href: ENQUIRE.security }}
         arc={{ flipY: true, speed: 0.5, flow: 0.6, softness: 1.5 }}
       />
       <section id="privacy-policy" data-ord-orb="privacy-body" data-ord-chapter="Policy" data-ord-light className="relative bg-ord-bone text-ord-ink">

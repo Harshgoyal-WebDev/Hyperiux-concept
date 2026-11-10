@@ -44,7 +44,7 @@ const Faq = () => {
         <div className="flex w-[32%] flex-col gap-6 max-lg:w-[70%] max-md:w-full">
           <LineReveal>
             <h2>
-              Questions, <span className="text-(--ord-text-muted)">answered.</span>
+              Questions, <span className="text-ord-primary-deep">answered.</span>
             </h2>
           </LineReveal>
           <LineReveal delay={0.15}>
@@ -54,7 +54,7 @@ const Faq = () => {
           </LineReveal>
           <div data-ord-reveal>
             <OrdButton href={ENQUIRE.demo} variant="inkLine">
-              Book a walkthrough
+              Book a Walkthrough
             </OrdButton>
           </div>
         </div>
@@ -70,7 +70,7 @@ const Faq = () => {
                 >
                   <FAQTitle iconMode="plus" className="py-[1.5vw] max-lg:py-[2.6vw] max-md:py-[4.4vw]">
                     <div className="flex items-baseline gap-5 max-md:gap-3">
-                      <span className="ord-label text-14 text-ord-primary-deep">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="ord-label text-22 text-ord-primary-deep">{String(i + 1).padStart(2, "0")}</span>
                       <h3 className="text-28 font-medium transition-transform duration-500 ease-[cubic-bezier(0.7,0,0.2,1)] group-hover/faq:[transform:translateX(0.5vw)]">
                         {item.q}
                       </h3>

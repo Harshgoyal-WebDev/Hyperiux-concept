@@ -54,9 +54,9 @@ const Cta = () => {
         </p>
       </LineReveal>
       <div data-ord-cta className="flex flex-wrap justify-center gap-3">
-        <OrdButton href={ROUTES.pricing}>Start building</OrdButton>
+        <OrdButton href={ROUTES.pricing}>Start Building</OrdButton>
         <OrdButton href={ENQUIRE.demo} variant="line" className="bg-(--ord-ink)/60 backdrop-blur-sm">
-          Talk to an engineer
+          Talk to an Engineer
         </OrdButton>
       </div>
     </section>

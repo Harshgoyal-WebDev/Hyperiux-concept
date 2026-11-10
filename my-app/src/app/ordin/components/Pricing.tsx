@@ -32,20 +32,20 @@ const PLANS: Plan[] = [
     name: "Starter",
     monthly: "0",
     annual: "0",
-    unit: "free forever",
+    unit: "Free forever",
     blurb: "For one builder shipping a first agent.",
     features: ["10,000 runs a month", "3 agents per job", "Community support", "7-day trace history"],
-    cta: "Start free",
+    cta: "Start Free",
   },
   {
     icon: "layers",
     name: "Scale",
     monthly: "49",
     annual: "39",
-    unit: "per seat / month",
+    unit: "Per seat / month",
     blurb: "For teams running agents in production.",
     features: ["500,000 runs a month", "Unlimited agents", "Policies and sign-off queues", "90-day replays", "SSO and audit export"],
-    cta: "Start a trial",
+    cta: "Start a Trial",
     featured: true,
   },
   {
@@ -53,10 +53,10 @@ const PLANS: Plan[] = [
     name: "Enterprise",
     monthly: "Custom",
     annual: "Custom",
-    unit: "volume pricing",
+    unit: "Volume pricing",
     blurb: "For regulated work and private deployments.",
     features: ["Dedicated regions", "Bring your own model", "Private VPC runtime", "24/7 named engineer"],
-    cta: "Talk to sales",
+    cta: "Talk to Sales",
   },
 ];
 
@@ -77,21 +77,21 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
           className="h-[3vh] aspect-square text-ord-primary-deep max-lg:h-[2.2vh] max-md:h-[3.2vh]"
         />
         {plan.featured && (
-          <span className="bg-ord-ink px-[0.6vw] py-[0.3vw] ord-label text-14 uppercase text-(--ord-primary-light) max-lg:px-[1.2vw] max-lg:py-[0.6vw] max-md:px-[2.4vw] max-md:py-[1vw]">
+          <span className="bg-ord-ink px-[0.6vw] py-[0.3vw] text-22 text-(--ord-primary-light) max-lg:px-[1.2vw] max-lg:py-[0.6vw] max-md:px-[2.4vw] max-md:py-[1vw]">
             Most teams
           </span>
         )}
       </div>
       <div className="relative flex flex-col gap-1">
         <h3 className="text-30">{plan.name}</h3>
-        <p className="text-22 text-(--ord-text-muted)">{plan.blurb}</p>
+        <p className="text-24 text-(--ord-text-muted)">{plan.blurb}</p>
       </div>
       <div className="relative flex flex-wrap items-end gap-x-3 gap-y-1">
         <p className="text-64 leading-none">
           {/* Switching tabs mounts the other grid, so each price rolls over from the other billing period */}
           {price === "Custom" ? price : <Roll value={`$${price}`} from={`$${annual ? plan.monthly : plan.annual}`} />}
         </p>
-        <span className="ord-label text-14 uppercase text-(--ord-text-muted)">{plan.unit}</span>
+        <span className="text-22 text-(--ord-text-muted)">{plan.unit}</span>
       </div>
       <ul className={`relative flex flex-1 flex-col gap-3 border-t ${LINE} pt-[1.4vw] max-lg:pt-[3vw] max-md:pt-[5vw]`}>
         {plan.features.map((f) => (
@@ -129,7 +129,7 @@ const Pricing = () => {
       <div className="flex flex-col items-center gap-12 ord-container ord-section max-md:gap-8">
         <LineReveal className="text-center">
           <h2>
-            Priced per run. <span className="text-(--ord-text-muted)">Not per prompt.</span>
+            Priced per run. <span className="text-ord-primary-deep">Not per prompt.</span>
           </h2>
         </LineReveal>
         <div data-ord-reveal className="w-full">

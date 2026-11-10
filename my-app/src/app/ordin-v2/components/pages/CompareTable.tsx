@@ -41,7 +41,7 @@ const CompareTable = () => {
       <div className="flex flex-col gap-14 ord-container ord-section max-md:gap-8">
         <LineReveal className="w-[50%] max-lg:w-full">
           <h2>
-            Compare <span className="text-(--ord-text-muted)">every plan.</span>
+            Compare <span className="text-ord-primary-deep">every plan.</span>
           </h2>
         </LineReveal>
         <div data-ord-reveal className="flex flex-col gap-6">

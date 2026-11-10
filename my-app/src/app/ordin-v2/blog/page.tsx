@@ -34,8 +34,8 @@ const page = () => {
           </>
         }
         copy="How we build, govern and price agents that run in production, plus what we learn shipping them with customers."
-        primary={{ label: "Read the latest", href: "#blog-featured" }}
-        secondary={{ label: "Talk to the team", href: ENQUIRE.demo }}
+        primary={{ label: "Read the Latest", href: "#blog-featured" }}
+        secondary={{ label: "Talk to the Team", href: ENQUIRE.demo }}
         arc={{ flipX: true, flipY: true, speed: 0.6, flow: 0.8, softness: 1.3 }}
       />
       <div id="blog-featured" className="relative">

@@ -16,12 +16,12 @@ import { pinnedHeight } from "../config";
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const AGENTS = [
-  { name: "Planner", role: "Splits the job into nine ordered steps", time: "0.3s", pos: "left-[5vw] top-[45vh]" },
-  { name: "Researcher", role: "Pulls the Q3 ledger and 212 contracts", time: "1.1s", pos: "right-[5vw] top-[45vh]" },
-  { name: "Analyst", role: "Finds 14 invoices over budget", time: "1.8s", pos: "left-[5vw] top-[65vh]" },
-  { name: "Coder", role: "Writes and tests the reconcile script", time: "2.6s", pos: "right-[5vw] top-[65vh]" },
-  { name: "Critic", role: "Re-checks every figure against source", time: "3.4s", pos: "left-[5vw] top-[85vh]" },
-  { name: "Courier", role: "Drafts 14 vendor emails for sign-off", time: "4.2s", pos: "right-[5vw] top-[85vh]" },
+  { name: "Planner", role: "Splits the job into nine ordered steps", pos: "left-[5vw] top-[45vh]" },
+  { name: "Researcher", role: "Pulls the Q3 ledger and 212 contracts", pos: "right-[5vw] top-[45vh]" },
+  { name: "Analyst", role: "Finds 14 invoices over budget", pos: "left-[5vw] top-[65vh]" },
+  { name: "Coder", role: "Writes and tests the reconcile script", pos: "right-[5vw] top-[65vh]" },
+  { name: "Critic", role: "Re-checks every figure against source", pos: "left-[5vw] top-[85vh]" },
+  { name: "Courier", role: "Drafts 14 vendor emails for sign-off", pos: "right-[5vw] top-[85vh]" },
 ];
 
 const Swarm = () => {
@@ -101,9 +101,6 @@ const Swarm = () => {
         render();
         gsap.set(cards, { opacity: 1 });
         gsap.set("[data-ord-rule]", { scaleX: 1 });
-        gsap.set("[data-ord-done]", { opacity: 1 });
-        gsap.set("[data-ord-idle]", { opacity: 0 });
-        gsap.set("[data-ord-complete]", { opacity: 1 });
         return;
       }
 
@@ -124,18 +121,14 @@ const Swarm = () => {
 
       cards.forEach((card, i) => {
         const at = 0.4 + i * 0.9;
-        const idle = card.querySelector("[data-ord-idle]");
-        const done = card.querySelector("[data-ord-done]");
         const rule = card.querySelector("[data-ord-rule]");
         if (!mobile) tl.to(wires[i], { draw: 1, duration: 0.5 }, at);
         tl.fromTo(card, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }, at + (mobile ? 0 : 0.45));
         if (!mobile) tl.to(wires[i], { pkt: 1, duration: 0.6, ease: "none" }, at + 0.4);
-        tl.to(rule, { scaleX: 1, duration: 0.5, ease: "none" }, at + 0.4)
-          .to(idle, { opacity: 0, duration: 0.1 }, at + 0.9)
-          .to(done, { opacity: 1, duration: 0.1 }, at + 0.9);
+        tl.to(rule, { scaleX: 1, duration: 0.5, ease: "none" }, at + 0.4);
       });
 
-      tl.to("[data-ord-complete]", { opacity: 1, duration: 0.4 }, ">").to({}, { duration: 0.5 });
+      tl.to({}, { duration: 0.5 });
 
       return () => {
         watch.kill();
@@ -159,7 +152,7 @@ const Swarm = () => {
         <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-5 ord-container pt-[11vh] text-center max-lg:items-start max-lg:gap-4 max-lg:text-left max-md:pt-[11vh]">
           <LineReveal>
             <h2>
-              One prompt. <span className="text-ord-stone">Six specialists.</span>
+              One prompt. <span className="text-ord-primary">Six specialists.</span>
             </h2>
           </LineReveal>
           <LineReveal className="w-[40%] max-lg:hidden" delay={0.15}>
@@ -174,33 +167,21 @@ const Swarm = () => {
             <Spotlight
               key={a.name}
               data-ord-agent
-              className={`absolute flex w-[21vw] -translate-y-1/2 flex-col gap-3 border border-(--ord-bone)/12 bg-transparent px-[1.2vw] py-[1.8vh] opacity-0 max-lg:w-[28vw] max-lg:px-[2vw] max-md:static max-md:w-full max-md:translate-y-0 max-md:gap-2 max-md:border-0 max-md:px-[3vw] max-md:py-[1.6vh] hover:border-(--ord-primary)/50 transition-colors duration-500 ${a.pos}`}
+              className={`absolute flex h-[10.2vw] w-[21vw] -translate-y-1/2 flex-col justify-between gap-3 border border-(--ord-bone)/12 bg-transparent px-[1.2vw] py-[1.8vh] opacity-0 max-lg:h-auto max-lg:w-[28vw] max-lg:px-[2vw] max-md:static max-md:w-full max-md:translate-y-0 max-md:gap-2 max-md:border-0 max-md:px-[3vw] max-md:py-[1.6vh] hover:border-(--ord-primary)/50 transition-colors duration-500 ${a.pos}`}
             >
-              <div className="flex items-center justify-between ord-label text-14 uppercase text-ord-stone">
-                <span>{String(i + 1).padStart(2, "0")}</span>
-                <span className="relative">
-                  <span data-ord-idle>Queued</span>
-                  <span data-ord-done className="absolute right-0 top-0 whitespace-nowrap text-ord-primary-light opacity-0">
-                    Done {a.time}
-                  </span>
-                </span>
+              <div className="flex flex-col gap-2">
+                <h3 className="flex items-baseline gap-[0.6vw] text-30 max-lg:gap-[1.2vw] max-md:gap-[2vw]">
+                  <span className="ord-label text-24 text-ord-stone">{String(i + 1).padStart(2, "0")}.</span>
+                  {a.name}
+                </h3>
+                <p className="text-24 text-ord-stone max-md:hidden">{a.role}</p>
               </div>
-              <h3 className="text-30">{a.name}</h3>
-              <p className="text-24 text-ord-stone max-md:hidden">{a.role}</p>
               <span className="block h-px w-full bg-(--ord-bone)/10">
                 <span data-ord-rule className="block h-px w-full origin-left bg-(--ord-primary) [transform:scaleX(0)]" />
               </span>
             </Spotlight>
           ))}
         </div>
-        <p
-          data-ord-complete
-          className="absolute left-1/2 top-[92vh] flex -translate-x-1/2 items-center gap-4 ord-label text-14 whitespace-nowrap uppercase text-ord-primary-light opacity-0 max-md:top-[47vh]"
-        >
-          <span className="block h-px w-[4vw] bg-(--ord-bone)/30 max-md:w-[8vw]" />
-          Run complete / 4.2s / 0 errors
-          <span className="block h-px w-[4vw] bg-(--ord-bone)/30 max-md:w-[8vw]" />
-        </p>
       </div>
     </section>
   );

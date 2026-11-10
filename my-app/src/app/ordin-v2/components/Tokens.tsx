@@ -90,7 +90,7 @@ const Tokens = () => {
         <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>
-            Every job starts as a sentence. <span className="text-ord-stone">Not a workflow.</span>
+            Every job starts as a sentence. <span className="text-ord-primary">Not a workflow.</span>
             </h2>
           </LineReveal>
           <LineReveal className="w-[26%] max-lg:w-[70%] max-md:w-full" delay={0.15}>
@@ -105,7 +105,7 @@ const Tokens = () => {
             <span
               key={i}
               data-ord-chip
-              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1vw] text-(--ord-stone) max-lg:px-[1.4vw] max-lg:text-[1.9vw] max-md:px-[2vw] max-md:text-[3.6vw]"
+              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1.111vw] text-(--ord-stone) max-lg:px-[1.4vw] max-lg:text-[1.9vw] max-md:px-[2vw] max-md:text-[3.6vw]"
             >
               <span
                 data-ord-id

@@ -21,9 +21,9 @@ const NotFound = () => (
         This page doesn&apos;t exist. The run was rolled back and nothing was changed.
       </p>
       <div className="relative z-1 flex flex-wrap justify-center gap-3">
-        <OrdButton href={ROUTES.home}>Back to home</OrdButton>
+        <OrdButton href={ROUTES.home}>Back to Home</OrdButton>
         <OrdButton href={ENQUIRE.demo} variant="line">
-          Talk to the team
+          Talk to the Team
         </OrdButton>
       </div>
     </section>

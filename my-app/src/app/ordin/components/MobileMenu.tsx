@@ -131,7 +131,7 @@ const MobileMenu = () => {
           ))}
         </nav>
         <div data-mm-foot className="flex items-center justify-between gap-6 max-md:flex-col max-md:items-start">
-          <OrdButton href={ROUTES.pricing}>Get started</OrdButton>
+          <OrdButton href={ROUTES.pricing}>Get Started</OrdButton>
           <span className="ord-label text-14 uppercase text-ord-stone">The operating layer for autonomous work.</span>
         </div>
       </div>,

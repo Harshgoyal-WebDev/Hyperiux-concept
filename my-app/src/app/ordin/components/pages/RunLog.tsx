@@ -84,7 +84,7 @@ const RunLog = () => {
         <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>
-              Every run, <span className="text-(--ord-text-muted)">on the record.</span>
+              Every run, <span className="text-ord-primary-deep">on the record.</span>
             </h2>
           </LineReveal>
           <div className="flex w-[30%] flex-col items-end gap-6 max-lg:w-[70%] max-lg:items-start max-md:w-full">

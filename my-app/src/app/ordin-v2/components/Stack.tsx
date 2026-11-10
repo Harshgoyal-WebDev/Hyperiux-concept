@@ -105,7 +105,7 @@ const Stack = () => {
                 />
                 <div
                   data-ord-face
-                  className={`absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-ink)/25 bg-(--ord-paper-deep) px-[1.2vw] py-[2vh] ord-label text-24 uppercase text-(--ord-stone) ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
+                  className={`absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-ink)/25 bg-(--ord-paper-deep) px-[1.2vw] py-[2vh] text-22 text-(--ord-stone) tabular-nums ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
                 >
                   <span>{String(i + 1).padStart(2, "0")}</span>
                   <span>{l.name}</span>
@@ -121,7 +121,7 @@ const Stack = () => {
             </h2>
           </LineReveal>
           <LineReveal className="max-md:hidden" delay={0.15}>
-            <p className="text-28 text-(--ord-text-muted)">
+            <p className="max-w-[44.5vw] text-28 text-(--ord-text-muted) max-lg:max-w-none">
               Everything an autonomous system needs in production, in one place, so you never glue five vendors
               together with cron jobs again.
             </p>
@@ -135,8 +135,10 @@ const Stack = () => {
                 onPointerLeave={() => lift(i, false)}
                 className="group/layer relative flex cursor-default flex-col gap-1 border-b border-(--ord-ink)/15 py-[1.6vh]"
               >
-                <span className="ord-label text-14 text-ord-primary-deep">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="text-30">{l.name}</h3>
+                <h3 className="flex items-baseline gap-[0.6vw] text-30 max-lg:gap-[1.2vw] max-md:gap-[2vw]">
+                  <span className="ord-label text-24 text-ord-primary-deep">{String(i + 1).padStart(2, "0")}.</span>
+                  {l.name}
+                </h3>
                 <p className="text-24 text-(--ord-text-muted) max-md:hidden">{l.body}</p>
                 <span
                   aria-hidden

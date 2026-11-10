@@ -32,8 +32,8 @@ const page = () => {
           </>
         }
         copy="A run is one instruction carried through to a finished result, however many agents it takes. That is the only thing we charge for."
-        primary={{ label: "Start free", href: "#pricing" }}
-        secondary={{ label: "Talk to sales", href: ENQUIRE.sales }}
+        primary={{ label: "Start Free", href: "#pricing" }}
+        secondary={{ label: "Talk to Sales", href: ENQUIRE.sales }}
         visual={<UsageMeter />}
         arc={{ speed: 0.8, flow: 0.8, softness: 1.6, intensity: 1.2 }}
       />

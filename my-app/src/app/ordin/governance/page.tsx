@@ -33,8 +33,8 @@ const page = () => {
           </>
         }
         copy="Policies live on every action, not in a prompt. Anything that breaks one is denied before it runs, and every decision is signed and kept."
-        primary={{ label: "Talk to security", href: ENQUIRE.security }}
-        secondary={{ label: "Policies as code", href: "#governance-code" }}
+        primary={{ label: "Talk to Security", href: ENQUIRE.security }}
+        secondary={{ label: "Policies as Code", href: "#governance-code" }}
         visual={<PolicyShield />}
         arc={{ flipX: true, flipY: true, speed: 0.5, flow: 0.6, softness: 1.3 }}
       />
@@ -45,7 +45,7 @@ const page = () => {
         chapter="Compliance"
         heading={
           <>
-            Ready for <span className="text-(--ord-text-muted)">your auditor.</span>
+            Ready for <span className="text-ord-primary-deep">your auditor.</span>
           </>
         }
         copy="The certifications, agreements and controls security teams ask for, in place before your first run."
@@ -55,7 +55,7 @@ const page = () => {
       <CodeShowcase
         orb="governance-code"
         id="governance-code"
-        chapter="Policies as code"
+        chapter="Policies as Code"
         heading={
           <>
             Policies as <span className="text-ord-stone">code.</span>
@@ -63,7 +63,7 @@ const page = () => {
         }
         copy="Write your rules in one file, review them like any other change, and ship them with every deploy."
         points={["Versioned with your repo", "Reviewed in pull requests", "Tested before they ship"]}
-        cta="Talk to security"
+        cta="Talk to Security"
         ctaHref={ENQUIRE.security}
         file="ordin.policy.yaml"
         lang="YAML"

@@ -30,7 +30,7 @@ const Connectors = () => {
           <div className="flex w-[50%] flex-col gap-6 max-lg:w-full">
             <LineReveal>
               <h2>
-                Plug into the stack <span className="text-(--ord-text-muted)">you already run.</span>
+                Plug into the stack <span className="text-ord-primary-deep">you already run.</span>
               </h2>
             </LineReveal>
             <LineReveal delay={0.15} className="w-[80%] max-md:w-full">

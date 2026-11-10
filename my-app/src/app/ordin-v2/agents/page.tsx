@@ -34,8 +34,8 @@ const page = () => {
           </>
         }
         copy="Ordin wakes only the agents a job needs, hands each a scoped brief and keeps them in one shared memory, so the work moves like a well-run team."
-        primary={{ label: "Start building", href: ROUTES.pricing }}
-        secondary={{ label: "Build your own", href: "#agents-custom" }}
+        primary={{ label: "Start Building", href: ROUTES.pricing }}
+        secondary={{ label: "Build Your Own", href: "#agents-custom" }}
         visual={<AgentGraph />}
         arc={{ flipX: true, speed: 1.2, flow: 1.1, softness: 1.15 }}
       />
@@ -47,7 +47,7 @@ const page = () => {
         chapter="Coordination"
         heading={
           <>
-            Coordination, <span className="text-(--ord-text-muted)">handled.</span>
+            Coordination, <span className="text-ord-primary-deep">handled.</span>
           </>
         }
         copy="Handoffs, memory, models and budgets are the runtime's job, so your agents can stay focused on theirs."
@@ -64,7 +64,7 @@ const page = () => {
         }
         copy="A brief, a model, the tools it may touch and the policies it must follow. That is a whole agent, and it joins the team like any other."
         points={["Any model with an API", "Scoped tools and memory", "Policies travel with it"]}
-        cta="Talk to an engineer"
+        cta="Talk to an Engineer"
         ctaHref={ENQUIRE.demo}
         file="auditor.ts"
         lang="TypeScript"

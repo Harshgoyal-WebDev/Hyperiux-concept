@@ -28,7 +28,7 @@ const Footer = () => {
           </div>
           <div className="flex gap-[6vw] max-md:w-full max-md:justify-between">
             <div className="flex flex-col gap-4">
-              <p className="ord-label text-14 uppercase text-ord-primary-deep">Explore</p>
+              <p className="text-22 text-ord-primary-deep">Explore</p>
               <ul className="flex flex-col gap-2">
                 {LINKS.map((l) => (
                   <li key={l.label}>
@@ -38,7 +38,7 @@ const Footer = () => {
               </ul>
             </div>
             <div className="flex flex-col gap-4">
-              <p className="ord-label text-14 uppercase text-ord-primary-deep">Follow</p>
+              <p className="text-22 text-ord-primary-deep">Follow</p>
               <ul className="flex flex-col gap-2">
                 {SOCIALS.map((s) => (
                   <li key={s.label}>
@@ -65,8 +65,8 @@ const Footer = () => {
         >
           ordin
         </ColorfulCursorAura>
-        <div className="flex justify-between gap-6 border-t border-(--ord-ink)/15 pt-[1.4vw] ord-label text-14 uppercase text-(--ord-text-muted) max-lg:pt-[3vw] max-md:flex-col max-md:pt-[5vw] mt-[4vw]">
-          <span>(c) 2026 Ordin Labs</span>
+        <div className="flex justify-between gap-6 border-t border-(--ord-ink)/15 pt-[1.4vw] text-22 text-(--ord-text-muted) max-lg:pt-[3vw] max-md:flex-col max-md:pt-[5vw] mt-[4vw]">
+          <span>&copy; 2026 Ordin Labs</span>
           <span className="flex items-center gap-2">
             <span className="h-[0.6vh] aspect-square rounded-full bg-(--ord-primary)" />
             <span>All systems operational</span>

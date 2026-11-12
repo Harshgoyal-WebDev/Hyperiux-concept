@@ -67,7 +67,7 @@ const FeatureGrid = ({ orb, chapter, heading, copy, items, tone = "bone" }: Feat
               </div>
               <span
                 aria-hidden
-                className="absolute inset-x-0 bottom-0 block h-[2px] origin-left bg-(--ord-primary-light) [transform:scaleX(0)] transition-transform duration-700 ease-[cubic-bezier(0.7,0,0.2,1)] group-hover/cap:[transform:scaleX(1)]"
+                className="absolute inset-x-0 bottom-0 block h-0.5 origin-left bg-(--ord-primary-light) [transform:scaleX(0)] transition-transform duration-700 ease-[cubic-bezier(0.7,0,0.2,1)] group-hover/cap:[transform:scaleX(1)]"
               />
             </Spotlight>
           ))}

@@ -67,7 +67,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
   const card = (
     <Spotlight
       tone="light"
-      className={`ord-draw relative flex h-full flex-col gap-8 border md:max-lg:grid md:max-lg:grid-cols-2 md:max-lg:gap-x-[5vw] md:max-lg:gap-y-6 px-[1.8vw] py-[1.8vw] max-lg:px-[4vw] max-lg:py-[4vw] max-md:px-[5vw] max-md:py-[6vw] ${
+      className={`ord-draw relative flex h-full flex-col gap-8 border px-[1.8vw] py-[1.8vw] max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-[5vw] max-lg:gap-y-6 max-lg:px-[4vw] max-lg:py-[4vw] max-md:flex max-md:gap-8 max-md:px-[5vw] max-md:py-[6vw] ${
         plan.featured ? "border-transparent bg-[color-mix(in_srgb,var(--ord-primary)_18%,var(--ord-paper))]" : `${LINE} bg-white/45`
       }`}
     >
@@ -93,7 +93,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
         </p>
         {plan.unit && <span className="text-22 text-(--ord-text-muted)">{plan.unit}</span>}
       </div>
-      <ul className={`relative flex flex-1 flex-col gap-3 border-t ${LINE} pt-[1.4vw] max-lg:pt-[3vw] max-md:pt-[5vw] md:max-lg:col-start-2 md:max-lg:row-span-4 md:max-lg:row-start-1 md:max-lg:justify-center md:max-lg:border-t-0 md:max-lg:border-l md:max-lg:pt-0 md:max-lg:pl-[5vw]`}>
+      <ul className={`relative flex flex-1 flex-col gap-3 border-t ${LINE} pt-[1.4vw] max-lg:col-start-2 max-lg:row-span-4 max-lg:row-start-1 max-lg:justify-center max-lg:border-t-0 max-lg:border-l max-lg:pt-0 max-lg:pl-[5vw] max-md:justify-start max-md:border-t max-md:border-l-0 max-md:pt-[5vw] max-md:pl-0`}>
         {plan.features.map((f) => (
           <li key={f} className="flex items-center gap-3 text-22">
             <Icon name="check" className="h-[1.8vh] aspect-square shrink-0 text-ord-primary-deep max-lg:h-[1.4vh] max-md:h-[2vh]" />

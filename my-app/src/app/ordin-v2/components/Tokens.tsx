@@ -20,7 +20,6 @@ const IDS = [48213, 1207, 30915, 7732, 2919, 927, 15204, 290, 11863, 279, 26740,
 
 const Tokens = () => {
   const root = useRef<HTMLElement>(null);
-  const countRef = useRef<HTMLSpanElement>(null);
   const resizeKey = useResizeKey();
 
   useGSAP(
@@ -30,17 +29,10 @@ const Tokens = () => {
       if (!section || !stage) return;
       const chips = gsap.utils.toArray<HTMLElement>("[data-ord-chip]", section);
       const ids = gsap.utils.toArray<HTMLElement>("[data-ord-id]", section);
-      const counter = { n: 0 };
-      const setCount = () => {
-        if (countRef.current) countRef.current.textContent = String(Math.round(counter.n)).padStart(2, "0");
-      };
 
       if (prefersReducedMotion()) {
         gsap.set(chips, { opacity: 1, borderColor: alpha(THEME.primary, 0.3), color: THEME.bone });
         gsap.set(ids, { opacity: 1 });
-        gsap.set("[data-ord-parsed]", { opacity: 1 });
-        counter.n = WORDS.length;
-        setCount();
         return;
       }
 
@@ -74,9 +66,7 @@ const Tokens = () => {
         tl.to(chip, { x: pulls[i].x, y: pulls[i].y, scale: 0.1, opacity: 0, duration: 0.8, ease: "power3.in" }, 1.9 + i * 0.1);
       });
 
-      tl.to(counter, { n: WORDS.length, duration: 0.8 + WORDS.length * 0.1, ease: "none", onUpdate: setCount }, 1.9)
-        .to("[data-ord-parsed]", { opacity: 1, duration: 0.4 }, ">-0.1")
-        .to({}, { duration: 0.4 });
+      tl.to({}, { duration: 0.4 });
     },
     { scope: root, dependencies: [resizeKey], revertOnUpdate: true },
   );
@@ -105,7 +95,7 @@ const Tokens = () => {
             <span
               key={i}
               data-ord-chip
-              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1.111vw] text-(--ord-stone) max-lg:px-[1.4vw] max-lg:text-[1.9vw] max-md:px-[2vw] max-md:text-[3.6vw]"
+              className="relative rounded-xs border border-transparent opacity-0 px-[1vw] py-[0.4vh] text-[1.1vw] text-(--ord-stone) max-lg:px-[1.4vw] max-lg:text-[1.9vw] max-md:px-[2vw] max-md:text-[3.6vw]"
             >
               <span
                 data-ord-id
@@ -118,14 +108,6 @@ const Tokens = () => {
             </span>
           ))}
         </p>
-        {/* <div className="absolute inset-x-[3vw] bottom-[6vh] flex items-end justify-between gap-6 ord-label text-14 uppercase text-ord-stone max-lg:inset-x-[4vw] max-md:inset-x-[5vw] max-md:flex-col max-md:items-start">
-          <span>
-            Tokens in <span ref={countRef} className="text-ord-primary-light">00</span> / {String(WORDS.length).padStart(2, "0")}
-          </span>
-          <span data-ord-parsed className="opacity-0">
-            Intent: finance.reconcile / 3 sub-tasks / 2 tools / budget USD 0.04
-          </span>
-        </div> */}
       </div>
     </section>
   );

@@ -89,7 +89,7 @@ html:has(.ord-page) {
 
 .ord-page .text-22 {
   /* 16px on a 1440 screen: links, buttons, labels and lists */
-  font-size: 1.111vw;
+  font-size: 1.1vw;
 }
 
 .ord-page .text-14 {

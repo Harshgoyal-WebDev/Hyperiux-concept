@@ -145,7 +145,7 @@ const Stack = () => {
             </h2>
           </LineReveal>
           <LineReveal className="max-md:hidden" delay={0.15}>
-            <p className="max-w-[44.5vw] text-28 text-(--ord-text-muted) max-lg:max-w-none">
+            <p className="w-[44.5vw] text-28 text-(--ord-text-muted) max-lg:w-full">
               Everything an autonomous system needs in production, in one place, so you never glue five vendors
               together with cron jobs again.
             </p>

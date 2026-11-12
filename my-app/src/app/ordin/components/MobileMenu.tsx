@@ -59,9 +59,11 @@ const MobileMenu = () => {
   }, [open, lenis]);
 
   // Close whenever the route changes, whatever triggered the navigation
-  useEffect(() => {
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   // Close on Escape
   useEffect(() => {

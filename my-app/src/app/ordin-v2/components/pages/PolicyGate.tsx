@@ -175,7 +175,7 @@ const PolicyGate = () => {
           {/* The gate runs past both edges of the column and sits over the chips, so every request passes through it */}
           <div className="pointer-events-none absolute -inset-x-[2.5vw] top-1/2 z-10 -translate-y-1/2 motion-reduce:hidden max-lg:-inset-x-[2vw]">
             <span className="absolute bottom-[1.2vh] right-0 ord-label text-14 uppercase text-ord-primary-light">Policy engine</span>
-            <span data-pg-gate className="block h-[2px] w-full origin-center bg-(--ord-primary-light) opacity-60 shadow-[0_0_2vh_var(--ord-primary-light)]" />
+            <span data-pg-gate className="block h-0.5 w-full origin-center bg-(--ord-primary-light) opacity-60 shadow-[0_0_2vh_var(--ord-primary-light)]" />
           </div>
         </div>
 

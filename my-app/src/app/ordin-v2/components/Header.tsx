@@ -12,33 +12,15 @@ import { onIntroDone } from "./Animations/intro";
 import { prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey } from "./Animations/useResizeKey";
 import ScrambleLinkButton from "./effects/scramble-link-button";
-import { scrambleTo } from "./effects/scramble-text";
 import { LINKS, ROUTES } from "./nav";
 import MobileMenu from "./MobileMenu";
 import { THEME } from "../theme";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const CHAPTERS: Record<string, string> = {
-  hero: "Overview",
-  tokens: "Intake",
-  swarm: "Orchestrate",
-  guard: "Govern",
-  stack: "Platform",
-  statement: "Principle",
-  metrics: "Proof",
-  pricing: "Pricing",
-  social: "Customers",
-  faq: "Questions",
-  cta: "Begin",
-};
-
 const Header = () => {
-  const indexRef = useRef<HTMLSpanElement>(null);
-  const nameRef = useRef<HTMLSpanElement>(null);
   const barRef = useRef<HTMLSpanElement>(null);
   const headerRef = useRef<HTMLElement>(null);
-  const chapterRef = useRef<HTMLDivElement>(null);
   const footerKey = useElementHeightKey("#ord-footer");
   const pathname = usePathname();
 
@@ -48,51 +30,17 @@ const Header = () => {
         if (prefersReducedMotion()) return;
         // fromTo, not from: if this runs twice (React dev remounts) a from() would animate to a half-way value
         gsap.fromTo(headerRef.current, { yPercent: -100, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.3, ease: "expo.out", delay: 0.4 });
-        gsap.fromTo(chapterRef.current, { x: -20 }, { x: 0, duration: 1.1, ease: "expo.out", delay: 0.8 });
       }),
     [],
   );
 
   useGSAP(() => {
-    // Numbered in the order this page actually shows them, so every page counts from 01
-    // A section can name its own chapter with data-ord-chapter, so new pages need no edits here
-    const names: Record<string, string> = {};
-    gsap.utils.toArray<HTMLElement>("[data-ord-orb]").forEach((el) => {
-      const key = el.dataset.ordOrb ?? "";
-      const name = el.dataset.ordChapter ?? CHAPTERS[key];
-      if (name) names[key] = name;
-    });
-    const keys = Object.keys(names);
-    const set = (key: string) => {
-      const i = keys.indexOf(key);
-      gsap.to(chapterRef.current, { autoAlpha: i < 0 ? 0 : 1, duration: 0.4 });
-      if (i < 0 || !indexRef.current || !nameRef.current) return;
-      gsap.fromTo(indexRef.current, { yPercent: 100 }, {
-        yPercent: 0,
-        duration: 0.6,
-        ease: "expo.out",
-        onStart: () => {
-          if (indexRef.current) indexRef.current.textContent = String(i + 1).padStart(2, "0");
-        },
-      });
-      scrambleTo(nameRef.current, names[key], 0.7);
-    };
-
-    const triggers = gsap.utils.toArray<HTMLElement>("[data-ord-orb]").map((el) =>
-      ScrollTrigger.create({
-        trigger: el,
-        start: "top 50%",
-        end: "bottom 50%",
-        onToggle: (self) => self.isActive && set(el.dataset.ordOrb ?? ""),
-      }),
-    );
-
     // Declared first: a trigger can toggle while it is being created (a page that opens mid-section)
     const tone: ScrollTrigger[] = [];
     const syncTone = () => {
       const light = tone.some((t) => t.isActive);
       headerRef.current?.toggleAttribute("data-light", light);
-      gsap.to([headerRef.current, chapterRef.current], {
+      gsap.to(headerRef.current, {
         color: light ? THEME.ink : THEME.bone,
         duration: 0.4,
         ease: "power2.out",
@@ -104,17 +52,11 @@ const Header = () => {
     );
 
     const frame = requestAnimationFrame(() => {
-      const mid = window.innerHeight / 2;
-      const current = gsap.utils.toArray<HTMLElement>("[data-ord-orb]").find((el) => {
-        const r = el.getBoundingClientRect();
-        return r.top <= mid && r.bottom >= mid;
-      });
-      if (current) set(current.dataset.ordOrb ?? "");
       const lightNow = gsap.utils.toArray<HTMLElement>("[data-ord-light]").some((el) => {
         const r = el.getBoundingClientRect();
         return r.top <= window.innerHeight * 0.06 && r.bottom >= window.innerHeight * 0.06;
       });
-      gsap.set([headerRef.current, chapterRef.current], { color: lightNow ? THEME.ink : THEME.bone });
+      gsap.set(headerRef.current, { color: lightNow ? THEME.ink : THEME.bone });
       headerRef.current?.toggleAttribute("data-light", lightNow);
     });
 
@@ -139,7 +81,6 @@ const Header = () => {
     });
 
     return () => {
-      triggers.forEach((t) => t.kill());
       tone.forEach((t) => t.kill());
       progress.kill();
       cancelAnimationFrame(frame);
@@ -176,23 +117,6 @@ const Header = () => {
           <MobileMenu />
         </div>
       </header>
-      {/* <div
-        ref={chapterRef}
-        aria-hidden
-        className="fixed left-[5vw] bottom-[3vh] z-50 flex items-center gap-4 ord-label text-14 uppercase text-(--ord-bone) max-lg:left-[4vw] max-md:hidden"
-      >
-        <span className="block overflow-hidden">
-          <span ref={indexRef} className="block text-(--ord-primary-light)">
-            01
-          </span>
-        </span>
-        <span className="block h-px w-[3vw] bg-(--ord-primary)" />
-        <span className="block overflow-hidden">
-          <span ref={nameRef} className="block">
-            Overview
-          </span>
-        </span>
-      </div> */}
     </div>
   );
 };

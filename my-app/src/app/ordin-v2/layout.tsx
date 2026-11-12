@@ -22,7 +22,10 @@ const bodyFont = DM_Sans({
 });
 
 // Fallback for any page without its own metadata, such as the 404, so the server title is never the framework default
-export const metadata: Metadata = { title: "Page not found | Ordin" };
+export const metadata: Metadata = {
+  title: "Page not found | Ordin",
+  description: "This page does not exist. Head back home or talk to the team.",
+};
 
 // Shared by every Ordin page: fonts, smooth scroll, grain, header and the parallax footer
 const layout = ({ children }: { children: ReactNode }) => {

@@ -95,6 +95,9 @@ const IntroLoader = () => {
 
       const rows = gsap.utils.toArray<HTMLElement>("[data-ord-step]", loader);
       const texts = gsap.utils.toArray<HTMLElement>("[data-ord-loader-text]", loader);
+      // The counter is already on screen in the server HTML (so the first paint has real content);
+      // it only joins the other text on the way out
+      const count = loader.querySelector<HTMLElement>("[data-ord-loader-count]");
       const progress = { p: 0 };
       let step = -1;
 
@@ -144,7 +147,7 @@ const IntroLoader = () => {
           },
           0.3,
         )
-        .to(texts, { yPercent: -110, duration: 0.5, stagger: 0.02, ease: "expo.in" }, "+=0.1")
+        .to(count ? [...texts, count] : texts, { yPercent: -110, duration: 0.5, stagger: 0.02, ease: "expo.in" }, "+=0.1")
         .to(inner, { x: 0, y: 0, scale: 1, duration: 1.3, ease: "expo.inOut" }, "<0.1")
         .add(() => finishIntro(), "<0.4")
         .to(fillRef.current, { backgroundColor: alpha(THEME.primary, 0.4), duration: 0.6 }, "<")
@@ -180,7 +183,7 @@ const IntroLoader = () => {
 
       <div
         ref={lineRef}
-        className="absolute left-[5vw] top-[74vh] w-[90vw] max-lg:left-[4vw] max-lg:w-[92vw] max-md:left-[7vw] max-md:top-[52vh] max-md:w-[86vw]"
+        className="absolute left-[5vw] top-[calc(95vh-1px)] w-[90vw] max-lg:left-[4vw] max-lg:w-[92vw] max-md:left-[7vw] max-md:top-[calc(96vh-1px)] max-md:w-[86vw]"
       >
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-10 py-[3vh] max-md:flex-col-reverse max-md:items-start max-md:gap-4">
           <ul className="flex flex-col gap-2 ord-label text-14">
@@ -199,7 +202,7 @@ const IntroLoader = () => {
             ))}
           </ul>
           <p className="block overflow-hidden">
-            <span data-ord-loader-text className="flex items-start gap-2">
+            <span data-ord-loader-count className="flex items-start gap-2">
               <span className="text-128 leading-none font-light">
                 <Roll value={String(count).padStart(3, "0")} fit={false} />
               </span>

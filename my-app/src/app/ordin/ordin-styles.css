@@ -169,6 +169,12 @@ html:not(.ord-ready) .ord-page [data-ord-hide] {
   }
 }
 
+/* Chromium paints the page scrollbar before :has(.ord-page) matches and only repaints it when a
+   variable it reads changes, so the thumb reads --scrollbar-thumb and Ordin sets it here */
+:where(html:has(.ord-page)) {
+  --scrollbar-thumb: linear-gradient(to bottom, var(--ord-primary-deep), var(--ord-primary));
+}
+
 html:has(.ord-page)::-webkit-scrollbar {
   width: 0.6vw;
 }
@@ -178,7 +184,7 @@ html:has(.ord-page)::-webkit-scrollbar-track {
 }
 
 html:has(.ord-page)::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, var(--ord-primary-deep), var(--ord-primary));
+  background: var(--scrollbar-thumb);
   border: 0.15vw solid var(--ord-ink);
   border-radius: 0;
 }

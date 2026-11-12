@@ -47,7 +47,7 @@ const Tokens = () => {
       // Where the globe sits once it settles in this section: viewport centre, pushed down by its pose
       const box = stage.getBoundingClientRect();
       const tx = box.width / 2;
-      const ty = box.height * (isMobile() ? 0.66 : 0.7);
+      const ty = box.height * (isMobile() ? 0.78 : 0.7);
       const pulls = chips.map((chip) => {
         const r = chip.getBoundingClientRect();
         return { x: tx - (r.left - box.left + r.width / 2), y: ty - (r.top - box.top + r.height / 2) };
@@ -85,9 +85,9 @@ const Tokens = () => {
     <section ref={root} data-ord-orb="tokens" className="relative pt-[10%]" style={{ height: pinnedHeight(240) }}>
       <div
         data-ord-stage
-        className="sticky top-0 flex h-screen flex-col gap-14 overflow-hidden ord-container py-[7%] max-md:gap-10 max-md:py-[14vh]"
+        className="sticky top-0 flex h-screen flex-col gap-14 overflow-hidden ord-container py-[7%] max-md:gap-8 max-md:py-[12vh]"
       >
-        <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
+        <div className="flex items-baseline-last justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>
             Every job starts as a sentence. <span className="text-ord-primary">Not a workflow.</span>
@@ -118,7 +118,7 @@ const Tokens = () => {
             </span>
           ))}
         </p>
-        {/* <div className="absolute inset-x-[3vw] bottom-[6vh] flex items-end justify-between gap-6 ord-label text-14 uppercase text-ord-stone max-lg:inset-x-[4vw] max-md:inset-x-[5vw] max-md:flex-col max-md:items-start">
+        {/* <div className="absolute inset-x-[3vw] bottom-[6vh] flex items-end justify-between gap-6 ord-label text-14 text-ord-stone max-lg:inset-x-[4vw] max-md:inset-x-[7vw] max-md:flex-col max-md:items-start">
           <span>
             Tokens in <span ref={countRef} className="text-ord-primary-light">00</span> / {String(WORDS.length).padStart(2, "0")}
           </span>

@@ -83,7 +83,7 @@ export default function ArticleRail({ targetId, toc, meta = [], author, shareTit
       {meta.length > 0 && (
         <dl className="flex flex-col border-t border-(--ord-ink)/12">
           {meta.map((m) => (
-            <div key={m.label} className="flex justify-between gap-4 border-b border-(--ord-ink)/12 py-[1.2vh] ord-label text-14 uppercase">
+            <div key={m.label} className="flex justify-between gap-4 border-b border-(--ord-ink)/12 py-[1.2vh] ord-label text-14">
               <dt className="text-(--ord-text-muted)">{m.label}</dt>
               <dd>{m.value}</dd>
             </div>
@@ -93,11 +93,11 @@ export default function ArticleRail({ targetId, toc, meta = [], author, shareTit
 
       {shareTitle !== undefined && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-2 ord-label text-14 uppercase text-(--ord-text-muted)">Share</span>
+          <span className="mr-2 ord-label text-14 text-(--ord-text-muted)">Share</span>
           <button
             type="button"
             onClick={copy}
-            className="cursor-pointer rounded-xs border border-(--ord-ink)/20 px-[0.8vw] py-[0.7vh] ord-label text-14 uppercase transition-colors duration-500 hover:border-(--ord-primary-deep) hover:text-ord-primary-deep max-lg:px-[2vw] max-md:px-[3vw]"
+            className="cursor-pointer rounded-xs border border-(--ord-ink)/20 px-[0.8vw] py-[0.7vh] ord-label text-14 transition-colors duration-500 hover:border-(--ord-primary-deep) hover:text-ord-primary-deep max-lg:px-[2vw] max-md:px-[3vw]"
           >
             <span aria-live="polite">{copied ? "Link copied" : "Copy link"}</span>
           </button>
@@ -113,7 +113,7 @@ export default function ArticleRail({ targetId, toc, meta = [], author, shareTit
                 window.open(shareUrl(s.href), "_blank", "noopener,noreferrer");
               }}
               data-transition-ignore
-              className="rounded-xs border border-(--ord-ink)/20 px-[0.8vw] py-[0.7vh] ord-label text-14 uppercase transition-colors duration-500 hover:border-(--ord-primary-deep) hover:text-ord-primary-deep max-lg:px-[2vw] max-md:px-[3vw]"
+              className="rounded-xs border border-(--ord-ink)/20 px-[0.8vw] py-[0.7vh] ord-label text-14 transition-colors duration-500 hover:border-(--ord-primary-deep) hover:text-ord-primary-deep max-lg:px-[2vw] max-md:px-[3vw]"
             >
               {s.label}
             </a>
@@ -128,7 +128,7 @@ export default function ArticleRail({ targetId, toc, meta = [], author, shareTit
             <span ref={fillRef} className="absolute inset-0 block origin-top bg-(--ord-primary-deep) [transform:scaleY(0)]" />
           </span>
           <ol className="flex flex-col gap-1">
-            <li className="pb-2 ord-label text-14 uppercase text-(--ord-text-muted)">On this page</li>
+            <li className="pb-2 ord-label text-14 text-(--ord-text-muted)">On this page</li>
             {toc.map((t, i) => (
               <li key={t.id}>
                 <a

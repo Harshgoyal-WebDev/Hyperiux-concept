@@ -139,8 +139,6 @@
   font-size: max(0.7vw, 12px);
   font-style: normal;
   font-weight: 500;
-  letter-spacing: 0.04vw;
-  text-transform: uppercase;
 }
 
 .ord-page .ord-prose .prose-callout {
@@ -157,8 +155,6 @@
   color: var(--prose-accent);
   font-size: max(0.7vw, 12px);
   font-weight: 500;
-  letter-spacing: 0.04vw;
-  text-transform: uppercase;
 }
 
 /* Code always sits on a dark panel, whatever the sheet behind it */
@@ -177,8 +173,6 @@
   color: var(--ord-stone);
   font-size: max(0.7vw, 12px);
   font-weight: 500;
-  letter-spacing: 0.04vw;
-  text-transform: uppercase;
 }
 
 .ord-page .ord-prose pre {
@@ -218,8 +212,6 @@
   color: var(--prose-muted);
   font-size: max(0.7vw, 12px);
   font-weight: 500;
-  letter-spacing: 0.04vw;
-  text-transform: uppercase;
 }
 
 @media (max-width: 1023px) {

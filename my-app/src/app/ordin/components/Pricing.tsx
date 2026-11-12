@@ -42,7 +42,7 @@ const PLANS: Plan[] = [
     name: "Scale",
     monthly: "49",
     annual: "39",
-    unit: "Per seat / month",
+    unit: "/ month",
     blurb: "For teams running agents in production.",
     features: ["500,000 runs a month", "Unlimited agents", "Policies and sign-off queues", "90-day replays", "SSO and audit export"],
     cta: "Start a Trial",
@@ -53,7 +53,7 @@ const PLANS: Plan[] = [
     name: "Enterprise",
     monthly: "Custom",
     annual: "Custom",
-    unit: "Volume pricing",
+    unit: "",
     blurb: "For regulated work and private deployments.",
     features: ["Dedicated regions", "Bring your own model", "Private VPC runtime", "24/7 named engineer"],
     cta: "Talk to Sales",
@@ -67,7 +67,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
   const card = (
     <Spotlight
       tone="light"
-      className={`ord-draw relative flex h-full flex-col gap-8 border px-[1.8vw] py-[1.8vw] max-lg:px-[4vw] max-lg:py-[4vw] max-md:px-[5vw] max-md:py-[6vw] ${
+      className={`ord-draw relative flex h-full flex-col gap-8 border md:max-lg:grid md:max-lg:grid-cols-2 md:max-lg:gap-x-[5vw] md:max-lg:gap-y-6 px-[1.8vw] py-[1.8vw] max-lg:px-[4vw] max-lg:py-[4vw] max-md:px-[5vw] max-md:py-[6vw] ${
         plan.featured ? "border-transparent bg-[color-mix(in_srgb,var(--ord-primary)_18%,var(--ord-paper))]" : `${LINE} bg-white/45`
       }`}
     >
@@ -86,14 +86,14 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
         <h3 className="text-30">{plan.name}</h3>
         <p className="text-24 text-(--ord-text-muted)">{plan.blurb}</p>
       </div>
-      <div className="relative flex flex-wrap items-end gap-x-3 gap-y-1">
+      <div className="relative flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p className="text-64 leading-none">
           {/* Switching tabs mounts the other grid, so each price rolls over from the other billing period */}
           {price === "Custom" ? price : <Roll value={`$${price}`} from={`$${annual ? plan.monthly : plan.annual}`} />}
         </p>
-        <span className="text-22 text-(--ord-text-muted)">{plan.unit}</span>
+        {plan.unit && <span className="text-22 text-(--ord-text-muted)">{plan.unit}</span>}
       </div>
-      <ul className={`relative flex flex-1 flex-col gap-3 border-t ${LINE} pt-[1.4vw] max-lg:pt-[3vw] max-md:pt-[5vw]`}>
+      <ul className={`relative flex flex-1 flex-col gap-3 border-t ${LINE} pt-[1.4vw] max-lg:pt-[3vw] max-md:pt-[5vw] md:max-lg:col-start-2 md:max-lg:row-span-4 md:max-lg:row-start-1 md:max-lg:justify-center md:max-lg:border-t-0 md:max-lg:border-l md:max-lg:pt-0 md:max-lg:pl-[5vw]`}>
         {plan.features.map((f) => (
           <li key={f} className="flex items-center gap-3 text-22">
             <Icon name="check" className="h-[1.8vh] aspect-square shrink-0 text-ord-primary-deep max-lg:h-[1.4vh] max-md:h-[2vh]" />
@@ -113,7 +113,7 @@ const PlanCard = ({ plan, annual }: { plan: Plan; annual: boolean }) => {
 };
 
 const Grid = ({ annual }: { annual: boolean }) => (
-  <div className="grid grid-cols-3 gap-4 max-lg:gap-3 max-md:grid-cols-1 max-md:gap-4">
+  <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-1 max-lg:gap-3 max-md:gap-4">
     {PLANS.map((p) => (
       <PlanCard key={p.name} plan={p} annual={annual} />
     ))}

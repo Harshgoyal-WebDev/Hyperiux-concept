@@ -19,7 +19,7 @@ export default function RelatedPosts({ posts }: { posts: Post[] }) {
   return (
     <section ref={root} data-ord-orb="post-related" data-ord-chapter="Read next" data-ord-light className="relative bg-(--ord-paper) text-ord-ink">
       <div className="flex flex-col gap-14 ord-container ord-section max-md:gap-8">
-        <div className="flex items-end justify-between gap-10 max-md:flex-col max-md:items-start max-md:gap-6">
+        <div className="flex items-baseline-last justify-between gap-10 max-md:flex-col max-md:items-start max-md:gap-6">
           <LineReveal>
             <h2>
               Keep <span className="text-ord-primary-deep">reading.</span>

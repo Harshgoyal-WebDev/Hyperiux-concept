@@ -57,7 +57,7 @@ const PolicyShield = () => {
       <div className="relative h-[13vh] w-[80%] overflow-hidden border-y border-(--ord-bone)/10 [mask-image:linear-gradient(to_bottom,transparent,#000_25%,#000_75%,transparent)] max-lg:w-full">
         <ul data-ps-log className="flex flex-col">
           {[...EVENTS, ...EVENTS].map(([kind, action], i) => (
-            <li key={i} aria-hidden={i >= EVENTS.length} className="flex justify-between gap-6 py-[0.9vh] ord-label text-14 uppercase">
+            <li key={i} aria-hidden={i >= EVENTS.length} className="flex justify-between gap-6 py-[0.9vh] ord-label text-14">
               <span className="text-ord-stone">{kind}</span>
               <span className={TONE[kind]}>{action}</span>
             </li>

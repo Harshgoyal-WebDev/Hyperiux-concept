@@ -78,10 +78,10 @@ const RelayTrack = () => {
   return (
     <section ref={root} data-ord-orb="agents-relay" data-ord-chapter="Relay" className="relative h-(--pin) max-md:h-(--pin-md) motion-reduce:h-auto!" style={{ "--pin": pinnedHeight(240), "--pin-md": pinnedHeight(420) } as React.CSSProperties}>
       <div className="sticky top-0 flex h-screen flex-col justify-center gap-[7vh] overflow-hidden max-md:gap-[5vh] motion-reduce:static motion-reduce:h-auto motion-reduce:py-[14vh]">
-        <div className="flex items-end justify-between gap-10 ord-container max-lg:flex-col max-lg:items-start max-lg:gap-4">
+        <div className="flex items-baseline-last justify-between gap-10 ord-container max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[46%] max-lg:w-full">
             <h2>
-              One job, <span className="text-ord-stone">handed down the line.</span>
+              One job, <span className="text-ord-primary">handed down the line.</span>
             </h2>
           </LineReveal>
           <LineReveal className="w-[28%] max-lg:w-[70%] max-md:hidden" delay={0.15}>
@@ -100,7 +100,7 @@ const RelayTrack = () => {
             </span>
             <span className="absolute inset-x-[5vw] top-0 flex -translate-y-1/2 justify-between">
               {AGENT_TOUR.map((a) => (
-                <span key={a.name} data-rt-node className="block h-[1.2vh] aspect-square rounded-full border border-(--ord-bone)/30 bg-transparent max-md:h-[1.4vh]" />
+                <span key={a.name} data-rt-node className="block h-[1.2vh] aspect-square border border-(--ord-bone)/30 bg-transparent max-md:h-[1.4vh]" />
               ))}
             </span>
           </div>
@@ -112,7 +112,7 @@ const RelayTrack = () => {
                 data-rt-card
                 className="flex w-[30vw] shrink-0 flex-col gap-6 motion-reduce:w-auto border border-(--ord-bone)/12 px-[1.8vw] py-[3vh] max-lg:w-[48vw] max-md:w-[78vw] max-md:gap-4 max-md:px-[5vw]"
               >
-                <div className="flex items-center justify-between ord-label text-14 uppercase text-ord-stone">
+                <div className="flex items-center justify-between ord-label text-14 text-ord-stone">
                   <span>
                     {String(i + 1).padStart(2, "0")} / {a.name}
                   </span>

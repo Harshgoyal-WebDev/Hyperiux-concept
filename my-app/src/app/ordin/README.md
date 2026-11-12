@@ -79,7 +79,7 @@ A section names its own chapter for the bottom-left indicator with `data-ord-cha
   - `#6EF2B1` bright mint accent (highlights, numbers, statuses)
   - `#13605D` deep teal for accents on light sections
   - `#E6ECE4` pale mint paper for the light sections
-- **Type** - Geist throughout. Small labels, numbers and logs use Geist at medium weight with even-width digits. Headings use a 1.2 line height and paragraphs 1.5.
+- **Type** - DM Sans throughout. Small labels, numbers and logs use DM Sans at medium weight with even-width digits. Headings use a 1.2 line height and paragraphs 1.5.
 - **Tone** - minimal and editorial, built on hairline dividers. The story sections are dark; Platform and everything from Proof to FAQ sit on pale mint paper with square, bordered cards and line icons. Every animation is tied to scroll and carries meaning (tokens, wires, policies, layers) rather than decoration.
 
 ## Folder structure

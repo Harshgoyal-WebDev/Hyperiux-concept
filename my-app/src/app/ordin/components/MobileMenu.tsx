@@ -58,6 +58,11 @@ const MobileMenu = () => {
     }
   }, [open, lenis]);
 
+  // Close whenever the route changes, whatever triggered the navigation
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   // Close on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -92,7 +97,7 @@ const MobileMenu = () => {
         id={id}
         aria-hidden={!open}
         inert={!open}
-        className="invisible fixed inset-0 z-[60] hidden flex-col justify-between gap-10 bg-ord-ink px-[4vw] pb-[6vh] text-ord-bone max-lg:flex max-md:px-[5vw]"
+        className="invisible fixed inset-0 z-[60] hidden flex-col justify-between gap-10 bg-ord-ink px-[4vw] pb-[6vh] text-ord-bone max-lg:flex max-md:px-[7vw]"
       >
         <div className="flex items-center justify-between py-[2.4vw] max-md:py-[4.4vw]">
           <a href={ROUTES.home} onClick={() => setOpen(false)} className="flex items-center gap-3">
@@ -122,7 +127,7 @@ const MobileMenu = () => {
                 href={l.href}
                 onClick={() => setOpen(false)}
                 aria-current={pathname.endsWith(l.href) ? "page" : undefined}
-                className="flex items-baseline gap-5 py-[2.2vh] text-64 transition-colors duration-300 hover:text-ord-primary-light aria-[current=page]:text-ord-primary-light"
+                className="flex items-baseline gap-4 py-[1.6vh] text-40 transition-colors duration-300 hover:text-ord-primary-light aria-[current=page]:text-ord-primary-light"
               >
                 <span className="ord-label text-14 text-ord-primary-light">{String(i + 1).padStart(2, "0")}</span>
                 {l.label}
@@ -130,9 +135,9 @@ const MobileMenu = () => {
             </span>
           ))}
         </nav>
-        <div data-mm-foot className="flex items-center justify-between gap-6 max-md:flex-col max-md:items-start">
+        <div data-mm-foot onClickCapture={(e) => { if ((e.target as HTMLElement).closest("a")) setOpen(false); }} className="flex items-center justify-between gap-6 max-md:flex-col max-md:items-start">
           <OrdButton href={ROUTES.pricing}>Get Started</OrdButton>
-          <span className="ord-label text-14 uppercase text-ord-stone">The operating layer for autonomous work.</span>
+          <span className="ord-label text-14 text-ord-stone">The operating layer for autonomous work.</span>
         </div>
       </div>,
           host,

@@ -29,14 +29,14 @@ export default function BlogListing({ posts }: { posts: Post[] }) {
   return (
     <section data-ord-orb="blog-list" data-ord-chapter="Articles" data-ord-light className="relative bg-ord-bone text-ord-ink">
       <div className="flex flex-col gap-14 ord-container ord-section max-md:gap-8">
-        <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-6">
+        <div className="flex items-baseline-last justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-6">
           <LineReveal className="w-[46%] max-lg:w-full">
             <h2>
               Every article, <span className="text-ord-primary-deep">filed by topic.</span>
             </h2>
           </LineReveal>
           <div className="flex flex-col items-end gap-4 max-lg:items-start">
-            <span className="ord-label text-14 uppercase text-(--ord-text-muted)">
+            <span className="ord-label text-14 text-(--ord-text-muted)">
               <Roll value={String(filtered.length).padStart(2, "0")} /> articles
             </span>
             <div role="group" aria-label="Filter by topic" className="flex flex-wrap gap-1 border border-(--ord-ink)/12 p-1">

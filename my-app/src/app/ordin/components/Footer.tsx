@@ -26,7 +26,7 @@ const Footer = () => {
             </a>
             <p className="text-24 text-(--ord-text-muted)">The operating layer for autonomous work.</p>
           </div>
-          <div className="flex gap-[6vw] max-md:w-full max-md:justify-between">
+          <div className="flex gap-[6vw] max-md:w-full max-md:gap-[16vw]">
             <div className="flex flex-col gap-4">
               <p className="text-22 text-ord-primary-deep">Explore</p>
               <ul className="flex flex-col gap-2">
@@ -68,7 +68,7 @@ const Footer = () => {
         <div className="flex justify-between gap-6 border-t border-(--ord-ink)/15 pt-[1.4vw] text-22 text-(--ord-text-muted) max-lg:pt-[3vw] max-md:flex-col max-md:pt-[5vw] mt-[4vw]">
           <span>&copy; 2026 Ordin Labs</span>
           <span className="flex items-center gap-2">
-            <span className="h-[0.6vh] aspect-square rounded-full bg-(--ord-primary)" />
+            <span className="h-[0.6vh] aspect-square bg-(--ord-primary)" />
             <span>All systems operational</span>
           </span>
           <a href={ROUTES.privacy} className="transition-colors duration-500 hover:text-ord-primary-deep">

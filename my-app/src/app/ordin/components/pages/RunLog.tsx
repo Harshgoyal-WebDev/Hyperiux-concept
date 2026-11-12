@@ -81,7 +81,7 @@ const RunLog = () => {
   return (
     <section ref={root} data-ord-orb="governance-log" data-ord-chapter="Audit log" data-ord-light className="relative bg-ord-bone text-ord-ink">
       <div className="flex flex-col gap-12 ord-container ord-section max-md:gap-8">
-        <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
+        <div className="flex items-baseline-last justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>
               Every run, <span className="text-ord-primary-deep">on the record.</span>
@@ -106,7 +106,7 @@ const RunLog = () => {
           renderDetail={(row) => (
             <ul className="flex flex-col items-center gap-2 py-2">
               {(STEPS[String(row.id)] ?? []).map((step) => (
-                <li key={step} className="flex items-center gap-3 ord-label text-14 uppercase text-(--ord-text-muted)">
+                <li key={step} className="flex items-center gap-3 ord-label text-14 text-(--ord-text-muted)">
                   <span className="h-[0.5vh] aspect-square bg-(--ord-primary-deep)" />
                   {step}
                 </li>

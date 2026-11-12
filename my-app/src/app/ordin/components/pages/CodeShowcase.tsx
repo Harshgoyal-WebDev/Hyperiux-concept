@@ -63,13 +63,13 @@ const CodeShowcase = ({ orb, chapter, id, heading, copy, points, cta, ctaHref, f
         ease: "expo.out",
         scrollTrigger: { trigger: "[data-pl-code]", start: "top 85%", once: true },
       });
-      // The code types itself as you scroll: each line wipes open in steps, one character at a time,
+      // The code types itself once the card is in view: each line wipes open in steps, one character at a time,
       // with the caret riding the end of the line being written
       const lines = gsap.utils.toArray<HTMLElement>("[data-pl-type]", root.current);
       const caret = root.current?.querySelector<HTMLElement>("[data-pl-caret]");
       const tl = gsap.timeline({
         defaults: { ease: "none" },
-        scrollTrigger: { trigger: "[data-pl-code]", start: "top 70%", end: "bottom 55%", scrub: 0.6 },
+        scrollTrigger: { trigger: "[data-pl-code]", start: "top 70%", once: true },
       });
       gsap.set(lines, { clipPath: "inset(0% 100% 0% 0%)" });
       if (caret && lines[0]) gsap.set(caret, { top: lines[0].offsetTop, left: lines[0].offsetLeft, height: lines[0].offsetHeight });
@@ -84,6 +84,8 @@ const CodeShowcase = ({ orb, chapter, id, heading, copy, points, cta, ctaHref, f
       });
       tl.fromTo("[data-pl-run]", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" })
         .fromTo("[data-pl-tick]", { scale: 0 }, { scale: 1, duration: 0.4, ease: "back.out(2.4)" }, "<0.1");
+      // Typing speed: higher is faster
+      tl.timeScale(1.6);
       gsap.from("[data-pl-point]", {
         opacity: 0,
         y: 16,
@@ -119,10 +121,10 @@ const CodeShowcase = ({ orb, chapter, id, heading, copy, points, cta, ctaHref, f
           </div>
         </div>
         <div data-pl-code className="w-[54%] border border-(--ord-bone)/12 max-lg:w-full">
-          <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 uppercase text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
+          <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
             <span>{file}</span>
             <span className="flex items-center gap-2 text-ord-primary-light">
-              <span className="h-[0.6vh] aspect-square rounded-full bg-(--ord-primary-light)" />
+              <span className="h-[0.6vh] aspect-square bg-(--ord-primary-light)" />
               {lang}
             </span>
           </div>
@@ -143,7 +145,7 @@ const CodeShowcase = ({ orb, chapter, id, heading, copy, points, cta, ctaHref, f
           </pre>
           <div
             data-pl-run
-            className="flex items-center justify-between gap-4 border-t border-(--ord-bone)/12 px-[1.4vw] py-[1.8vh] ord-label text-14 uppercase max-lg:px-[3vw] max-md:px-[4vw]"
+            className="flex items-center justify-between gap-4 border-t border-(--ord-bone)/12 px-[1.4vw] py-[1.8vh] ord-label text-14 max-lg:px-[3vw] max-md:px-[4vw]"
           >
             <span className="flex items-center gap-3 text-ord-bone">
               <span data-pl-tick className="flex h-[2.4vh] aspect-square items-center justify-center bg-(--ord-primary) text-ord-ink">

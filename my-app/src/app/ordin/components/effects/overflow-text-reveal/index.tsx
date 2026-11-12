@@ -58,13 +58,11 @@ export default function OverflowTextReveal({
 }: OverflowTextRevealProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const splitRefs = useRef<any[]>([]);
-  const charsRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     splitRefs.current = [];
-    charsRef.current = [];
 
     const elements = containerRef.current.hasAttribute("data-copy-wrapper")
       ? Array.from(containerRef.current.children)
@@ -80,28 +78,53 @@ export default function OverflowTextReveal({
       await document.fonts.ready;
 
       ctx = gsap.context(() => {
+        const initialProps = DIRECTION_INITIAL[direction] ?? DIRECTION_INITIAL.bottom;
+
         elements.forEach((element) => {
+          // autoSplit re-splits when the element's width changes, so lines never keep stale breaks
           const split = SplitText.create(element, {
             type:
               splitBy === "lines" ? "lines" : splitBy === "words" ? "lines,words" : "lines,chars",
             mask: splitBy,
             charsClass: "char++",
             reduceWhiteSpace: false,
-          });
+            autoSplit: true,
+            onSplit: (self) => {
+              self.masks?.forEach((mask) => {
+                const maskEl = mask as HTMLElement;
+                maskEl.style.paddingInline = "0.04em";
+                maskEl.style.marginInline = "-0.04em";
+                maskEl.style.boxSizing = "content-box";
+              });
 
-          split.masks?.forEach((mask) => {
-            const maskEl = mask as HTMLElement;
-            maskEl.style.paddingInline = "0.04em";
-            maskEl.style.marginInline = "-0.04em";
-            maskEl.style.boxSizing = "content-box";
+              const pieces = (self[splitBy] ?? self.chars) as HTMLElement[];
+              if (prefersReduced) {
+                gsap.set(pieces, { yPercent: 0, xPercent: 0, rotate: 0, opacity: 1 });
+                return;
+              }
+
+              const fromProps = {
+                ...initialProps,
+                rotate: Math.sign(initialProps.rotate) * startRotation,
+                opacity: Math.min(1, Math.max(0, startOpacity)),
+                willChange: "transform",
+              };
+              const toProps = { yPercent: 0, xPercent: 0, rotate: 0, opacity: 1, duration, stagger, ease, delay };
+
+              // Returned so SplitText kills and rebuilds it on every re-split
+              return animateOnScroll
+                ? gsap.fromTo(pieces, fromProps, {
+                    ...toProps,
+                    scrollTrigger: { trigger: containerRef.current, start: "top 80%", end: "bottom 68%", scrub },
+                  })
+                : gsap.fromTo(pieces, fromProps, toProps);
+            },
           });
 
           splitRefs.current.push(split);
-          charsRef.current.push(...((split[splitBy] ?? split.chars) as HTMLElement[]));
         });
 
         if (prefersReduced) {
-          gsap.set(charsRef.current, { yPercent: 0, xPercent: 0, rotate: 0, opacity: 1 });
           gsap.set(containerRef.current, { opacity: 0, y: REDUCED_MOTION_Y_OFFSET });
 
           const fadeUpProps = {
@@ -128,43 +151,9 @@ export default function OverflowTextReveal({
           return;
         }
 
-        const initialProps = DIRECTION_INITIAL[direction] ?? DIRECTION_INITIAL.bottom;
-
         // Reveal the container immediately - opacity-0 was only to prevent FOUC
         // GSAP will handle per-char opacity from here
         gsap.set(containerRef.current, { opacity: 1 });
-
-        const fromProps = {
-          ...initialProps,
-          rotate: Math.sign(initialProps.rotate) * startRotation,
-          opacity: Math.min(1, Math.max(0, startOpacity)),
-          willChange: "transform",
-        };
-
-        const toProps = {
-          yPercent: 0,
-          xPercent: 0,
-          rotate: 0,
-          opacity: 1,
-          duration,
-          stagger,
-          ease,
-          delay,
-        };
-
-        if (animateOnScroll) {
-          gsap.fromTo(charsRef.current, fromProps, {
-            ...toProps,
-            scrollTrigger: {
-              trigger: containerRef.current,
-              start: "top 80%",
-              end: "bottom 68%",
-              scrub,
-            },
-          });
-        } else {
-          gsap.fromTo(charsRef.current, fromProps, toProps);
-        }
       }, containerRef);
     };
 

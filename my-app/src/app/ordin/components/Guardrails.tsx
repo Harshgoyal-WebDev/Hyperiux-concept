@@ -139,7 +139,7 @@ const Guardrails = () => {
             <path key={p.name} data-ord-guard-wire d="" fill="none" stroke={alpha(THEME.primary, 0.55)} strokeWidth="1" />
           ))}
         </svg>
-        <div className="absolute right-[5vw] top-0 flex h-screen w-[34vw] flex-col justify-center gap-10 max-lg:right-[4vw] max-lg:w-[44vw] max-md:inset-x-[5vw] max-md:top-auto max-md:bottom-0 max-md:h-auto max-md:w-auto max-md:gap-5 max-md:py-[5vh]">
+        <div className="absolute right-[5vw] top-0 flex h-screen w-[34vw] flex-col justify-center gap-10 max-lg:right-[4vw] max-lg:w-[44vw] max-md:inset-x-[7vw] max-md:top-auto max-md:bottom-0 max-md:h-auto max-md:w-auto max-md:gap-5 max-md:py-[5vh]">
           <LineReveal>
             <h2>
               Agents improvise. <span className="text-ord-primary">Policies don&apos;t.</span>
@@ -147,9 +147,9 @@ const Guardrails = () => {
           </LineReveal>
           <ul className="flex flex-col">
             {POLICIES.map((p, i) => (
-              <li key={p.name} data-ord-policy className="relative flex gap-6 border-t border-(--ord-bone)/12 py-[1.8vh] max-md:gap-4 max-md:py-[1.2vh]">
-                <span className="ord-label text-22 leading-[1.6] text-ord-primary-light">{String(i + 1).padStart(2, "0")}</span>
-                <div className="flex flex-col gap-1">
+              <li key={p.name} data-ord-policy className="relative flex gap-6 border-t border-(--ord-bone)/12 py-[2vh] max-md:gap-4 max-md:py-[1.2vh]">
+                <span className="w-[2.4ch] shrink-0 ord-label text-22 leading-[1.6] text-ord-primary-light">{String(i + 1).padStart(2, "0")}</span>
+                <div className="flex flex-col gap-2">
                   <h3 className="text-30">{p.name}</h3>
                   <p className="text-24 text-ord-stone max-md:hidden">{p.body}</p>
                 </div>

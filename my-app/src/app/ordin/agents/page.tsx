@@ -59,7 +59,7 @@ const page = () => {
         chapter="Custom agents"
         heading={
           <>
-            Define your own <span className="text-ord-stone">specialist.</span>
+            Define your own <span className="text-ord-primary">specialist.</span>
           </>
         }
         copy="A brief, a model, the tools it may touch and the policies it must follow. That is a whole agent, and it joins the team like any other."

@@ -3,7 +3,7 @@
 import Spotlight from "../Animations/Spotlight";
 import { ROUTES } from "../nav";
 import PostCover from "./PostCover";
-import { formatDate, readingMinutes, type Post } from "./posts";
+import { formatDate, type Post } from "./posts";
 
 // One article in a grid, for light sections: the cover zooms, a mint line fills along the bottom
 // and the arrow slides on hover. The whole card is the link.
@@ -17,10 +17,10 @@ export default function PostCard({ post }: { post: Post }) {
     >
       <PostCover art={post.cover} className="aspect-[16/10] w-full" />
       <div className="flex flex-1 flex-col gap-6 px-[1.6vw] py-[1.8vw] max-lg:gap-5 max-lg:px-[3vw] max-lg:py-[3.4vw] max-md:px-[5vw] max-md:py-[6vw]">
-        <div className="flex items-center justify-between gap-4 ord-label text-14 uppercase text-(--ord-text-muted)">
+        <div className="flex items-center justify-between gap-4 ord-label text-14 text-(--ord-text-muted)">
           <span className="text-ord-primary-deep">{post.category}</span>
           <span>
-            <time dateTime={post.date}>{formatDate(post.date)}</time> / {readingMinutes(post)} min
+            <time dateTime={post.date}>{formatDate(post.date)}</time>
           </span>
         </div>
         <div className="flex flex-col gap-3">

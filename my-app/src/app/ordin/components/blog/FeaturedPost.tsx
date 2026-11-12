@@ -26,9 +26,8 @@ export default function FeaturedPost({ post }: { post: Post }) {
         <PostCover art={post.cover} label="Featured" className="aspect-[16/10] w-full max-lg:aspect-[16/9]" />
         <div className="flex flex-col justify-between gap-10 px-[2.4vw] py-[2.4vw] max-lg:gap-8 max-lg:px-[4vw] max-lg:py-[4vw] max-md:px-[5vw] max-md:py-[7vw]">
           <div className="flex flex-col gap-6">
-            <span className="flex items-center gap-4 ord-label text-14 uppercase text-ord-stone">
+            <span className="flex items-center gap-5 ord-label text-14 text-ord-stone">
               <span className="text-ord-primary-light">{post.category}</span>
-              <span className="h-px w-[2vw] bg-(--ord-bone)/20" />
               <time dateTime={post.date}>{formatDate(post.date)}</time>
             </span>
             <h2 className="text-64 leading-[1.1]">{post.title}</h2>
@@ -36,7 +35,7 @@ export default function FeaturedPost({ post }: { post: Post }) {
           </div>
           <div className="flex items-end justify-between gap-6 border-t border-(--ord-bone)/12 pt-[2.4vh]">
             <AuthorBadge author={post.author} tone="dark" />
-            <span className="ord-label text-14 uppercase text-ord-stone">{readingMinutes(post)} min read</span>
+            <span className="ord-label text-14 text-ord-stone">{readingMinutes(post)} min read</span>
           </div>
         </div>
         <span

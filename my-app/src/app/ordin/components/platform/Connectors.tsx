@@ -26,7 +26,7 @@ const Connectors = () => {
   return (
     <section ref={root} data-ord-orb="platform-connectors" data-ord-chapter="Connectors" data-ord-light className="relative bg-(--ord-paper) text-ord-ink">
       <div className="flex flex-col gap-16 ord-section max-md:gap-10">
-        <div className="flex items-end justify-between gap-10 ord-container max-lg:flex-col max-lg:items-start">
+        <div className="flex items-baseline-last justify-between gap-10 ord-container max-lg:flex-col max-lg:items-start">
           <div className="flex w-[50%] flex-col gap-6 max-lg:w-full">
             <LineReveal>
               <h2>
@@ -41,11 +41,11 @@ const Connectors = () => {
             </LineReveal>
           </div>
           <div data-ord-reveal className="flex flex-col items-end gap-2 max-lg:items-start">
-            <div className="flex items-end leading-none">
+            <div className="flex items-baseline leading-none text-ord-primary-deep">
               <span className="text-128"><Roll reveal value="840" /></span>
-              <span className="text-128 text-ord-primary-deep">+</span>
+              <span className="text-128">+</span>
             </div>
-            <p className="ord-label text-14 uppercase text-(--ord-text-muted)">Typed connectors</p>
+            <p className="ord-label text-14 text-(--ord-text-muted)">Typed connectors</p>
           </div>
         </div>
         <div data-ord-reveal className={`flex flex-col border-y ${LINE}`}>
@@ -75,7 +75,7 @@ const Connectors = () => {
             <li
               key={label}
               data-ord-reveal
-              className={`flex items-end justify-between gap-6 ${LINE} px-[1.6vw] py-[1.8vw] max-lg:px-[3vw] max-lg:py-[3vw] max-md:px-[5vw] max-md:py-[5vw] ${i ? "border-l max-md:border-l-0 max-md:border-t" : ""}`}
+              className={`flex items-baseline justify-between gap-6 ${LINE} px-[1.6vw] py-[1.8vw] max-lg:px-[3vw] max-lg:py-[3vw] max-md:px-[5vw] max-md:py-[5vw] ${i ? "border-l max-md:border-l-0 max-md:border-t" : ""}`}
             >
               <span className="text-24 text-(--ord-text-muted)">{label}</span>
               <span className="text-64 leading-none"><Roll reveal value={value} /></span>

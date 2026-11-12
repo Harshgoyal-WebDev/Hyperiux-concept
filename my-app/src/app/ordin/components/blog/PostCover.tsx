@@ -115,7 +115,7 @@ export default function PostCover({ art, label, className = "" }: PostCoverProps
         {ART[art]}
       </svg>
       {label && (
-        <span className="absolute bottom-[1.4vw] left-[1.4vw] ord-label text-14 uppercase text-ord-primary-light max-lg:bottom-[2.4vw] max-lg:left-[2.4vw] max-md:bottom-[4vw] max-md:left-[4vw]">
+        <span className="absolute bottom-[1.4vw] left-[1.4vw] ord-label text-14 text-ord-primary-light max-lg:bottom-[2.4vw] max-lg:left-[2.4vw] max-md:bottom-[4vw] max-md:left-[4vw]">
           {label}
         </span>
       )}

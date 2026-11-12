@@ -58,7 +58,7 @@ const page = () => {
         chapter="Policies as Code"
         heading={
           <>
-            Policies as <span className="text-ord-stone">code.</span>
+            Policies as <span className="text-ord-primary">code.</span>
           </>
         }
         copy="Write your rules in one file, review them like any other change, and ship them with every deploy."

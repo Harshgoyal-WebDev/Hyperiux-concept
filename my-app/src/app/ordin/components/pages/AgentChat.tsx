@@ -66,7 +66,7 @@ const AgentChat = () => {
         <div className="flex w-[36%] flex-col gap-8 max-lg:w-full max-md:gap-6">
           <LineReveal>
             <h2>
-              Watch them <span className="text-ord-stone">talk it through.</span>
+              Watch them <span className="text-ord-primary">talk it through.</span>
             </h2>
           </LineReveal>
           <LineReveal delay={0.15}>
@@ -76,17 +76,17 @@ const AgentChat = () => {
           </LineReveal>
         </div>
         <div className="flex w-[54%] flex-col border border-(--ord-bone)/12 max-lg:w-full">
-          <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 uppercase text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
+          <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
             <span>Run 8821 / #finance-ops</span>
             <span className="flex items-center gap-2 text-ord-primary-light">
-              <span className="h-[0.6vh] aspect-square rounded-full bg-(--ord-primary-light)" />5 agents
+              <span className="h-[0.6vh] aspect-square bg-(--ord-primary-light)" />5 agents
             </span>
           </div>
           <ChatScope palette={HX_DARK} className="text-22">
             <BubbleThread className="h-[52vh] px-[1.4vw] py-[2vh] max-lg:px-[3vw] max-md:h-[60vh] max-md:px-[4vw]">
               {lines.map((l) => (
                 <div key={l.id} className={`flex flex-col gap-1.5 ${l.mine ? "items-end" : "items-start"}`}>
-                  <span className="ord-label text-14 uppercase text-ord-stone">{l.from}</span>
+                  <span className="ord-label text-14 text-ord-stone">{l.from}</span>
                   <Bubble align={l.mine ? "end" : "start"} variant={l.mine ? "default" : "muted"} swipeToReply={false} showReactionPicker={false} doubleClickToReact={false}>
                     <BubbleContent typing={l.typing} grow={!l.mine}>
                       <BubbleText text={l.text} stream={!l.mine && !l.typing} wordDelay={28} collapsible={false} />
@@ -97,7 +97,7 @@ const AgentChat = () => {
             </BubbleThread>
           </ChatScope>
           <div className="flex items-center gap-4 border-t border-(--ord-bone)/12 px-[1.4vw] py-[2vh] max-lg:px-[3vw] max-md:px-[4vw]">
-            <span className="ord-label text-14 uppercase text-ord-primary-light">Prompt</span>
+            <span className="ord-label text-14 text-ord-primary-light">Prompt</span>
             <div className="min-w-0 flex-1">
               {started && lines.length === 0 ? (
                 <TypingText

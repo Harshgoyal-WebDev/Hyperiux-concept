@@ -58,7 +58,7 @@ export default function PostHero({ post }: { post: Post }) {
       </div>
       <div className="relative z-1 flex flex-col gap-[6vh] ord-container pt-[22vh] max-lg:pt-[16vh] max-md:gap-[4vh] max-md:pt-[18vh]">
         <div className="flex w-[72%] flex-col gap-8 max-lg:w-[90%] max-md:w-full max-md:gap-6">
-          <div data-post-fade className="flex flex-wrap items-center gap-4 ord-label text-14 uppercase text-ord-stone">
+          <div data-post-fade className="flex flex-wrap items-center gap-4 ord-label text-14 text-ord-stone">
             <a href={ROUTES.blog} className="group/back flex items-center gap-2 transition-colors duration-500 hover:text-ord-bone">
               <svg aria-hidden viewBox="0 0 16 16" className="h-[1.2vh] aspect-square transition-transform duration-500 group-hover/back:-translate-x-1 max-lg:h-[1vh] max-md:h-[1.4vh]">
                 <path d="M13 8H3M7 4 3 8l4 4" fill="none" stroke="currentColor" strokeWidth="1.4" />
@@ -76,7 +76,7 @@ export default function PostHero({ post }: { post: Post }) {
           </p>
           <div data-post-fade className="flex flex-wrap items-center gap-x-10 gap-y-4">
             <AuthorBadge author={post.author} tone="dark" />
-            <span className="ord-label text-14 uppercase text-ord-stone">
+            <span className="ord-label text-14 text-ord-stone">
               <time dateTime={post.date}>{formatDate(post.date)}</time> / {readingMinutes(post)} min read
             </span>
           </div>

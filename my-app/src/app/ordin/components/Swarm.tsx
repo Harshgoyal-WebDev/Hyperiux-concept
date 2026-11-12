@@ -15,6 +15,9 @@ import { pinnedHeight } from "../config";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
+// Pieces in each wire packet's fading tail
+const TAIL = 8;
+
 const AGENTS = [
   { name: "Planner", role: "Splits the job into nine ordered steps", pos: "left-[5vw] top-[45vh]" },
   { name: "Researcher", role: "Pulls the Q3 ledger and 212 contracts", pos: "right-[5vw] top-[45vh]" },
@@ -62,7 +65,7 @@ const Swarm = () => {
           const mid = (ox + e.x) / 2;
           const d = `M${ox} ${oy} C${mid} ${oy} ${mid} ${e.y} ${e.x} ${e.y}`;
           lines[i].setAttribute("d", d);
-          packets[i].setAttribute("d", d);
+          for (let k = 0; k < TAIL; k++) packets[i * TAIL + k].setAttribute("d", d);
           lengths[i] = lines[i].getTotalLength();
         });
       };
@@ -72,10 +75,17 @@ const Swarm = () => {
           const len = lengths[i];
           lines[i].style.strokeDasharray = `${len} ${len}`;
           lines[i].style.strokeDashoffset = `${len * (1 - w.draw)}`;
-          const seg = Math.min(40, len * 0.2);
-          packets[i].style.strokeDasharray = `${seg} ${len * 2}`;
-          packets[i].style.strokeDashoffset = `${seg - w.pkt * (len + seg)}`;
-          packets[i].style.opacity = w.pkt > 0 && w.pkt < 1 ? "1" : "0";
+          // The packet is TAIL short pieces behind its head, each fainter, so it fades out towards the back
+          const seg = Math.min(80, len * 0.3);
+          const piece = seg / TAIL;
+          const head = w.pkt * (len + seg);
+          const on = w.pkt > 0 && w.pkt < 1;
+          for (let k = 0; k < TAIL; k++) {
+            const el = packets[i * TAIL + k];
+            el.style.strokeDasharray = `${piece} ${len * 2}`;
+            el.style.strokeDashoffset = `${(k + 1) * piece - head}`;
+            el.style.opacity = on ? `${1 - k / TAIL}` : "0";
+          }
         });
       };
 
@@ -145,7 +155,9 @@ const Swarm = () => {
           {AGENTS.map((a) => (
             <g key={a.name}>
               <path data-ord-wire d="" fill="none" stroke={alpha(THEME.primary, 0.45)} strokeWidth="1" />
-              <path data-ord-packet d="" fill="none" stroke={THEME.primaryLight} strokeWidth="2" strokeLinecap="round" opacity="0" />
+              {Array.from({ length: TAIL }, (_, k) => (
+                <path key={k} data-ord-packet d="" fill="none" stroke={THEME.primaryLight} strokeWidth="2" strokeLinecap={k === 0 ? "round" : "butt"} opacity="0" />
+              ))}
             </g>
           ))}
         </svg>
@@ -162,16 +174,16 @@ const Swarm = () => {
             </p>
           </LineReveal>
         </div>
-        <div className="max-md:absolute max-md:inset-x-[5vw] max-md:bottom-[5vh] max-md:grid max-md:grid-cols-2 max-md:gap-px max-md:bg-(--ord-bone)/10">
+        <div className="max-md:absolute max-md:inset-x-[7vw] max-md:bottom-[5vh] max-md:grid max-md:grid-cols-2 max-md:gap-px max-md:bg-(--ord-bone)/10">
           {AGENTS.map((a, i) => (
             <Spotlight
               key={a.name}
               data-ord-agent
               className={`absolute flex h-[10.2vw] w-[21vw] -translate-y-1/2 flex-col justify-between gap-3 border border-(--ord-bone)/12 bg-transparent px-[1.2vw] py-[1.8vh] opacity-0 max-lg:h-auto max-lg:w-[28vw] max-lg:px-[2vw] max-md:static max-md:w-full max-md:translate-y-0 max-md:gap-2 max-md:border-0 max-md:px-[3vw] max-md:py-[1.6vh] hover:border-(--ord-primary)/50 transition-colors duration-500 ${a.pos}`}
             >
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-4">
                 <h3 className="flex items-baseline gap-[0.6vw] text-30 max-lg:gap-[1.2vw] max-md:gap-[2vw]">
-                  <span className="ord-label text-24 text-ord-stone">{String(i + 1).padStart(2, "0")}.</span>
+                  <span className="ord-label text-ord-stone">{String(i + 1).padStart(2, "0")}</span>
                   {a.name}
                 </h3>
                 <p className="text-24 text-ord-stone max-md:hidden">{a.role}</p>

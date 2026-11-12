@@ -14,11 +14,14 @@ type RollProps = {
   // Roll from this value to `value` when it mounts (e.g. monthly to annual price)
   from?: string | number;
   className?: string;
+  // Size each digit column to its own digit (default). Pass false for fixed, equal-width columns so a
+  // rapidly counting number (the loader) never shifts as its digits change
+  fit?: boolean;
 };
 
 // Every changing number in the template: the Animated Slider's odometer digits, which spring to each
 // new value. Pass a plain number or a formatted string ("2.4", "$1,204", "05").
-export default function Roll({ value, reveal = false, from, className = "" }: RollProps) {
+export default function Roll({ value, reveal = false, from, className = "", fit = true }: RollProps) {
   const text = String(value);
   const ref = useRef<HTMLSpanElement>(null);
   const [armed, setArmed] = useState(!reveal && from === undefined);
@@ -46,11 +49,11 @@ export default function Roll({ value, reveal = false, from, className = "" }: Ro
   const shown = armed ? text : from !== undefined ? String(from) : zeros(text);
   // Taller lines give each digit column room above and below, so a rolling digit fades out instead of clipping
   return (
-    <span ref={ref} className={`-my-[0.12em] inline-flex leading-[1.24] tabular-nums tracking-[0.01em] ${className}`}>
+    <span ref={ref} className={`-my-[0.12em] inline-flex leading-[1.24] ${fit ? "[font-variant-numeric:proportional-nums]" : "tabular-nums"} ${className}`}>
       {/* Screen readers (and the server-rendered HTML) get the final value, never the digit columns */}
       <span className="sr-only">{text}</span>
       <span aria-hidden className="inline-flex">
-        <RollingNumber value={shown} />
+        <RollingNumber value={shown} fit={fit} />
       </span>
     </span>
   );

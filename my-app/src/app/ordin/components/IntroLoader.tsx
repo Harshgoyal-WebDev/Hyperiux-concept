@@ -169,7 +169,7 @@ const IntroLoader = () => {
       aria-hidden
       className="fixed inset-0 z-0 overflow-hidden bg-ord-ink"
     >
-      <div className="flex items-start justify-between ord-container py-[2.2vw] ord-label text-14 uppercase text-ord-stone max-lg:py-[3vw] max-md:py-[6vw]">
+      <div className="flex items-start justify-between ord-container py-[2.2vw] ord-label text-14 text-ord-stone max-lg:py-[3vw] max-md:py-[6vw]">
         <span className="block overflow-hidden">
           <span data-ord-loader-text className="block">
             Ordin runtime / boot sequence
@@ -180,10 +180,10 @@ const IntroLoader = () => {
 
       <div
         ref={lineRef}
-        className="absolute left-[5vw] top-[74vh] w-[90vw] max-lg:left-[4vw] max-lg:w-[92vw] max-md:left-[5vw] max-md:top-[52vh] max-md:w-[90vw]"
+        className="absolute left-[5vw] top-[74vh] w-[90vw] max-lg:left-[4vw] max-lg:w-[92vw] max-md:left-[7vw] max-md:top-[52vh] max-md:w-[86vw]"
       >
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-10 py-[3vh] max-md:flex-col-reverse max-md:items-start max-md:gap-4">
-          <ul className="flex flex-col gap-2 ord-label text-14 uppercase">
+          <ul className="flex flex-col gap-2 ord-label text-14">
             {STEPS.map((s, i) => (
               <li key={s} data-ord-step className="block overflow-hidden opacity-30">
                 <span data-ord-loader-text className="flex w-[22vw] justify-between gap-6 max-lg:w-[40vw] max-md:w-[70vw]">
@@ -201,7 +201,7 @@ const IntroLoader = () => {
           <p className="block overflow-hidden">
             <span data-ord-loader-text className="flex items-start gap-2">
               <span className="text-128 leading-none font-light">
-                <Roll value={String(count).padStart(3, "0")} />
+                <Roll value={String(count).padStart(3, "0")} fit={false} />
               </span>
               <span className="ord-label text-14 text-ord-primary-light">%</span>
             </span>
@@ -210,7 +210,7 @@ const IntroLoader = () => {
         <span className="block h-px w-full bg-(--ord-bone)/10">
           <span ref={fillRef} className="block h-px w-full origin-left bg-(--ord-primary) [transform:scaleX(0)]" />
         </span>
-        <div className="absolute inset-x-0 top-full flex justify-between py-[2vh] ord-label text-14 uppercase text-ord-stone">
+        <div className="absolute inset-x-0 top-full flex justify-between py-[2vh] ord-label text-14 text-ord-stone">
           <span className="block overflow-hidden">
             <span data-ord-loader-text className="block">
               Calibrating 1,100 neurons

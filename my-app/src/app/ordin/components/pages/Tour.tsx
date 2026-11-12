@@ -131,7 +131,7 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
                   <div className={`absolute inset-0 rounded-sm border border-(--ord-primary)/25 bg-[color-mix(in_srgb,var(--ord-ink),var(--ord-primary)_4%)] ${FACE} [translate:0_0.7vh]`} />
                   <div
                     data-tt-face
-                    className={`absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-primary)/35 bg-(--ord-carbon) px-[0.9vw] py-[1.4vh] ord-label text-22 uppercase text-ord-ash ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
+                    className={`absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-primary)/35 bg-(--ord-carbon) px-[0.9vw] py-[1.4vh] ord-label text-22 text-ord-ash ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
                   >
                     <span>{String(i + 1).padStart(2, "0")}</span>
                     <span>{l.name}</span>
@@ -163,7 +163,7 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
               className="invisible absolute inset-0 flex flex-col justify-between gap-8 motion-reduce:visible motion-reduce:relative motion-reduce:inset-auto border border-(--ord-bone)/2 px-[2.4vw] py-[2.4vw] max-lg:px-[4vw] max-lg:py-[4vw] max-md:gap-4 max-md:px-[5vw] max-md:py-[5vw]"
             >
               <div className="flex flex-col gap-6 max-md:gap-3">
-                <Line className="flex items-center justify-between ord-label text-14 uppercase text-ord-stone">
+                <Line className="flex items-center justify-between ord-label text-14 text-ord-stone">
                   <span>
                     {label} {String(i + 1).padStart(2, "0")} / {l.name}
                   </span>
@@ -189,7 +189,7 @@ const Tour = ({ orb, chapter, label, heading, items, aside = "list" }: TourProps
                 </ul>
                 <dl className="flex w-[38%] flex-col gap-2 max-md:hidden">
                   {l.spec.map(([k, v]) => (
-                    <Line key={k} className="flex justify-between gap-4 border-b border-(--ord-bone)/10 pb-2 ord-label text-14 uppercase">
+                    <Line key={k} className="flex justify-between gap-4 border-b border-(--ord-bone)/10 pb-2 ord-label text-14">
                       <dt className="text-ord-stone">{k}</dt>
                       <dd className="text-ord-bone">{v}</dd>
                     </Line>

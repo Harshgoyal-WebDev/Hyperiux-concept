@@ -70,7 +70,7 @@ const AgentGraph = () => {
       <circle data-ag-core-halo cx={C} cy={C} r="34" fill="none" stroke={THEME.primaryLight} opacity="0" />
       <g data-ag-core>
         <circle cx={C} cy={C} r="34" fill={THEME.primary} fillOpacity="0.12" stroke={THEME.primaryLight} strokeOpacity="0.7" />
-        <text x={C} y={C + 4} textAnchor="middle" fontSize="11" fill={THEME.bone} className="ord-label uppercase" letterSpacing="1">
+        <text x={C} y={C + 4} textAnchor="middle" fontSize="11" fill={THEME.bone} className="ord-label">
           Ordin
         </text>
       </g>
@@ -78,7 +78,7 @@ const AgentGraph = () => {
         <g key={n.name} data-ag-node>
           <circle data-ag-halo cx={n.x} cy={n.y} r="9" fill="none" stroke={THEME.primaryLight} opacity="0" />
           <circle data-ag-dot cx={n.x} cy={n.y} r="6" fill={THEME.ink} stroke={THEME.primaryLight} strokeWidth="1.2" />
-          <text x={n.lx} y={n.ly + 4} textAnchor="middle" fontSize="11" fill={THEME.stone} className="ord-label uppercase" letterSpacing="0.6">
+          <text x={n.lx} y={n.ly + 4} textAnchor="middle" fontSize="11" fill={THEME.stone} className="ord-label">
             {n.name}
           </text>
         </g>

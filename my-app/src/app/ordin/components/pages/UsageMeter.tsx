@@ -50,28 +50,28 @@ const UsageMeter = () => {
 
   return (
     <div ref={root} className="flex flex-col border border-(--ord-bone)/12 bg-(--ord-ink)/40">
-      <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 uppercase text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
+      <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
         <span>Usage / November</span>
         <span className="flex items-center gap-2 text-ord-primary-light">
-          <span className="h-[0.6vh] aspect-square rounded-full bg-(--ord-primary-light)" />
+          <span className="h-[0.6vh] aspect-square bg-(--ord-primary-light)" />
           Live
         </span>
       </div>
       <div className="grid grid-cols-2 border-b border-(--ord-bone)/12">
         <div className="flex flex-col gap-2 border-r border-(--ord-bone)/12 px-[1.4vw] py-[2.4vh] max-lg:px-[3vw] max-md:px-[4vw]">
-          <span className="ord-label text-14 uppercase text-ord-stone">Finished runs</span>
+          <span className="ord-label text-14 text-ord-stone">Finished runs</span>
           <span className="text-40 leading-none">
             <Roll value={totals.runs.toLocaleString("en-US")} />
           </span>
         </div>
         <div className="flex flex-col gap-2 px-[1.4vw] py-[2.4vh] max-lg:px-[3vw] max-md:px-[4vw]">
-          <span className="ord-label text-14 uppercase text-ord-stone">Bill so far</span>
+          <span className="ord-label text-14 text-ord-stone">Bill so far</span>
           <span className="text-40 leading-none tabular-nums">
             <Roll value={`$${totals.bill.toFixed(3)}`} />
           </span>
         </div>
       </div>
-      <ul className="flex h-[26vh] flex-col overflow-hidden px-[1.4vw] py-[1vh] max-lg:px-[3vw] max-md:h-[30vh] max-md:px-[4vw]">
+      <ul className="flex flex-col overflow-hidden px-[1.4vw] py-[1vh] max-lg:px-[3vw] max-md:px-[4vw]">
         {RUNS.map((r) => (
           <li key={r.id} data-um-row className="flex items-center gap-4 border-b border-(--ord-bone)/8 py-[1.3vh] last:border-0">
             <span data-um-tick className="flex h-[2vh] aspect-square shrink-0 items-center justify-center bg-(--ord-primary) text-ord-ink max-md:h-[2.4vh]">
@@ -79,14 +79,14 @@ const UsageMeter = () => {
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             </span>
-            <span className="ord-label text-14 uppercase text-ord-stone">Run {r.id}</span>
+            <span className="ord-label text-14 text-ord-stone">Run {r.id}</span>
             <span className="min-w-0 flex-1 truncate text-22 text-ord-ash">{r.job}</span>
             <span className="ord-label text-14 text-ord-bone tabular-nums">${r.cost.toFixed(3)}</span>
           </li>
         ))}
       </ul>
       <div className="flex flex-col gap-2 border-t border-(--ord-bone)/12 px-[1.4vw] py-[2vh] max-lg:px-[3vw] max-md:px-[4vw]">
-        <span className="flex justify-between ord-label text-14 uppercase text-ord-stone">
+        <span className="flex justify-between ord-label text-14 text-ord-stone">
           <span>Scale plan</span>
           <span>Failed runs: never billed</span>
         </span>

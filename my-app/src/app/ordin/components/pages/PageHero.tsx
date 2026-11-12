@@ -67,7 +67,7 @@ const PageHero = ({ orb, chapter, title, copy, primary, secondary, visual, arc }
       data-ord-orb={orb}
       data-ord-chapter={chapter}
       className={`relative flex items-center justify-between gap-6 overflow-hidden ord-container max-lg:flex-col max-lg:justify-center max-lg:gap-8 ${
-        visual ? "h-screen max-lg:h-auto max-lg:pt-[16vh] max-lg:pb-[8vh]" : "min-h-[78vh] pt-[18vh] pb-[8vh] items-end"
+        visual ? "h-screen max-lg:h-auto max-lg:pt-[16vh] max-lg:pb-[8vh]" : "items-start pt-[30.5vh] pb-[8vh] max-lg:pt-[16vh]"
       }`}
     >
       <div
@@ -86,7 +86,7 @@ const PageHero = ({ orb, chapter, title, copy, primary, secondary, visual, arc }
           {title}
         </h1>
         <div className={`flex flex-col gap-8 max-md:w-full max-md:gap-6 ${visual ? "w-[80%]" : "w-[52%]"}`}>
-          <p data-ph-copy className="text-28 text-ord-ash">
+          <p data-ph-copy className="text-28 text-ord-bone [text-shadow:0_1px_14px_rgba(5,9,12,0.55)]">
             {copy}
           </p>
           <div data-ph-fade className="flex flex-wrap gap-3">

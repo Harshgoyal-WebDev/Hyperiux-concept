@@ -51,8 +51,8 @@ const DESKTOP: Record<string, OrbStage> = {
 
 const MOBILE: Record<string, OrbStage> = {
   hero: { enter: pose({ x: 0, y: -18, scale: 0.9 }) },
-  tokens: { enter: pose({ y: 16, scale: 0.5, energy: 0.3 }), hold: { energy: 1 } },
-  swarm: { enter: pose({ y: -14, scale: 0.34, energy: 0.6 }), hold: { spread: 0.7, energy: 0.9 } },
+  tokens: { enter: pose({ y: 28, scale: 0.5, energy: 0.3 }), hold: { energy: 1 } },
+  swarm: { enter: pose({ y: -3, scale: 0.72, energy: 0.6 }), hold: { spread: 0.7, energy: 0.9 } },
   guard: { enter: pose({ y: -14, scale: 0.5, energy: 0.4 }), hold: { energy: 0.8 } },
   statement: { enter: pose({ scale: 0.2, opacity: 0 }) },
   metrics: { enter: pose({ y: -14, scale: 0.4, opacity: 0, energy: 0.5 }) },

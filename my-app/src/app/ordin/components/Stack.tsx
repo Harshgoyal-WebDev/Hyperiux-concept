@@ -36,6 +36,12 @@ const Stack = () => {
     const lifts = root.current?.querySelectorAll<HTMLElement>("[data-ord-lift]");
     if (!lifts?.[i]) return;
     gsap.to(lifts[i], { x: on ? window.innerWidth * 0.035 : 0, duration: 0.7, ease: "expo.out", overwrite: true });
+    // A green copy of the face sits on top, so hover never fights the scroll timeline's colours
+    const hovers = root.current?.querySelectorAll<HTMLElement>("[data-ord-hover]");
+    if (hovers?.[i]) gsap.to(hovers[i], { opacity: on ? 1 : 0, duration: 0.4, ease: "power2.out", overwrite: true });
+    // The top layer stays the active green one until another layer is hovered
+    const dim = root.current?.querySelector<HTMLElement>("[data-ord-dim]");
+    if (dim && i !== LAYERS.length - 1) gsap.to(dim, { opacity: on ? 1 : 0, duration: 0.4, ease: "power2.out", overwrite: true });
   };
 
   useGSAP(
@@ -110,6 +116,24 @@ const Stack = () => {
                   <span>{String(i + 1).padStart(2, "0")}</span>
                   <span>{l.name}</span>
                 </div>
+                {i === LAYERS.length - 1 && (
+                  <div
+                    aria-hidden
+                    data-ord-dim
+                    className={`pointer-events-none absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-ink) bg-(--ord-ink) px-[1.2vw] py-[2vh] text-22 text-(--ord-bone) tabular-nums opacity-0 ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
+                  >
+                    <span>{String(i + 1).padStart(2, "0")}</span>
+                    <span>{l.name}</span>
+                  </div>
+                )}
+                <div
+                  aria-hidden
+                  data-ord-hover
+                  className={`pointer-events-none absolute inset-0 flex items-end justify-between rounded-sm border border-(--ord-primary) bg-(--ord-primary) px-[1.2vw] py-[2vh] text-22 text-(--ord-ink) tabular-nums opacity-0 ${FACE} max-md:px-[2vw] max-md:py-[1vh]`}
+                >
+                  <span>{String(i + 1).padStart(2, "0")}</span>
+                  <span>{l.name}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -126,17 +150,17 @@ const Stack = () => {
               together with cron jobs again.
             </p>
           </LineReveal>
-          <ol className="grid grid-cols-2 gap-x-8 max-md:gap-x-4">
+          <ol className="grid grid-cols-2 gap-x-14 max-md:gap-x-4">
             {LAYERS.map((l, i) => (
               <li
                 key={l.name}
                 data-ord-layer
                 onPointerEnter={() => lift(i, true)}
                 onPointerLeave={() => lift(i, false)}
-                className="group/layer relative flex cursor-default flex-col gap-1 border-b border-(--ord-ink)/15 py-[1.6vh]"
+                className="group/layer relative flex cursor-default flex-col gap-2 border-b border-(--ord-ink)/15 py-[2.4vh]"
               >
                 <h3 className="flex items-baseline gap-[0.6vw] text-30 max-lg:gap-[1.2vw] max-md:gap-[2vw]">
-                  <span className="ord-label text-24 text-ord-primary-deep">{String(i + 1).padStart(2, "0")}.</span>
+                  <span className="ord-label text-ord-primary-deep">{String(i + 1).padStart(2, "0")}</span>
                   {l.name}
                 </h3>
                 <p className="text-24 text-(--ord-text-muted) max-md:hidden">{l.body}</p>

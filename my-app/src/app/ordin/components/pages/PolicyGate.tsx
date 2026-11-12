@@ -120,7 +120,7 @@ const PolicyGate = () => {
         <div className="flex w-[30%] flex-col justify-start gap-10 pt-[4vh] max-lg:w-full max-lg:gap-4 max-lg:pt-0">
           <LineReveal>
             <h2>
-              Every action <span className="text-ord-stone">meets the gate.</span>
+              Every action <span className="text-ord-primary">meets the gate.</span>
             </h2>
           </LineReveal>
           <ul className="flex flex-col max-lg:hidden">
@@ -161,10 +161,10 @@ const PolicyGate = () => {
                     {a.label}()
                     <span data-pg-strike className="absolute inset-x-0 top-1/2 block h-px origin-left bg-current [transform:scaleX(0)]" />
                   </span>
-                  <span className="uppercase opacity-60">{a.agent}</span>
+                  <span className="opacity-60">{a.agent}</span>
                 </span>
                 <span className="overflow-hidden">
-                  <span data-pg-stamp className="block uppercase opacity-0">
+                  <span data-pg-stamp className="block opacity-0">
                     {STAMP[a.verdict]}
                   </span>
                 </span>
@@ -174,7 +174,7 @@ const PolicyGate = () => {
         </div>
           {/* The gate runs past both edges of the column and sits over the chips, so every request passes through it */}
           <div className="pointer-events-none absolute -inset-x-[2.5vw] top-1/2 z-10 -translate-y-1/2 motion-reduce:hidden max-lg:-inset-x-[2vw]">
-            <span className="absolute bottom-[1.2vh] right-0 ord-label text-14 uppercase text-ord-primary-light">Policy engine</span>
+            <span className="absolute bottom-[1.2vh] right-0 ord-label text-14 text-ord-primary-light">Policy engine</span>
             <span data-pg-gate className="block h-[2px] w-full origin-center bg-(--ord-primary-light) opacity-60 shadow-[0_0_2vh_var(--ord-primary-light)]" />
           </div>
         </div>
@@ -188,7 +188,7 @@ const PolicyGate = () => {
             ] as const
           ).map(([k, label]) => (
             <div key={k} className="flex flex-col gap-1 border-t border-(--ord-bone)/10 pt-[1.6vh]">
-              <dt className="ord-label text-14 uppercase text-ord-stone">{label}</dt>
+              <dt className="ord-label text-14 text-ord-stone">{label}</dt>
               <dd className={`text-64 leading-none ${k === "allow" ? "text-ord-primary-light" : k === "hold" ? "text-ord-primary" : "text-ord-bone"}`}>
                 <Roll value={String(ACTIONS.slice(0, seen).filter((a) => a.verdict === k).length).padStart(2, "0")} />
               </dd>

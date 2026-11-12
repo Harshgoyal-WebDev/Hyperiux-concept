@@ -17,7 +17,7 @@ export default function AuthorBadge({ author, tone = "light" }: { author: Author
       </span>
       <span className="flex flex-col">
         <span className="text-22">{author.name}</span>
-        <span className={`ord-label text-14 uppercase ${dark ? "text-ord-stone" : "text-(--ord-text-muted)"}`}>{author.role}</span>
+        <span className={`ord-label text-14 ${dark ? "text-ord-stone" : "text-(--ord-text-muted)"}`}>{author.role}</span>
       </span>
     </span>
   );

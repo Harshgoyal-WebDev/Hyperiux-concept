@@ -98,10 +98,10 @@ const CostEstimator = () => {
   return (
     <section ref={root} data-ord-orb="pricing-estimate" data-ord-chapter="Estimate" className="relative ord-section">
       <div className="flex flex-col gap-14 ord-container max-md:gap-8">
-        <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
+        <div className="flex items-baseline-last justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>
-              See your bill <span className="text-ord-stone">before you get it.</span>
+              See your bill <span className="text-ord-primary">before you get it.</span>
             </h2>
           </LineReveal>
           <LineReveal className="w-[28%] max-lg:w-[70%] max-md:w-full" delay={0.15}>
@@ -112,7 +112,7 @@ const CostEstimator = () => {
         <div data-ord-reveal className="grid grid-cols-[1fr_1.3fr] border border-(--ord-bone)/12 max-lg:grid-cols-1">
           <div className="flex flex-col justify-between gap-10 border-r border-(--ord-bone)/12 px-[2.2vw] py-[2.4vw] max-lg:border-r-0 max-lg:border-b max-lg:px-[4vw] max-lg:py-[4vw] max-md:px-[5vw] max-md:py-[6vw]">
             <div className="flex flex-col gap-3">
-              <span className="ord-label text-14 uppercase text-ord-stone">Runs per month</span>
+              <span className="ord-label text-14 text-ord-stone">Runs per month</span>
               <span className="text-64 leading-none">
                 <Roll value={shownRuns.toLocaleString("en-US")} />
               </span>
@@ -133,13 +133,13 @@ const CostEstimator = () => {
                   elastic
                 />
               </SliderScope>
-              <span className="flex justify-between ord-label text-14 uppercase text-ord-stone">
+              <span className="flex justify-between ord-label text-14 text-ord-stone">
                 <span>1k</span>
                 <span>2M</span>
               </span>
             </div>
             <div className="flex flex-col gap-2 border-t border-(--ord-bone)/10 pt-[2vh]">
-              <span className="ord-label text-14 uppercase text-ord-stone">Estimated per month</span>
+              <span className="ord-label text-14 text-ord-stone">Estimated per month</span>
               <span className="flex items-baseline gap-2 text-128 leading-none text-ord-primary-light">
                 <span className="text-40 text-ord-stone">$</span>
                 <Roll value={Math.round(costFor(shownRuns)).toLocaleString("en-US")} />
@@ -173,7 +173,7 @@ const CostEstimator = () => {
                 >
                   <span className="flex items-center justify-between">
                     <span className="text-30">{p.name}</span>
-                    <span className={`h-[0.8vh] aspect-square rounded-full transition-colors duration-500 ${plan === i ? "bg-(--ord-on-primary)" : "bg-(--ord-bone)/15"}`} />
+                    <span className={`h-[0.8vh] aspect-square transition-colors duration-500 ${plan === i ? "bg-(--ord-on-primary)" : "bg-(--ord-bone)/15"}`} />
                   </span>
                   <span className={`text-22 transition-colors duration-500 ${plan === i ? "text-(--ord-on-primary)/70" : "text-ord-stone"}`}>{p.note}</span>
                 </li>

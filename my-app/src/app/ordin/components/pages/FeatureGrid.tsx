@@ -38,7 +38,7 @@ const FeatureGrid = ({ orb, chapter, heading, copy, items, tone = "bone" }: Feat
       className={`relative text-ord-ink ${tone === "bone" ? "bg-ord-bone" : "bg-(--ord-paper)"}`}
     >
       <div className="flex flex-col gap-16 ord-container ord-section max-md:gap-10">
-        <div className="flex items-end justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
+        <div className="flex items-baseline-last justify-between gap-10 max-lg:flex-col max-lg:items-start max-lg:gap-4">
           <LineReveal className="w-[50%] max-lg:w-full">
             <h2>{heading}</h2>
           </LineReveal>

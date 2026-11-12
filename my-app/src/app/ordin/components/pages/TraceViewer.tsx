@@ -68,8 +68,8 @@ const TraceViewer = () => {
 
   return (
     <div ref={root} className="flex flex-col border border-(--ord-bone)/12 bg-(--ord-ink)/40">
-      <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 uppercase text-ord-stone max-lg:px-[3vw] max-md:px-[4vw]">
-        <span>Trace / run 8821</span>
+      <div className="flex items-center justify-between border-b border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 text-ord-ash max-lg:px-[3vw] max-md:px-[4vw]">
+        <span>Trace / Run 8821</span>
         <span className="text-ord-primary-light">
           <Roll value={ms.toLocaleString("en-US")} />{" "}
           ms
@@ -78,7 +78,7 @@ const TraceViewer = () => {
       <div className="relative flex flex-col gap-[1.6vh] px-[1.4vw] py-[2.4vh] max-lg:px-[3vw] max-md:px-[4vw]">
         {LANES.map((lane) => (
           <div key={lane.name} className="flex items-center gap-4">
-            <span className="w-[6vw] shrink-0 ord-label text-14 uppercase text-ord-ash max-lg:w-[14vw] max-md:w-[20vw]">{lane.name}</span>
+            <span className="w-[6vw] shrink-0 ord-label text-14 text-ord-ash max-lg:w-[14vw] max-md:w-[20vw]">{lane.name}</span>
             <span className="relative block h-[2.2vh] flex-1 bg-(--ord-bone)/[0.04]">
               {lane.spans.map(([from, to]) => (
                 <span
@@ -98,8 +98,8 @@ const TraceViewer = () => {
           <span data-tv-head className="absolute inset-y-0 block w-px bg-(--ord-primary-light) shadow-[0_0_1.2vh_var(--ord-primary-light)]" />
         </span>
       </div>
-      <div className="flex items-center justify-between border-t border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 uppercase max-lg:px-[3vw] max-md:px-[4vw]">
-        <span className="text-ord-stone">9 steps / 4 agents / 27 policy checks</span>
+      <div className="flex items-center justify-between border-t border-(--ord-bone)/12 px-[1.4vw] py-[1.6vh] ord-label text-14 max-lg:px-[3vw] max-md:px-[4vw]">
+        <span className="text-ord-ash">9 Steps / 4 Agents / 27 Policy Checks</span>
         <span data-tv-done className="text-ord-primary-light opacity-0">
           Settled / USD 0.031
         </span>

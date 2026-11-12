@@ -4,7 +4,7 @@ import "./blog.css";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
-import { Geist } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import Header from "./components/Header";
 import LenisSmoothScroll from "./components/LenisSmoothScroll";
 import RouteReset from "./components/Animations/RouteReset";
@@ -14,7 +14,7 @@ import { THEME, themeCss } from "./theme";
 
 const Footer = dynamic(() => import("./components/Footer"));
 
-const bodyFont = Geist({
+const bodyFont = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500"],
   variable: "--font-ord-body",

@@ -55,7 +55,7 @@ const page = async ({ params }: PageProps) => {
             <Prose blocks={post.body} />
             <ul aria-label="Tags" className="flex flex-wrap gap-2 border-t border-(--ord-ink)/12 pt-[3vh]">
               {post.tags.map((t) => (
-                <li key={t} className="border border-(--ord-ink)/15 px-[0.8vw] py-[0.6vh] ord-label text-14 uppercase text-(--ord-text-muted) max-lg:px-[2vw] max-md:px-[3vw]">
+                <li key={t} className="border border-(--ord-ink)/15 px-[0.8vw] py-[0.6vh] ord-label text-14 text-(--ord-text-muted) max-lg:px-[2vw] max-md:px-[3vw]">
                   {t}
                 </li>
               ))}

@@ -15,7 +15,7 @@ const Statement = () => {
       className="w-[90%] text-center text-64 leading-[1.2] max-lg:w-full"
       textColor={THEME.ink}
       primaryColor={THEME.primary}
-      accentColor={THEME.primary}
+      accentColor={THEME.primaryDeep}
       dimColor={THEME.paperDeep}
       stagger={0.04}
       start="top 40%"

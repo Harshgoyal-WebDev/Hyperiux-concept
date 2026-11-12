@@ -93,7 +93,7 @@ const EnquiryDialog = () => {
           container={host}
           className="z-[70] max-h-[90svh] w-[44vw] max-w-none! gap-0! overflow-y-auto border border-(--ord-bone)/12 bg-(--ord-ink)! p-0! ring-0! max-lg:w-[80vw] max-md:w-[92vw]"
         >
-          <div ref={body} className="flex flex-col gap-[3.2vh] px-[2.4vw] py-[4vh] max-lg:px-[4vw] max-md:px-[5vw]">
+          <div ref={body} className="flex flex-col gap-[3.2vh] px-[2.4vw] py-[4vh] max-lg:px-[4vw] max-md:px-[7vw]">
             {state === "sent" ? (
               <div data-eq-done aria-live="polite" className="flex flex-col items-start gap-5 py-[4vh]">
                 <span className="flex h-[5vh] aspect-square items-center justify-center bg-(--ord-primary) text-ord-ink">
@@ -106,7 +106,7 @@ const EnquiryDialog = () => {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="border-b border-(--ord-primary-light)/40 pb-1 ord-label text-14 uppercase text-ord-primary-light hover:border-(--ord-primary-light)"
+                  className="border-b border-(--ord-primary-light)/40 pb-1 ord-label text-14 text-ord-primary-light hover:border-(--ord-primary-light)"
                 >
                   Close
                 </button>
@@ -127,7 +127,7 @@ const EnquiryDialog = () => {
                     {TOPICS.map((t) => (
                       <label key={t.id} className="cursor-pointer">
                         <input type="radio" name="topic" value={t.id} checked={topic === t.id} onChange={() => setTopic(t.id)} className="peer sr-only" />
-                        <span className="block rounded-xs border border-(--ord-bone)/20 px-[0.9vw] py-[0.8vh] text-22 text-ord-ash transition-colors duration-300 peer-checked:border-(--ord-primary-light) peer-checked:bg-(--ord-primary)/15 peer-checked:text-ord-bone peer-focus-visible:outline-2 peer-focus-visible:outline-(--ord-primary-light) max-lg:px-[2.4vw] max-md:px-[4vw]">
+                        <span className="block rounded-xs border border-(--ord-bone)/20 px-[0.9vw] py-[0.8vh] text-22 text-(--ord-ash) transition-colors duration-300 peer-checked:border-(--ord-primary) peer-checked:bg-(--ord-primary) peer-checked:text-(--ord-ink) peer-focus-visible:outline-2 peer-focus-visible:outline-(--ord-primary-light) max-lg:px-[2.4vw] max-md:px-[4vw]">
                           {t.label}
                         </span>
                       </label>
@@ -140,7 +140,7 @@ const EnquiryDialog = () => {
                       { id: "company", label: "Company", type: "text", auto: "organization", placeholder: "Kestrel" },
                     ].map((f) => (
                       <label key={f.id} className="flex flex-col gap-1">
-                        <span className="ord-label text-14 uppercase text-ord-stone">{f.label}</span>
+                        <span className="ord-label text-14 text-ord-stone">{f.label}</span>
                         <input
                           name={f.id}
                           type={f.type}
@@ -158,7 +158,7 @@ const EnquiryDialog = () => {
                       </label>
                     ))}
                     <label className="flex flex-col gap-1">
-                      <span className="ord-label text-14 uppercase text-ord-stone">Team size</span>
+                      <span className="ord-label text-14 text-ord-stone">Team size</span>
                       <select name="size" defaultValue={SIZES[1]} className={`${FIELD} cursor-pointer appearance-none [&>option]:bg-(--ord-ink)`}>
                         {SIZES.map((s) => (
                           <option key={s}>{s}</option>
@@ -167,7 +167,7 @@ const EnquiryDialog = () => {
                     </label>
                   </div>
                   <label className="flex flex-col gap-1">
-                    <span className="ord-label text-14 uppercase text-ord-stone">What would you hand to an agent first?</span>
+                    <span className="ord-label text-14 text-ord-stone">What would you hand to an agent first?</span>
                     <textarea name="message" rows={2} placeholder="Reconcile invoices, triage support, chase renewals..." className={`${FIELD} resize-none`} />
                   </label>
                   <div className="flex items-center justify-between gap-6 max-md:flex-col max-md:items-start">

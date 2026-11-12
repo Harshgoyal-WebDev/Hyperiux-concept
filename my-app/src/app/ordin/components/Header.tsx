@@ -36,7 +36,6 @@ const CHAPTERS: Record<string, string> = {
 const Header = () => {
   const indexRef = useRef<HTMLSpanElement>(null);
   const nameRef = useRef<HTMLSpanElement>(null);
-  const barRef = useRef<HTMLSpanElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const chapterRef = useRef<HTMLDivElement>(null);
   const footerKey = useElementHeightKey("#ord-footer");
@@ -123,7 +122,6 @@ const Header = () => {
       start: 0,
       end: "max",
       onUpdate: (self) => {
-        if (barRef.current) gsap.set(barRef.current, { scaleX: self.progress });
         // Past the top 30% of the hero the bar frosts, so links stay readable over any section
         headerRef.current?.toggleAttribute("data-scrolled", self.scroll() > window.innerHeight * 0.3);
         const hide = self.direction === 1 && self.scroll() > window.innerHeight * 0.1;
@@ -149,9 +147,6 @@ const Header = () => {
 
   return (
     <div data-ord-hide>
-      <span aria-hidden className="fixed inset-x-0 top-0 z-50 block h-px bg-(--ord-bone)/10">
-        <span ref={barRef} className="block h-px w-full origin-left bg-(--ord-primary) [transform:scaleX(0)]" />
-      </span>
       <header ref={headerRef} className="fixed inset-x-0 top-0 z-50 flex items-center justify-between ord-container py-[1.6vw] text-(--ord-bone) transition-[background-color,backdrop-filter] duration-500 ease-out data-[scrolled]:bg-(--ord-ink)/45 data-[scrolled]:backdrop-blur-lg data-[scrolled]:data-[light]:bg-(--ord-bone)/55 max-lg:py-[2.4vw] max-md:py-[4.4vw]">
         <a href={ROUTES.home} className="ord-draw group flex w-[20%] items-center gap-3 max-lg:w-auto">
           <OrdMark />
@@ -179,7 +174,7 @@ const Header = () => {
       {/* <div
         ref={chapterRef}
         aria-hidden
-        className="fixed left-[5vw] bottom-[3vh] z-50 flex items-center gap-4 ord-label text-14 uppercase text-(--ord-bone) max-lg:left-[4vw] max-md:hidden"
+        className="fixed left-[5vw] bottom-[3vh] z-50 flex items-center gap-4 ord-label text-14 text-(--ord-bone) max-lg:left-[4vw] max-md:hidden"
       >
         <span className="block overflow-hidden">
           <span ref={indexRef} className="block text-(--ord-primary-light)">

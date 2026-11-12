@@ -45,7 +45,6 @@ html:has(.ord-page) {
 /* Small labels, numbers and logs: same family as the body, with even-width digits */
 .ord-page .ord-label {
   font-weight: 500;
-  letter-spacing: 0.04vw;
   font-variant-numeric: tabular-nums;
 }
 
@@ -79,13 +78,13 @@ html:has(.ord-page) {
 }
 
 .ord-page .text-28 {
-  /* 18px on a 1440 screen: lead paragraphs */
-  font-size: 1.25vw;
+  /* 16.5px on a 1440 screen: lead paragraphs */
+  font-size: 1.15vw;
 }
 
 .ord-page .text-24 {
-  /* 18px on a 1440 screen: descriptions and answers */
-  font-size: 1.25vw;
+  /* 16.5px on a 1440 screen: descriptions and answers */
+  font-size: 1.15vw;
 }
 
 .ord-page .text-22 {
@@ -161,9 +160,13 @@ html:not(.ord-ready) .ord-page [data-ord-hide] {
   visibility: hidden;
 }
 
-html:has(.ord-page) {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ord-primary) var(--ord-ink);
+/* Chrome ignores the ::-webkit-scrollbar rules (and draws a rounded thumb) when scrollbar-color is set,
+   so the standard properties are for Firefox only */
+@supports (-moz-appearance: none) {
+  html:has(.ord-page) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ord-primary) var(--ord-ink);
+  }
 }
 
 html:has(.ord-page)::-webkit-scrollbar {
@@ -177,7 +180,7 @@ html:has(.ord-page)::-webkit-scrollbar-track {
 html:has(.ord-page)::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, var(--ord-primary-deep), var(--ord-primary));
   border: 0.15vw solid var(--ord-ink);
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
@@ -215,7 +218,7 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
   .ord-page .text-24 { font-size: 3.7vw; }
   .ord-page .text-22 { font-size: 3.7vw; }
   .ord-page .text-14 { font-size: max(2.8vw, 12px); }
-  .ord-page .ord-container { padding-inline: 5vw; }
+  .ord-page .ord-container { padding-inline: 7vw; }
   .ord-page .ord-section { padding-block: 20vw; }
 }
 
@@ -264,6 +267,33 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
   .ord-page .ord-fit-table td {
     white-space: normal;
   }
+}
+
+/* Phones: the run log and the full compare table are wider than the screen, so they scroll sideways
+   instead of squeezing every column (the single-plan compare view still fits) */
+@media (max-width: 767px) {
+  .ord-page .ord-fit-table table[data-slot="table"] {
+    min-width: 40rem;
+  }
+  .ord-page .ord-compare table[data-slot="table"]:has(th:nth-child(2):last-child) {
+    min-width: 0;
+  }
+  .ord-page .ord-fit-table [data-slot="table"] {
+    touch-action: pan-x pan-y;
+  }
+}
+
+/* Compare table: roomier cells, equal plan columns, muted feature labels */
+.ord-page .ord-compare th,
+.ord-page .ord-compare td {
+  padding: 1.4vh 1.2vw;
+}
+.ord-page .ord-compare th:not(:first-child),
+.ord-page .ord-compare td:not(:first-child) {
+  width: 22%;
+}
+.ord-page .ord-compare td:first-child {
+  color: var(--ord-text-muted);
 }
 
 /* Keyboard focus: a crisp primary ring instead of the browser default */

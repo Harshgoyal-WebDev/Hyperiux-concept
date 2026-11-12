@@ -75,7 +75,7 @@ const CompareTable = () => {
           <ThemedDataTable
             palette={HX_LIGHT_PRIMARY}
             mode="light"
-            className="ord-fit-table text-22"
+            className="ord-fit-table ord-compare text-22"
             columns={mobile ? columnsFor(plan) : COLUMNS}
             rows={ROWS}
             rowHighlight="slide"
@@ -94,7 +94,7 @@ const CompareTable = () => {
             stickyHeader={false}
             height="auto"
             rounded="none"
-            showVerticalLines={false}
+            showVerticalLines
           />
         </div>
       </div>

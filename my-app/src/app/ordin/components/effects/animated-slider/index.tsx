@@ -864,7 +864,8 @@ function SliderThumb({ index }: { index: number }) {
 }
 
 // Each digit is a 0-9 column that slides to the right number, like an odometer
-function RollingNumber({ value }: { value: string }) {
+// fit: each column takes its own digit's width (a "1" stays narrow) instead of the widest digit's
+function RollingNumber({ value, fit = false }: { value: string; fit?: boolean }) {
   const roll = useMotionOk({ type: "spring", visualDuration: 0.3, bounce: 0.15 })
   const chars = value.split("")
   return (
@@ -873,9 +874,10 @@ function RollingNumber({ value }: { value: string }) {
         // Keyed from the right so the ones digit keeps its column as the length changes
         const key = chars.length - i
         return /\d/.test(char) ? (
-          <span key={key} aria-hidden className="inline-block h-[1lh] overflow-x-visible overflow-y-clip [mask-image:linear-gradient(to_bottom,transparent,#000_14%,#000_86%,transparent)]">
+          <span key={key} aria-hidden className={cn("-mx-[0.08em] inline-block h-[1lh] overflow-x-visible px-[0.08em] overflow-y-clip [mask-image:linear-gradient(to_bottom,transparent,#000_14%,#000_86%,transparent)]", fit && "relative")}>
+            {fit && <span className="invisible">{char}</span>}
             <motion.span
-              className="flex flex-col"
+              className={cn("flex flex-col", fit ? "absolute inset-x-0 top-0 items-center" : "items-end")}
               initial={false}
               animate={{ y: `${-Number(char) * 10}%` }}
               transition={roll}

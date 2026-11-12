@@ -44,7 +44,7 @@ const page = () => {
         label="Layer"
         heading={
           <>
-            Inside the <span className="text-ord-stone">runtime.</span>
+            Inside the <span className="text-ord-primary">runtime.</span>
           </>
         }
         items={LAYERS}
@@ -68,7 +68,7 @@ const page = () => {
         chapter="SDK"
         heading={
           <>
-            Ship an agent <span className="text-ord-stone">in twelve lines.</span>
+            Ship an agent <span className="text-ord-primary">in twelve lines.</span>
           </>
         }
         copy="Describe the job, name the agents and the policies, set a budget. The runtime handles planning, retries, memory and the audit trail."

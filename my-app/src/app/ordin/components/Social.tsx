@@ -57,7 +57,7 @@ const Social = () => {
   const split = () =>
     gsap.utils
       .toArray<HTMLElement>("[data-ord-q-split]", quoteRef.current)
-      .map((el) => SplitText.create(el, { type: "lines", mask: "lines", linesClass: "ord-q-line" }));
+      .map((el) => SplitText.create(el, { type: "lines", mask: "lines", linesClass: "ord-q-line", aria: "none" }));
 
   const go = (step: number) => {
     const next = (index + step + QUOTES.length) % QUOTES.length;

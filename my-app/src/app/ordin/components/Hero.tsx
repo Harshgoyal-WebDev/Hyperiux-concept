@@ -22,8 +22,8 @@ const Hero = () => {
     () => {
       if (prefersReducedMotion()) return;
 
-      const split = SplitText.create("[data-ord-hero-title]", { type: "lines", mask: "lines", linesClass: "ord-line" });
-      const copy = SplitText.create("[data-ord-hero-copy]", { type: "lines", mask: "lines", linesClass: "ord-line" });
+      const split = SplitText.create("[data-ord-hero-title]", { type: "lines", mask: "lines", linesClass: "ord-line", aria: "none" });
+      const copy = SplitText.create("[data-ord-hero-copy]", { type: "lines", mask: "lines", linesClass: "ord-line", aria: "none" });
       const tl = gsap.timeline({ paused: true });
       tl.from(split.lines, { yPercent: 105, duration: 1.4, stagger: 0.1, ease: "expo.out" }, 0)
         .from(copy.lines, { yPercent: 105, duration: 1.4, stagger: 0.1, ease: "expo.out" }, 0.35)

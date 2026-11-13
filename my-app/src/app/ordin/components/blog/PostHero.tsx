@@ -25,7 +25,7 @@ export default function PostHero({ post }: { post: Post }) {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      const title = SplitText.create("[data-post-title]", { type: "lines", mask: "lines", linesClass: "ord-line" });
+      const title = SplitText.create("[data-post-title]", { type: "lines", mask: "lines", linesClass: "ord-line", aria: "none" });
       const tl = gsap.timeline({ paused: true });
       tl.from(title.lines, { yPercent: 105, duration: 1.4, stagger: 0.1, ease: "expo.out" }, 0)
         .from("[data-post-fade]", { opacity: 0, y: 16, duration: 1.1, stagger: 0.08, ease: "power3.out" }, 0.25)

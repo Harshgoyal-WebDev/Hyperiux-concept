@@ -87,6 +87,9 @@ export default function OverflowTextReveal({
               splitBy === "lines" ? "lines" : splitBy === "words" ? "lines,words" : "lines,chars",
             mask: splitBy,
             charsClass: "char++",
+            // Lines and words keep whole words, so screen readers read the split text as is; an aria-label
+            // would also be invalid on a <p>. Only a char split needs the label.
+            aria: splitBy === "chars" ? "auto" : "none",
             reduceWhiteSpace: false,
             autoSplit: true,
             onSplit: (self) => {

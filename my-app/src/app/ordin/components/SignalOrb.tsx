@@ -183,8 +183,31 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       pointer.y = -1e5;
     };
 
+    // Draw calls are grouped by colour: one fill per bucket of dots and one stroke per bucket of ring
+    // segments, instead of ~1,700 separate calls a frame. Opacity is rounded to the bucket, which is invisible.
+    const DOT_DEPTHS = 8;
+    const DOT_ALPHAS = 16;
+    const RING_ALPHAS = 32;
+    const dotBuckets: number[][] = Array.from({ length: DOT_DEPTHS * (DOT_ALPHAS + 1) }, () => []);
+    const ringBuckets: number[][] = Array.from({ length: RING_ALPHAS + 1 }, () => []);
+    const dotColors = dotBuckets.map((_, k) => {
+      const d = Math.floor(k / (DOT_ALPHAS + 1)) / (DOT_DEPTHS - 1);
+      return `rgba(${mix(d * d)},${(k % (DOT_ALPHAS + 1)) / DOT_ALPHAS})`;
+    });
+    const ringColors = ringBuckets.map((_, k) => `rgba(${rgb(THEME.primaryLight)},${k / RING_ALPHAS})`);
+
+    // Quality steps down on slow devices (no GPU, low-end phones), where a full frame would block the main
+    // thread: 0 = full, 1 = no blurred ring shadow and only the front halos, 2 = also every other particle at
+    // half the frame rate. Fast devices never leave 0.
+    let quality = 0;
+    let cost = 0;
+    let measured = 0;
+    let frame = 0;
+    const FRAME_BUDGET = 7;
+
     const draw = (time: number) => {
       if (Number(gsap.getProperty(wrap, "opacity")) < 0.02) return;
+      const stride = quality >= 2 ? 2 : 1;
       const { spread, energy } = state.current;
       const a = intro.done ? 1 : intro.assemble;
       const ea = a >= 1 ? 1 : 1 - Math.pow(1 - a, 3);
@@ -277,13 +300,20 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
             ctx.moveTo(pts2[o], pts2[o + 1]);
             ctx.lineTo(pts2[o + 3], pts2[o + 4]);
           }
-          ctx.shadowColor = alpha(THEME.primaryLight, 0.9);
-          ctx.shadowBlur = (front ? 10 : 6) * dpr;
-          ctx.lineWidth = dpr;
-          ctx.strokeStyle = `rgba(${rgb(THEME.primaryLight)},${(front ? 0.2 : 0.1) * ea * ea})`;
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-          ctx.shadowColor = "transparent";
+          if (quality === 0) {
+            ctx.shadowColor = alpha(THEME.primaryLight, 0.9);
+            ctx.shadowBlur = (front ? 10 : 6) * dpr;
+            ctx.lineWidth = dpr;
+            ctx.strokeStyle = `rgba(${rgb(THEME.primaryLight)},${(front ? 0.2 : 0.1) * ea * ea})`;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = "transparent";
+          } else {
+            // Blur is the slowest thing on a CPU canvas; a wide faint stroke stands in for the glow
+            ctx.lineWidth = dpr * (front ? 5 : 4);
+            ctx.strokeStyle = `rgba(${rgb(THEME.primaryLight)},${(front ? 0.07 : 0.04) * ea * ea})`;
+            ctx.stroke();
+          }
 
           for (let j = 0; j < SEG; j++) {
             const o = j * 3;
@@ -297,18 +327,36 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
             }
             const alpha = Math.min(1, (0.08 + (z + 1) * 0.14 + energy * 0.06 + boost * 0.6) * ea * ea * edge(pts2[o], pts2[o + 1]));
             if (alpha < 0.01) continue;
+            if (boost > 0) {
+              // Segments near the cursor are few and each has its own width, so they stay individual
+              ctx.beginPath();
+              ctx.moveTo(pts2[o], pts2[o + 1]);
+              ctx.lineTo(pts2[o + 3], pts2[o + 4]);
+              ctx.lineWidth = dpr * (1 + boost * 1.2);
+              ctx.strokeStyle = `rgba(${rgb(THEME.primaryLight)},${alpha})`;
+              ctx.stroke();
+            } else {
+              ringBuckets[Math.max(1, Math.round(alpha * RING_ALPHAS))].push(pts2[o], pts2[o + 1], pts2[o + 3], pts2[o + 4]);
+            }
+          }
+          ctx.lineWidth = dpr;
+          for (let b = 1; b <= RING_ALPHAS; b++) {
+            const seg = ringBuckets[b];
+            if (!seg.length) continue;
             ctx.beginPath();
-            ctx.moveTo(pts2[o], pts2[o + 1]);
-            ctx.lineTo(pts2[o + 3], pts2[o + 4]);
-            ctx.lineWidth = dpr * (1 + boost * 1.2);
-            ctx.strokeStyle = `rgba(${rgb(THEME.primaryLight)},${alpha})`;
+            for (let s = 0; s < seg.length; s += 4) {
+              ctx.moveTo(seg[s], seg[s + 1]);
+              ctx.lineTo(seg[s + 2], seg[s + 3]);
+            }
+            ctx.strokeStyle = ringColors[b];
             ctx.stroke();
+            seg.length = 0;
           }
         }
       };
       drawRings(false);
 
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < count; i += stride) {
         const p = pts[i];
         // Two drifting layers of smooth noise keep the surface rippling all the time
         const n1 = Math.sin(p.x * 3.1 + time * 0.9) * Math.sin(p.y * 2.7 - time * 0.7) * Math.sin(p.z * 3.4 + time * 1.1);
@@ -353,13 +401,30 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
         if (e <= 0) continue;
         const size = (0.9 + depth * 1.5 + heat * 1.6) * dpr;
         const glowA = (0.06 + depth * 0.16) * fade * e + heat * 0.75;
-        if (glowA > 0.03) halos.push(px, py, size * (3.4 + heat * 4), Math.min(1, glowA));
-        ctx.fillStyle = heat > 0.05
-          ? `rgba(${rgb(THEME.primaryLight)},${Math.min(1, 0.3 + depth * 0.6 + heat) * e})`
-          : `rgba(${mix(depth * depth)},${Math.min(1, 0.32 + depth * 0.68) * fade * e})`;
+        if (glowA > 0.03 && (quality === 0 || depth > 0.5 || heat > 0)) halos.push(px, py, size * (3.4 + heat * 4), Math.min(1, glowA));
+        if (heat > 0.05) {
+          // Dots under the cursor glow individually
+          ctx.fillStyle = `rgba(${rgb(THEME.primaryLight)},${Math.min(1, 0.3 + depth * 0.6 + heat) * e})`;
+          ctx.beginPath();
+          ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const dk = Math.round(depth * (DOT_DEPTHS - 1));
+          const ak = Math.round(Math.min(1, 0.32 + depth * 0.68) * fade * e * DOT_ALPHAS);
+          if (ak > 0) dotBuckets[dk * (DOT_ALPHAS + 1) + ak].push(px, py, size / 2);
+        }
+      }
+      for (let k = 0; k < dotBuckets.length; k++) {
+        const b = dotBuckets[k];
+        if (!b.length) continue;
         ctx.beginPath();
-        ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+        for (let s = 0; s < b.length; s += 3) {
+          ctx.moveTo(b[s] + b[s + 2], b[s + 1]);
+          ctx.arc(b[s], b[s + 1], b[s + 2], 0, Math.PI * 2);
+        }
+        ctx.fillStyle = dotColors[k];
         ctx.fill();
+        b.length = 0;
       }
 
       // Halos are added light, so overlapping dots bloom where they bunch up under the cursor
@@ -401,7 +466,29 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       return () => ro.disconnect();
     }
 
-    const tick = () => draw(performance.now() / 1000);
+    let last = 0;
+    let gaps = 0;
+    const tick = () => {
+      frame++;
+      const start = performance.now();
+      // Time between frames catches the canvas work that lands after draw() returns (rasterising on a CPU),
+      // capped so a tab coming back from the background doesn't count
+      const gap = last ? Math.min(100, start - last) : 16;
+      last = start;
+      if (quality >= 2 && frame % 2) return;
+      draw(start / 1000);
+      // Skip the first frames (page start-up), then average over 20: slow draws or under ~25fps step the
+      // quality down once and start measuring again. The lowest step needs no more measuring.
+      if (frame < 30 || quality >= 2) return;
+      cost += performance.now() - start;
+      gaps += gap;
+      if (++measured === 20) {
+        if ((cost / measured > FRAME_BUDGET || gaps / measured > 40) && quality < 2) quality++;
+        cost = 0;
+        gaps = 0;
+        measured = 0;
+      }
+    };
     gsap.ticker.add(tick);
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);

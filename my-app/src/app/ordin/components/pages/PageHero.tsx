@@ -35,8 +35,8 @@ const PageHero = ({ orb, chapter, title, copy, primary, secondary, visual, arc }
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      const heading = SplitText.create("[data-ph-title]", { type: "lines", mask: "lines", linesClass: "ord-line" });
-      const body = SplitText.create("[data-ph-copy]", { type: "lines", mask: "lines", linesClass: "ord-line" });
+      const heading = SplitText.create("[data-ph-title]", { type: "lines", mask: "lines", linesClass: "ord-line", aria: "none" });
+      const body = SplitText.create("[data-ph-copy]", { type: "lines", mask: "lines", linesClass: "ord-line", aria: "none" });
       const tl = gsap.timeline({ paused: true });
       tl.from(heading.lines, { yPercent: 105, duration: 1.4, stagger: 0.1, ease: "expo.out" }, 0)
         .from(body.lines, { yPercent: 105, duration: 1.4, stagger: 0.1, ease: "expo.out" }, 0.3)

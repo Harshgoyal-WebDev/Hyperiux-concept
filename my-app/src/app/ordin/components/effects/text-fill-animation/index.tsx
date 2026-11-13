@@ -58,13 +58,24 @@ export default function TextFillAnimation({
     const ctx = gsap.context(() => {
       const el = textRef.current;
       if (!el) return;
-      const split = SplitText.create(el, { type: "words,chars", charsClass: "tfa-char", tag: "span" });
+      // The letters are hidden from screen readers and a visually hidden copy reads the sentence instead:
+      // an aria-label isn't allowed on a <p>, and the letters alone would be read one at a time
+      const label = el.textContent ?? "";
+      const split = SplitText.create(el, { type: "words,chars", charsClass: "tfa-char", tag: "span", aria: "hidden" });
+      const reader = document.createElement("span");
+      reader.className = "sr-only";
+      reader.textContent = label;
+      el.appendChild(reader);
+      const undo = () => {
+        reader.remove();
+        split.revert();
+      };
       const chars = split.chars;
       gsap.set(el, { opacity: 1 });
 
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
         gsap.set(chars, { className: "tfa-char show" });
-        return () => split.revert();
+        return undo;
       }
 
       gsap
@@ -73,7 +84,7 @@ export default function TextFillAnimation({
         })
         .to(chars, { className: "tfa-char show", duration, stagger, ease: "power2.inOut" }, 0);
 
-      return () => split.revert();
+      return undo;
     });
 
     return () => {

@@ -7,11 +7,12 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { LOGO } from "../geometry";
+import { PROJECTS } from "../content";
 import { buildWorld } from "./layout";
 import { linesMaterial, worldUniforms } from "./lines";
 import { cameraAt } from "./rig";
 import { markToWorld } from "./space";
-import { WORLD, smooth, win } from "./store";
+import { WORLD, onFeatured, pickProject, smooth, win } from "./store";
 import { DEBUG, LOOK, onLayout } from "./tuning";
 
 // The world behind the page: one fixed WebGL canvas, the camera flown by
@@ -168,28 +169,130 @@ const logoFrag = /* glsl */ `
   }
 `;
 
-// an SVG drawn into a canvas (sharp at any size), its aspect kept
+// an SVG drawn into a canvas (sharp at any size), trimmed to what it draws
+// (the clients' icons sit small in a wide empty box: cropped to the mark
+// itself, it fills its face), its aspect kept
 function logoTexture(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const k = 512 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
-      const w = Math.max(1, Math.round((img.naturalWidth || 512) * k));
-      const h = Math.max(1, Math.round((img.naturalHeight || 512) * k));
-      const c = document.createElement("canvas");
-      c.width = w;
-      c.height = h;
-      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      const k = 1024 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
+      const w = Math.max(1, Math.round((img.naturalWidth || 1024) * k));
+      const h = Math.max(1, Math.round((img.naturalHeight || 1024) * k));
+      const full = document.createElement("canvas");
+      full.width = w;
+      full.height = h;
+      const fx = full.getContext("2d", { willReadFrequently: true });
+      fx.drawImage(img, 0, 0, w, h);
+      const px = fx.getImageData(0, 0, w, h).data;
+      let x0 = w;
+      let y0 = h;
+      let x1 = -1;
+      let y1 = -1;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (px[(y * w + x) * 4 + 3] > 8) {
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+          }
+        }
+      }
+      let c = full;
+      if (x1 >= x0 && y1 >= y0) {
+        const pad = 4;
+        x0 = Math.max(0, x0 - pad);
+        y0 = Math.max(0, y0 - pad);
+        x1 = Math.min(w - 1, x1 + pad);
+        y1 = Math.min(h - 1, y1 + pad);
+        c = document.createElement("canvas");
+        c.width = x1 - x0 + 1;
+        c.height = y1 - y0 + 1;
+        c.getContext("2d").drawImage(full, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+      }
       const t = new THREE.CanvasTexture(c);
-      t.anisotropy = 4;
-      resolve({ tex: t, aspect: w / h });
+      t.anisotropy = 8;
+      resolve({ tex: t, aspect: c.width / c.height });
     };
     img.onerror = () => resolve(null);
     img.src = src;
   });
 }
 
-function Scene({ world, labelRefs, mobile }) {
+// a project's picture on a wall of the hall (15 – 16): its imagery wiped in
+// from the top as its frame closes (as the page reveals its images), going
+// into the ground with the fog; the end wall's cross-fades to whichever
+// project the case study shows. (Captions use it too, see-through.)
+const pictureFrag = /* glsl */ `
+  uniform sampler2D uMap;
+  uniform sampler2D uPrev;
+  uniform float uMix;
+  uniform vec2 uWin;
+  uniform float uW;
+  uniform vec3 uBg;
+  uniform vec3 uFocus;
+  uniform vec2 uFog;
+  uniform float uSolid;
+  varying vec2 vUv;
+  varying vec3 vW;
+  void main() {
+    float r = smoothstep(uWin.x, uWin.y, uW);
+    if (r <= 0.0 || vUv.y < 1.0 - r) discard;
+    vec4 c = mix(texture2D(uPrev, vUv), texture2D(uMap, vUv), uMix);
+    float fog = smoothstep(uFog.x, uFog.y, distance(vW, uFocus));
+    if (uSolid > 0.5) {
+      gl_FragColor = vec4(mix(mix(uBg, c.rgb, c.a), uBg, fog), 1.0);
+    } else {
+      float a = c.a * (1.0 - fog);
+      if (a < 0.01) discard;
+      gl_FragColor = vec4(c.rgb, a);
+    }
+    #include <colorspace_fragment>
+  }
+`;
+
+// the page's two faces, as the canvas can name them (next/font's families)
+function pageFonts() {
+  const root = document.querySelector(".bp-root") || document.body;
+  const probe = document.createElement("span");
+  probe.className = "bp-mono";
+  root.appendChild(probe);
+  const mono = getComputedStyle(probe).fontFamily || "ui-monospace, monospace";
+  probe.remove();
+  return { sans: getComputedStyle(root).fontFamily || "sans-serif", mono };
+}
+
+// a project's caption, set on the wall under its picture: its number, its
+// year, its name and its services, in the page's type
+const CAPTION = { w: 1024, h: 240 };
+function captionTexture(project, index, fonts) {
+  const c = document.createElement("canvas");
+  c.width = CAPTION.w;
+  c.height = CAPTION.h;
+  const x = c.getContext("2d");
+  x.textBaseline = "alphabetic";
+  x.font = `500 30px ${fonts.mono}`;
+  x.fillStyle = "#ff5f00";
+  x.fillText(String(index + 1).padStart(2, "0"), 4, 36);
+  x.fillStyle = "#777777";
+  x.textAlign = "right";
+  x.fillText(project.year, CAPTION.w - 4, 36);
+  x.textAlign = "left";
+  x.fillStyle = "#111111";
+  x.font = `400 104px ${fonts.sans}`;
+  x.fillText(project.name, 0, 148);
+  x.fillStyle = "#777777";
+  x.font = `400 28px ${fonts.mono}`;
+  if ("letterSpacing" in x) x.letterSpacing = "5px";
+  x.fillText(project.services.join(" · ").toUpperCase(), 4, 214);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function Scene({ world, labelRefs, hotRefs, mobile }) {
   const { gl, size } = useThree();
   const camera = useThree((s) => s.camera);
   const shared = useMemo(() => worldUniforms(), []);
@@ -287,6 +390,114 @@ function Scene({ world, labelRefs, mobile }) {
     };
   }, [logos]);
 
+  // the work's pictures on the hall's walls, their captions under them, and
+  // the case study's on its end wall
+  const pictures = useMemo(() => {
+    const group = new THREE.Group();
+    const plane = new THREE.PlaneGeometry(1, 1);
+    const material = (t0, t1, solid) =>
+      new THREE.ShaderMaterial({
+        uniforms: { uW: shared.uW, uBg: shared.uBg, uFocus: shared.uFocus, uFog: shared.uFog, uMap: { value: null }, uPrev: { value: null }, uMix: { value: 1 }, uWin: { value: new THREE.Vector2(t0, t1) }, uSolid: { value: solid ? 1 : 0 } },
+        vertexShader: logoVert,
+        fragmentShader: pictureFrag,
+        transparent: !solid,
+        depthWrite: solid,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
+      });
+    const items = world.pictures.map((pic) => {
+      const mesh = new THREE.Mesh(plane, material(pic.t0, pic.t1, true));
+      mesh.position.set(pic.p[0], pic.p[1], pic.p[2]);
+      mesh.rotation.y = pic.turn;
+      mesh.scale.set(pic.w, pic.h, 1);
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+      let caption = null;
+      if (pic.caption) {
+        caption = new THREE.Mesh(plane, material(pic.t0 + 0.05, pic.t1 + 0.05, false));
+        caption.position.set(pic.caption[0], pic.caption[1], pic.caption[2]);
+        caption.rotation.y = pic.turn;
+        caption.scale.set(pic.w, (pic.w * CAPTION.h) / CAPTION.w, 1);
+        caption.visible = false;
+        caption.renderOrder = 1;
+        group.add(caption);
+      }
+      return { pic, mesh, caption };
+    });
+    group.updateMatrixWorld(true);
+    group.userData = { plane, items, fade: null };
+    return group;
+  }, [world, shared]);
+
+  // their imagery, loaded once; the end wall follows the featured project
+  useEffect(() => {
+    let alive = true;
+    const { items } = pictures.userData;
+    const loader = new THREE.TextureLoader();
+    const aniso = gl.capabilities.getMaxAnisotropy();
+    const texs = PROJECTS.map((p) => {
+      const t = loader.load(p.image, () => alive && show());
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = Math.min(8, aniso);
+      return t;
+    });
+    const ready = (t) => !!t.image && (t.image.complete ?? true);
+    const feature = items.find((it) => it.pic.kind === "feature");
+    let featured = -1;
+    function show() {
+      items.forEach((it) => {
+        if (it.pic.kind !== "work") return;
+        const t = texs[it.pic.i];
+        if (!t || !ready(t)) return;
+        const u = it.mesh.material.uniforms;
+        u.uMap.value = u.uPrev.value = t;
+        it.mesh.visible = true;
+      });
+      if (feature && featured >= 0 && ready(texs[featured]) && !feature.mesh.visible) {
+        const u = feature.mesh.material.uniforms;
+        u.uMap.value = u.uPrev.value = texs[featured];
+        u.uMix.value = 1;
+        feature.mesh.visible = true;
+      }
+    }
+    const stop = onFeatured((i) => {
+      featured = i;
+      if (!feature) return;
+      const u = feature.mesh.material.uniforms;
+      if (!feature.mesh.visible) return show();
+      u.uPrev.value = u.uMap.value;
+      u.uMap.value = texs[i];
+      u.uMix.value = 0;
+    });
+    // the captions, once the page's type has loaded
+    const captions = [];
+    (document.fonts?.ready ?? Promise.resolve()).then(() => {
+      if (!alive) return;
+      const fonts = pageFonts();
+      items.forEach((it) => {
+        if (!it.caption) return;
+        const t = captionTexture(PROJECTS[it.pic.i], it.pic.i, fonts);
+        captions.push(t);
+        const u = it.caption.material.uniforms;
+        u.uMap.value = u.uPrev.value = t;
+        it.caption.visible = true;
+      });
+    });
+    return () => {
+      alive = false;
+      stop();
+      texs.forEach((t) => t.dispose());
+      captions.forEach((t) => t.dispose());
+      items.forEach((it) => {
+        it.mesh.material.dispose();
+        it.caption?.material.dispose();
+      });
+      pictures.userData.plane.dispose();
+    };
+  }, [pictures, gl]);
+
   // (over everything: nothing in the world stands in front of the mark)
   const fill = useMemo(() => new THREE.Mesh(mark.fill, new THREE.MeshBasicMaterial({ color: "#fff", transparent: true, opacity: 0, depthWrite: false, depthTest: false, side: THREE.DoubleSide })), [mark]);
 
@@ -309,6 +520,7 @@ function Scene({ world, labelRefs, mobile }) {
   }, [lines, solids, prisms, fill]);
 
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), bg: new THREE.Color(), a: new THREE.Color(), b: new THREE.Color() }), []);
+  const CORNERS = useMemo(() => [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], []);
 
   useFrame((state, delta) => {
     const W = DEBUG.lock ? DEBUG.W : WORLD.W;
@@ -367,9 +579,64 @@ function Scene({ world, labelRefs, mobile }) {
     fill.material.opacity = (win(W, 3.0, 3.35, 4.0, 4.4) + win(W, 19.05, 19.4)) * LOOK.markFill;
     fill.visible = fill.material.opacity > 0.002;
 
-    // labels
     const w = size.width;
     const h = size.height;
+
+    // the end wall's picture cross-fading to the project chosen
+    pictures.userData.items.forEach((it) => {
+      const u = it.mesh.material.uniforms;
+      if (u.uMix.value < 1) u.uMix.value = Math.min(1, u.uMix.value + delta * 2.2);
+    });
+
+    // the pictures on the walls answer the pointer: a target over each, where
+    // it is on the screen (the page opens its case study)
+    const fogN = R * LOOK.fogNear + 3;
+    const fogF = R * LOOK.fogFar + 12;
+    let hot = 0;
+    pictures.userData.items.forEach((it) => {
+      if (it.pic.kind !== "work") return;
+      const el = hotRefs.current[hot++];
+      if (!el) return;
+      const p = it.pic;
+      const d = Math.hypot(p.p[0] - c.tx, p.p[1] - c.ty, p.p[2] - c.tz);
+      let on = it.mesh.visible && W > p.t1 && W < 15.35 && smooth(fogN, fogF, d) < 0.5;
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      if (on) {
+        for (const [a, b] of CORNERS) {
+          tmp.v.set(a, b, 0).applyMatrix4(it.mesh.matrixWorld).project(camera);
+          if (tmp.v.z > 1 || tmp.v.z < -1) {
+            on = false;
+            break;
+          }
+          const sx = ((tmp.v.x + 1) / 2) * w;
+          const sy = ((1 - tmp.v.y) / 2) * h;
+          x0 = Math.min(x0, sx);
+          x1 = Math.max(x1, sx);
+          y0 = Math.min(y0, sy);
+          y1 = Math.max(y1, sy);
+        }
+      }
+      if (on) {
+        x0 = Math.max(0, x0);
+        y0 = Math.max(0, y0);
+        x1 = Math.min(w, x1);
+        y1 = Math.min(h, y1);
+        on = x1 - x0 > 40 && y1 - y0 > 40;
+      }
+      if (!on) {
+        if (el.style.display !== "none") el.style.display = "none";
+        return;
+      }
+      el.style.display = "block";
+      el.style.transform = `translate3d(${x0}px, ${y0}px, 0)`;
+      el.style.width = `${x1 - x0}px`;
+      el.style.height = `${y1 - y0}px`;
+    });
+
+    // labels
     labelData.forEach((l, i) => {
       const el = labelRefs.current[i];
       if (!el) return;
@@ -395,6 +662,7 @@ function Scene({ world, labelRefs, mobile }) {
       <primitive object={solids} />
       <primitive object={prisms} />
       <primitive object={logos} />
+      <primitive object={pictures} />
       <primitive object={fill} />
       <primitive object={lines} />
     </>
@@ -404,6 +672,7 @@ function Scene({ world, labelRefs, mobile }) {
 // (client only: the page loads it without server rendering)
 export default function World({ mobile }) {
   const labelRefs = useRef([]);
+  const hotRefs = useRef([]);
   // the world is rebuilt when its layout is tuned (TuningPanel.jsx)
   const [version, setVersion] = useState(0);
   useEffect(() => onLayout(() => setVersion((v) => v + 1)), []);
@@ -428,6 +697,7 @@ export default function World({ mobile }) {
     };
   }, []);
   return (
+    <>
     <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
       <Canvas
         dpr={[1, 1.75]}
@@ -436,7 +706,7 @@ export default function World({ mobile }) {
         flat
         style={{ position: "absolute", inset: 0 }}
       >
-        <Scene world={world} labelRefs={labelRefs} mobile={mobile} />
+        <Scene world={world} labelRefs={labelRefs} hotRefs={hotRefs} mobile={mobile} />
       </Canvas>
       <div className="absolute inset-0 overflow-hidden">
         {labels.map((l, i) => (
@@ -451,5 +721,22 @@ export default function World({ mobile }) {
         ))}
       </div>
     </div>
+    {/* over the page's copy: the targets on the work's pictures in the hall
+        (pointer only; the section lists the projects for the keyboard) */}
+    <div className="pointer-events-none fixed inset-0 z-[15] overflow-hidden" aria-hidden="true">
+      {PROJECTS.map((p, i) => (
+        <button
+          key={p.id}
+          ref={(el) => (hotRefs.current[i] = el)}
+          type="button"
+          tabIndex={-1}
+          title={`${p.name}: open the case study`}
+          onClick={() => pickProject(i)}
+          className="pointer-events-auto absolute left-0 top-0 cursor-pointer"
+          style={{ display: "none", willChange: "transform" }}
+        />
+      ))}
+    </div>
+    </>
   );
 }

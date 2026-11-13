@@ -114,3 +114,25 @@ export const smooth = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 export const win = (x, a, b, c = Infinity, d = Infinity) => smooth(a, b, x) * (c === Infinity ? 1 : 1 - smooth(c, d, x));
+
+// The work: which project the case study shows (the world hangs it on the
+// hall's end wall, World.jsx), and a project picked from its wall in the
+// hall (the page opens its case study, sections.jsx).
+export const WORK = { featured: 0 };
+const featuredListeners = new Set();
+export function onFeatured(fn) {
+  featuredListeners.add(fn);
+  fn(WORK.featured);
+  return () => featuredListeners.delete(fn);
+}
+export function setFeatured(i) {
+  if (WORK.featured === i) return;
+  WORK.featured = i;
+  featuredListeners.forEach((fn) => fn(i));
+}
+const pickListeners = new Set();
+export function onPick(fn) {
+  pickListeners.add(fn);
+  return () => pickListeners.delete(fn);
+}
+export const pickProject = (i) => pickListeners.forEach((fn) => fn(i));

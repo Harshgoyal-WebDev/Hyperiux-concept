@@ -107,7 +107,7 @@ export default function ArchitecturalStorytelling() {
         <div id="capabilities" ref={lightRef} data-light-half="" className={`bp-light relative text-[var(--bp-fg)] ${reduced ? "bp-static bg-[var(--bp-bg)]" : ""}`}>
           <ServiceSections />
           <ProcessSection />
-          <WorkSections />
+          <WorkSections reduced={reduced} />
           <ImpactSection />
           <BiggerPicture />
           <AboutSection />

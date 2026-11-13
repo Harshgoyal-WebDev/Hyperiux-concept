@@ -114,6 +114,10 @@ const GLOW_SCALE = 0.5;
 // The smear field is softer still
 const FIELD_HEIGHT = 160;
 const MAX_DPR = 1.5;
+// About 2880x2080: above a 1920x1080 window at full MAX_DPR, so only oversized canvases are softened
+const MAX_PIXELS = 6_000_000;
+// Software WebGL (no GPU): about 1000x500, plenty for a blurred glow
+const SOFTWARE_MAX_PIXELS = 500_000;
 
 // Smear: how long a stir takes to settle, and how far it carries itself
 const SMEAR_HALF_LIFE = 0.4;
@@ -463,6 +467,13 @@ export default function ArcLight({
     if (!gl) return undefined;
     // the smear needs signed values; without float targets the light just doesn't stir
     const floatTargets = !!gl.getExtension("EXT_color_buffer_float");
+    // Without a GPU (SwiftShader / llvmpipe: no hardware acceleration, and the machines PageSpeed Insights
+    // tests on) every pixel is shaded on the CPU. The light is a soft glow, so it renders at a fraction of
+    // the resolution there and is scaled up by CSS.
+    const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = String(debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    const software = /swiftshader|llvmpipe|software|basic render/i.test(renderer);
+    const maxPixels = software ? SOFTWARE_MAX_PIXELS : MAX_PIXELS;
 
     let fieldProgram: WebGLProgram;
     let glowProgram: WebGLProgram;
@@ -545,7 +556,9 @@ export default function ArcLight({
 
     const resize = () => {
       const rect = root.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+      // Cap the pixel count as well: a very tall viewport (Lighthouse's full-page screenshot) would
+      // otherwise run the shaders over tens of millions of pixels every frame
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR, Math.sqrt(maxPixels / Math.max(1, rect.width * rect.height)));
       width = Math.max(1, Math.round(rect.width * dpr));
       height = Math.max(1, Math.round(rect.height * dpr));
       canvas.width = width;

@@ -121,6 +121,23 @@ const PROC_Z = 24;
 const PROC_X = [40, 46, 52, 58, 64];
 const HALL = { x: [70, 98], z: [20, 28], h: 4.6 };
 const CLIENTS_AT = [102, 20];
+const HALL_Z = ((HALL.z[0] + HALL.z[1]) / 2) * CUBE_D; // its axis, in world z
+
+// the work in the hall (15): [the bay's first column, its wall (−1 the left
+// as you walk in, +1 the right)], one per project; each picture as the
+// project's imagery (880 × 996) stands, its middle at WORK_Y
+const WORK_BAYS = [[74, -1], [78, 1], [82, -1], [86, 1]];
+const WORK_ASPECT = 880 / 996;
+const WORK_H = 3.2;
+const WORK_W = WORK_H * WORK_ASPECT;
+const WORK_Y = 2.55;
+// the case study on the end wall (16)
+const END_H = 3.4;
+const END_Y = 2.35;
+const END_DZ = -1.6; // its middle, off the hall's axis (grid)
+const END_DIST = 5; // how far the camera stands from it
+// when the camera passes each project on the walk (world time)
+export const WORK_T = [14.35, 14.6, 14.85, 15.1];
 
 // the windows of the page's frames (world time)
 // (each built as its section comes up the screen: done as it is centred)
@@ -135,29 +152,7 @@ export function buildWorld(mark) {
   const labels = [];
   const label = (p, text, t0, t1, accent = false, dense = false) => labels.push({ p, text, t0, t1, accent, dense });
 
-  // ---- the ground: the grid, drawn outward from the core on load --------
-  const X0 = -40;
-  const X1 = 132;
-  const Z0 = -44;
-  const Z1 = 60;
-  const piece = 3;
-  const gridT = (x, z) => -0.95 + Math.min(Math.hypot(x, z) / 42, 1) * 0.75;
-  for (let x = X0 + 0.5; x <= X1; x += 3) {
-    for (let z = Z0; z < Z1; z += piece) {
-      const near = Math.abs(z) < Math.abs(z + piece) ? z : z + piece;
-      const far = near === z ? z + piece : z;
-      const t = gridT(x, near);
-      L.seg(P(x, 0, near), P(x, 0, far), { t0: t, t1: t + 0.12, tone: "faint" });
-    }
-  }
-  for (let z = Z0 + 0.5; z <= Z1; z += 3) {
-    for (let x = X0; x < X1; x += piece) {
-      const near = Math.abs(x) < Math.abs(x + piece) ? x : x + piece;
-      const far = near === x ? x + piece : x;
-      const t = gridT(near, z);
-      L.seg(P(near, 0, z), P(far, 0, z), { t0: t, t1: t + 0.12, tone: "faint" });
-    }
-  }
+  // (no grid on the ground: the world stands on a clean surface)
 
   // ---- 01 the core: the mark's cube, drawn on load ----------------------
   const core = cellBox(0, -1);
@@ -558,30 +553,41 @@ export function buildWorld(mark) {
   });
 
   // ---- 15 – 16 the work: a hall, drawn from its door in -----------------
+  // Its floor is left clean; its ceiling beams, its columns, and the work
+  // itself hung on its walls: a project in each bay, alternating sides
+  // (World.jsx paints them), and the featured one on its end wall (16).
+  const pictures = [];
   {
     const [x0, x1] = HALL.x;
     const [z0, z1] = HALL.z;
     const h = HALL.h;
     const at = (x) => 13.7 + ((x - x0) / (x1 - x0)) * 0.9;
-    for (let x = x0; x <= x1; x += 1) {
-      L.seg(P(x, 0.02, z0), P(x, 0.02, z1), { t0: at(x), t1: at(x) + 0.12, tone: "guide" });
-      if ((x - x0) % 2 === 0) L.seg(P(x, h, z0), P(x, h, z1), { t0: at(x), t1: at(x) + 0.12, tone: "guide" });
-    }
-    for (let z = z0; z <= z1; z += 1) {
-      L.seg(P(x0, 0.02, z), P(x1, 0.02, z), { t0: 13.7, t1: 14.6, tone: "guide" });
-      if ((z - z0) % 2 === 0) L.seg(P(x0, h, z), P(x1, h, z), { t0: 13.7, t1: 14.6, tone: "guide" });
-    }
+    for (let x = x0; x <= x1; x += 2) L.seg(P(x, h, z0), P(x, h, z1), { t0: at(x), t1: at(x) + 0.12, tone: "guide" });
+    for (let z = z0; z <= z1; z += 2) L.seg(P(x0, h, z), P(x1, h, z), { t0: 13.7, t1: 14.6, tone: "guide" });
     for (let x = x0; x <= x1; x += 4) {
       for (const z of [z0, z1 - 0.4]) box(L, [P(x, 0, z), P(x + 0.4, h, z + 0.4)], { t0: at(x), t1: at(x) + 0.2, w: 1.2 });
       L.seg(P(x + 0.2, h, z0), P(x + 0.2, h, z1), { t0: at(x) + 0.1, t1: at(x) + 0.25 });
     }
-    // frames on its walls, and the one at its end
-    const frame = (xa, xb, ya, yb, z, o) => L.path([P(xa, ya, z), P(xb, ya, z), P(xb, yb, z), P(xa, yb, z), P(xa, ya, z)], o);
-    [74, 82, 90].forEach((x) => {
-      frame(x + 0.6, x + 3.4, 1.2, 3.6, z0 + 0.05, { t0: at(x) + 0.15, t1: at(x) + 0.35, w: 1.3 });
-      frame(x + 0.6, x + 3.4, 1.2, 3.6, z1 - 0.05, { t0: at(x) + 0.15, t1: at(x) + 0.35, w: 1.3 });
+    // a frame in the plane of constant z (a side wall) or of constant x (the end)
+    const frameZ = (xa, xb, ya, yb, z, o) => L.path([P(xa, ya, z), P(xb, ya, z), P(xb, yb, z), P(xa, yb, z), P(xa, ya, z)], o);
+    const frameX = (x, za, zb, ya, yb, o) => L.path([P(x, ya, za), P(x, ya, zb), P(x, yb, zb), P(x, yb, za), P(x, ya, za)], o);
+    const m = 0.1; // the frame's margin round its picture
+    WORK_BAYS.forEach(([bx, side], i) => {
+      const cx = bx + 2.2; // between the bay's columns
+      const z = side < 0 ? z0 + 0.05 : z1 - 0.05;
+      const t = at(bx);
+      frameZ(cx - WORK_W / 2 - m, cx + WORK_W / 2 + m, WORK_Y - WORK_H / 2 - m, WORK_Y + WORK_H / 2 + m, z, { t0: t - 0.05, t1: t + 0.12, w: 1.3 });
+      // the picture just behind its frame (seen from the hall), facing in
+      const zz = (side < 0 ? z0 + 0.04 : z1 - 0.04) * CUBE_D;
+      pictures.push({ kind: "work", i, p: [cx, WORK_Y, zz], w: WORK_W, h: WORK_H, turn: side < 0 ? 0 : Math.PI, t0: t + 0.04, t1: t + 0.2, caption: [cx, WORK_Y - WORK_H / 2 - 0.47, zz] });
     });
-    L.path([P(x1, 0.8, z0 + 1.2), P(x1, 0.8, z1 - 1.2), P(x1, 4.0, z1 - 1.2), P(x1, 4.0, z0 + 1.2), P(x1, 0.8, z0 + 1.2)], { t0: 14.5, t1: 14.9, w: 1.5 });
+    // the end wall: the case study's picture, left of the hall's axis (the
+    // camera faces the wall square on, the copy to its right, clear of the
+    // columns)
+    const zc = (z0 + z1) / 2 + END_DZ;
+    const ew = END_H * WORK_ASPECT;
+    frameX(x1, zc - ew / 2 - m, zc + ew / 2 + m, END_Y - END_H / 2 - m, END_Y + END_H / 2 + m, { t0: 14.5, t1: 14.9, w: 1.5 });
+    pictures.push({ kind: "feature", p: [x1 + 0.02, END_Y, zc * CUBE_D], w: ew, h: END_H, turn: -Math.PI / 2, t0: 15.15, t1: 15.4 });
   }
 
   // ---- 17 the clients: a grid of cubes rising in a wave, a logo on each top
@@ -615,7 +621,7 @@ export function buildWorld(mark) {
     [P(106, 0.5, PROC_Z), "Clients"],
   ].forEach(([p, text], k) => label(p, text, 17.1 + k * 0.05, 18.05, k === 0));
 
-  return { lines: L, solids, prisms: PRISMS, labels, logos };
+  return { lines: L, solids, prisms: PRISMS, labels, logos, pictures };
 }
 
 // ---------------------------------------------------------------------------
@@ -653,10 +659,13 @@ export const KEYS = [
   { t: 11.5, target: [52, 2.6, 15 * CUBE_D], yaw: -36, pitch: 20, size: 5.8, fov: 34, sx: 0.45 },
   { t: 12.5, target: site("marketing", 3.6), yaw: -46, pitch: 18, size: 6.6, fov: 34, sx: -0.45 },
   { t: 13.5, target: [52, 1.2, PROC_Z * CUBE_D], yaw: 0, pitch: 28, size: 6.4, fov: 34, sy: -0.28, my: -0.2 },
-  { t: 14.15, target: [73, 2.1, PROC_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 },
-  { t: 15.05, target: [90, 2.1, PROC_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 },
-  { t: 15.55, target: [98, 2.4, PROC_Z], yaw: -90, pitch: 3, size: 2.6, fov: 48, sx: -0.35 },
-  { t: 16.5, target: [CLIENTS_AT[0] + 4.3, 1.2, (CLIENTS_AT[1] + 3.5) * CUBE_D], yaw: -20, pitch: 56, size: 6, fov: 34, sx: 0.4 },
+  // the hall: in at its door, then straight down it, the work passing on
+  // the walls either side and the heading in the middle of the screen; then
+  // the end wall, held left of the case study's copy
+  { t: 14.15, target: [73, 2.3, HALL_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 },
+  ...WORK_BAYS.map(([bx], i) => ({ t: WORK_T[i], target: [bx + 0.4, 2.4, HALL_Z], yaw: -90, pitch: 2, size: 1.3, fov: 66 })),
+  { t: 15.55, target: [HALL.x[1], END_Y, HALL_Z], yaw: -90, pitch: 1, size: END_DIST * Math.tan((24 * Math.PI) / 180), fov: 48, mx: 0.55, my: 0.62 },
+  { t: 16.5, target: [CLIENTS_AT[0] + 4.3, 1.2, (CLIENTS_AT[1] + 3.5) * CUBE_D], yaw: -20, pitch: 56, size: 5.8, fov: 34, sx: 0.45 },
   { t: 17.5, target: [42, 0, 6], yaw: -28, pitch: 58, size: 44, fov: 32 },
   { t: 18.5, target: [0.5, 1.6, -0.5], yaw: -62, pitch: 22, size: 4.6, fov: 34, sx: 0.4 },
   { t: 19.5, ...MARK, size: MARK_HALF * 2, sx: -0.5 },

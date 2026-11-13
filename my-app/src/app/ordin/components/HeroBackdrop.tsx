@@ -35,7 +35,7 @@ const HeroBackdrop = () => {
       ref={root}
       data-ord-hide
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-screen [mask-image:linear-gradient(to_bottom,#000_55%,transparent_96%)]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-screen max-h-[2400px] [mask-image:linear-gradient(to_bottom,#000_55%,transparent_96%)]"
     >
       <div className="h-full w-full">
         <div className="h-full w-full max-md:opacity-50">

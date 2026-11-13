@@ -14,6 +14,9 @@ import { THEME, alpha, rgb } from "../theme";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
+// Largest canvas side in device pixels (a 1440x900 retina screen draws the orb at about 1150)
+const ORB_MAX_SIDE = 2400;
+
 type OrbPose = {
   x: number;
   y: number;
@@ -146,9 +149,12 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
 
     let dpr = 1;
     const fit = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = wrap.offsetWidth * dpr;
-      canvas.height = wrap.offsetHeight * dpr;
+      // The orb is sized from the viewport height, so an unusually tall viewport (Lighthouse stretches it to
+      // the whole page for its full-page screenshot) would make a ~10,000px canvas redrawn every frame.
+      // Capping the resolution keeps that cheap; normal screens never reach the cap.
+      dpr = Math.min(window.devicePixelRatio || 1, 2, ORB_MAX_SIDE / Math.max(1, wrap.offsetWidth, wrap.offsetHeight));
+      canvas.width = Math.round(wrap.offsetWidth * dpr);
+      canvas.height = Math.round(wrap.offsetHeight * dpr);
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -463,7 +469,7 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     <div
       ref={wrapRef}
       aria-hidden
-      className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[64vh] aspect-square max-md:h-[52vh]"
+      className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[64vh] max-h-[1600px] aspect-square max-md:h-[52vh]"
     >
       <div data-ord-orb-intro className="h-full w-full">
         <canvas ref={canvasRef} className="h-full w-full" />

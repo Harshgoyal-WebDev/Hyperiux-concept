@@ -1,27 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { ABOUT, CLIENTS, CONTACT, FRAMES, INDUSTRIES, NAV, PROCESS, PROJECTS, SERVICES, SOCIAL, TESTIMONIALS } from "./content";
 import { FrameLabel, Headline } from "./FrameText";
 import { Frame, Rule } from "./blueprint";
 import { useScrollTo } from "./scroll";
-import { onWorld } from "./world/store";
+import { onPick, onWorld, setFeatured as featureInWorld, yOf } from "./world/store";
+import { WORK_T } from "./world/layout";
 
 const label = (n) => FRAMES[n - 1].label;
 const YEAR = 2026;
 const SECTION = "relative px-[6vw] py-[16vh] max-md:py-[12vh]";
 
 // A section's heading: its number and label, the headline, a line under it.
-function SectionHead({ n, title, body, className = "" }) {
+function SectionHead({ n, title, body, center = false, className = "" }) {
   return (
-    <header className={`relative z-10 ${className}`}>
-      <div data-rise="">
+    <header className={`relative z-10 ${center ? "text-center" : ""} ${className}`}>
+      <div data-rise="" className={center ? "flex justify-center" : ""}>
         <FrameLabel n={n} label={label(n)} />
       </div>
       <Headline text={title} words className="mt-6 text-[2.3rem] leading-[1.02] md:text-[3.6vw]" />
       {body && (
-        <p data-rise="" className="mt-6 max-w-[34rem] text-[1rem] leading-relaxed text-[var(--bp-muted)] md:text-[1.05vw]">
+        <p data-rise="" className={`mt-6 max-w-[34rem] text-[1rem] leading-relaxed text-[var(--bp-muted)] md:text-[1.05vw] ${center ? "mx-auto" : ""}`}>
           {body}
         </p>
       )}
@@ -124,47 +125,98 @@ function ProjectCard({ project, index, onOpen }) {
   );
 }
 
-export function WorkSections() {
+// The project the walk through the hall is turned to now (world/layout.js,
+// WORK_T), or −1 between them.
+const lookingAt = (W) => {
+  let best = -1;
+  let d = 0.11;
+  WORK_T.forEach((t, i) => {
+    if (Math.abs(W - t) < d) {
+      d = Math.abs(W - t);
+      best = i;
+    }
+  });
+  return best;
+};
+
+// 15: the heading holds the middle of the screen while the camera walks the
+// hall, the work hung on its walls (the world paints it: world/layout.js,
+// 15 – 16); a picture there, or a name here, opens its case study. 16: the
+// project on the hall's end wall, its copy beside it. (With reduced motion
+// the world is a still of the mark: the work is shown on the page instead.)
+export function WorkSections({ reduced = false }) {
   const [featured, setFeatured] = useState(0);
+  const [looking, setLooking] = useState(-1);
   const scrollTo = useScrollTo();
-  const open = (i) => {
-    setFeatured(i);
-    scrollTo("#case-study");
-  };
+  const open = useCallback(
+    (i) => {
+      setFeatured(i);
+      // to where the camera faces the end wall
+      if (reduced) scrollTo("#case-study");
+      else scrollTo(yOf(15.5));
+    },
+    [reduced, scrollTo]
+  );
+  useEffect(() => featureInWorld(featured), [featured]);
+  useEffect(() => onPick(open), [open]);
+  useEffect(() => onWorld(({ W }) => setLooking(lookingAt(W))), []);
   const p = PROJECTS[featured];
   const step = (d) => setFeatured((f) => (f + d + PROJECTS.length) % PROJECTS.length);
+  const n2 = (i) => String(i + 1).padStart(2, "0");
   return (
     <>
-      <section id="work" className={SECTION}>
-        <SectionHead n={15} title="Work that creates real impact." body="Selected projects, each a brand, a website and a growth story we built together." />
-        <div data-world={15} className="mt-[10vh] grid grid-cols-2 gap-x-[4vw] gap-y-[10vh] max-md:grid-cols-1">
-          {PROJECTS.map((proj, i) => (
-            <div key={proj.id} className={i % 2 ? "md:mt-[16vh]" : ""}>
-              <ProjectCard project={proj} index={i} onOpen={() => open(i)} />
+      {reduced ? (
+        <section id="work" className={SECTION}>
+          <SectionHead n={15} title="Work that creates real impact." body="Selected projects, each a brand, a website and a growth story we built together." />
+          <div data-world={15} className="mt-[10vh] grid grid-cols-2 gap-x-[4vw] gap-y-[10vh] max-md:grid-cols-1">
+            {PROJECTS.map((proj, i) => (
+              <div key={proj.id} className={i % 2 ? "md:mt-[16vh]" : ""}>
+                <ProjectCard project={proj} index={i} onOpen={() => open(i)} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section id="work" className="relative">
+          <div data-world={15} className="relative h-[300vh] max-md:h-[260vh]">
+            <div className="sticky top-0 flex h-screen flex-col items-center justify-center px-[6vw]">
+              <SectionHead center n={15} title="Work that creates real impact." body="Selected projects, each a brand, a website and a growth story we built together." className="max-w-[19rem] md:max-w-[32vw]" />
+              <ul data-rise="" aria-label="Selected projects" className="relative z-10 mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
+                {PROJECTS.map((proj, i) => (
+                  <li key={proj.id}>
+                    <button
+                      type="button"
+                      onClick={() => open(i)}
+                      aria-label={`${proj.name}: open the case study`}
+                      className={`bp-mono cursor-pointer text-[0.72rem] uppercase tracking-[0.16em] transition-colors hover:text-[var(--bp-accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--bp-accent)] ${looking === i ? "text-[var(--bp-fg)]" : "text-[var(--bp-muted)]"}`}
+                    >
+                      <span className={looking === i ? "text-[var(--bp-accent)]" : ""}>{n2(i)}</span> {proj.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       <section id="case-study" className={SECTION}>
         <div data-world={16} className="grid grid-cols-12 gap-[4vw] max-md:grid-cols-1">
-          <div data-scene="" className="relative md:col-span-7">
-            <div className="relative aspect-[880/996] w-[78%] overflow-hidden max-md:w-full">
-              <div className="bp-reveal absolute inset-0">
-                <Image key={p.id} src={p.image} alt={`${p.name} — featured project`} fill sizes="(max-width: 768px) 88vw, 46vw" className="object-cover" />
+          {reduced ? (
+            <div data-scene="" className="relative md:col-span-7">
+              <div className="relative aspect-[880/996] w-[78%] overflow-hidden max-md:w-full">
+                <div className="bp-reveal absolute inset-0">
+                  <Image key={p.id} src={p.image} alt={`${p.name} — featured project`} fill sizes="(max-width: 768px) 88vw, 46vw" className="object-cover" />
+                </div>
               </div>
             </div>
-            {p.detail && (
-              <div className="absolute bottom-[-8vh] right-0 aspect-[880/996] w-[38%] overflow-hidden border border-[var(--bp-fg)] bg-[var(--bp-bg)] max-md:hidden">
-                <Image key={`${p.id}-d`} src={p.detail} alt={`${p.name} — detail`} fill sizes="20vw" className="object-cover" />
-              </div>
-            )}
-            {/* construction lines past its edges */}
-            <div className="pointer-events-none absolute -left-6 -top-6 h-[calc(100%+3rem)] w-[calc(78%+3rem)] max-md:hidden">
-              <Rule dir="y" className="left-6 top-0" />
-              <Rule className="left-0 top-6" />
+          ) : (
+            // the project hangs on the hall's end wall, here in the world
+            <div className="md:col-span-7">
+              <p className="sr-only">{`${p.name} — featured project`}</p>
+              <Slot className="aspect-[880/996] w-[78%] max-md:mx-auto max-md:w-[70%]" />
             </div>
-          </div>
+          )}
           <div className="flex flex-col justify-center md:col-span-5">
             <SectionHead n={16} title={`${p.name}.`} />
             <dl className="bp-mono mt-10 grid grid-cols-[7rem_1fr] gap-y-4 border-t border-[var(--bp-guide)] pt-6 text-[0.78rem] uppercase tracking-[0.12em]">
@@ -175,14 +227,14 @@ export function WorkSections() {
             </dl>
             <p className="mt-8 max-w-[30rem] leading-relaxed text-[var(--bp-muted)] md:text-[1.05vw]">{p.body}</p>
             <div className="mt-10 flex items-center gap-3">
-              <button type="button" onClick={() => step(-1)} className="flex size-11 cursor-pointer items-center justify-center border border-[var(--bp-fg)] transition-colors hover:border-[var(--bp-accent)] hover:bg-[var(--bp-accent)] hover:text-white" aria-label="Previous project">
+              <button type="button" onClick={() => step(-1)} className="flex size-11 cursor-pointer items-center justify-center border border-[var(--bp-fg)] bg-[var(--bp-bg)] transition-colors hover:border-[var(--bp-accent)] hover:bg-[var(--bp-accent)] hover:text-white" aria-label="Previous project">
                 ←
               </button>
-              <button type="button" onClick={() => step(1)} className="flex size-11 cursor-pointer items-center justify-center border border-[var(--bp-fg)] transition-colors hover:border-[var(--bp-accent)] hover:bg-[var(--bp-accent)] hover:text-white" aria-label="Next project">
+              <button type="button" onClick={() => step(1)} className="flex size-11 cursor-pointer items-center justify-center border border-[var(--bp-fg)] bg-[var(--bp-bg)] transition-colors hover:border-[var(--bp-accent)] hover:bg-[var(--bp-accent)] hover:text-white" aria-label="Next project">
                 →
               </button>
               <span className="bp-mono ml-3 text-[0.75rem] text-[var(--bp-muted)]">
-                <span className="text-[var(--bp-accent)]">{String(featured + 1).padStart(2, "0")}</span> / {String(PROJECTS.length).padStart(2, "0")}
+                <span className="text-[var(--bp-accent)]">{n2(featured)}</span> / {String(PROJECTS.length).padStart(2, "0")}
               </span>
               <a href={`mailto:${CONTACT.email}?subject=${encodeURIComponent(`A project like ${p.name}`)}`} className="ml-auto border-b border-[var(--bp-fg)] pb-1 text-[0.95rem] transition-colors hover:border-[var(--bp-accent)] hover:text-[var(--bp-accent)]">
                 Start a similar project

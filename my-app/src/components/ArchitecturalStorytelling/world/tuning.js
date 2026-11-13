@@ -67,7 +67,7 @@ export const LAYOUT = {
   clientStep: 0.35, // the wave: each diagonal this much taller
   clientStart: 15.72,
   clientStagger: 0.045,
-  logoSize: 0.8, // of the top face
+  logoSize: 0.7, // of the top face (the logo trimmed to its ink)
   logoTurn: -20, // degrees: logos turned to read upright from the camera
 };
 

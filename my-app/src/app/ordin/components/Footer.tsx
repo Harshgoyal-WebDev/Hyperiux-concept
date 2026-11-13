@@ -71,9 +71,19 @@ const Footer = () => {
             <span className="h-[0.6vh] aspect-square bg-(--ord-primary)" />
             <span>All systems operational</span>
           </span>
-          <a href={ROUTES.privacy} className="transition-colors duration-500 hover:text-ord-primary-deep">
-            Privacy policy
-          </a>
+          <span className="flex items-center gap-[2vw] max-lg:gap-[4vw] max-md:justify-between">
+            <a href={ROUTES.privacy} className="transition-colors duration-500 hover:text-ord-primary-deep">
+              Privacy policy
+            </a>
+            <a
+              href="https://vault.hyperiux.com"
+              target="_blank"
+              rel="noopener"
+              className="transition-colors duration-500 hover:text-ord-primary-deep"
+            >
+              by Hyperiux
+            </a>
+          </span>
         </div>
       </div>
     </FooterParallax>

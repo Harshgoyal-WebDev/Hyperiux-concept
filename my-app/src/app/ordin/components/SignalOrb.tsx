@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
+import { isMobile, isSoftwareRendering, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey, useResizeKey } from "./Animations/useResizeKey";
 import { intro } from "./Animations/intro";
 import { MOTION } from "../config";
@@ -103,6 +103,7 @@ type SignalOrbProps = { poses?: { desktop: Record<string, OrbStage>; mobile: Rec
 const SignalOrb = ({ poses }: SignalOrbProps) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
   const state = useRef({ spread: 0, energy: 0.25 });
   const resizeKey = useResizeKey();
   const footerKey = useElementHeightKey("#ord-footer");
@@ -112,6 +113,9 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!wrap || !canvas || !ctx) return;
+    // Without a GPU the canvas is drawn on the CPU after every frame, outside the timing below, so the orb
+    // starts in its lightest mode at 1x resolution instead of finding out over dozens of slow frames
+    const software = isSoftwareRendering();
 
     const count = isMobile() ? MOTION.particles.mobile : MOTION.particles.desktop;
     const golden = Math.PI * (3 - Math.sqrt(5));
@@ -152,7 +156,7 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       // The orb is sized from the viewport height, so an unusually tall viewport (Lighthouse stretches it to
       // the whole page for its full-page screenshot) would make a ~10,000px canvas redrawn every frame.
       // Capping the resolution keeps that cheap; normal screens never reach the cap.
-      dpr = Math.min(window.devicePixelRatio || 1, 2, ORB_MAX_SIDE / Math.max(1, wrap.offsetWidth, wrap.offsetHeight));
+      dpr = Math.min(window.devicePixelRatio || 1, software ? 1 : 2, ORB_MAX_SIDE / Math.max(1, wrap.offsetWidth, wrap.offsetHeight));
       canvas.width = Math.round(wrap.offsetWidth * dpr);
       canvas.height = Math.round(wrap.offsetHeight * dpr);
     };
@@ -199,7 +203,8 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     // Quality steps down on slow devices (no GPU, low-end phones), where a full frame would block the main
     // thread: 0 = full, 1 = no blurred ring shadow and only the front halos, 2 = also every other particle at
     // half the frame rate. Fast devices never leave 0.
-    let quality = 0;
+    let lastGlow = -1;
+    let quality = software ? 2 : 0;
     let cost = 0;
     let measured = 0;
     let frame = 0;
@@ -219,12 +224,13 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       const R = w * 0.3;
       ctx.clearRect(0, 0, w, h);
 
-      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.5);
-      glow.addColorStop(0, `rgba(${rgb(THEME.primary)},${0.14 + energy * 0.1})`);
-      glow.addColorStop(0.5, alpha(THEME.primary, 0.03));
-      glow.addColorStop(1, alpha(THEME.primary, 0));
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
+      // The soft glow behind the globe is a CSS gradient (see the JSX), so the canvas doesn't repaint a
+      // full-size gradient every frame; only its strength follows the energy
+      const glowStrength = Math.round((0.14 + energy * 0.1) * 200) / 200;
+      if (glowStrength !== lastGlow && glowRef.current) {
+        lastGlow = glowStrength;
+        glowRef.current.style.setProperty("--orb-glow", String(glowStrength));
+      }
 
       const radius = R * 0.6;
       const radius2 = radius * radius;
@@ -558,8 +564,15 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       aria-hidden
       className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[64vh] max-h-[1600px] aspect-square max-md:h-[52vh]"
     >
-      <div data-ord-orb-intro className="h-full w-full">
-        <canvas ref={canvasRef} className="h-full w-full" />
+      <div data-ord-orb-intro className="relative h-full w-full">
+        <div
+          ref={glowRef}
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(closest-side, rgba(${rgb(THEME.primary)}, var(--orb-glow, 0.165)) 0%, ${alpha(THEME.primary, 0.03)} 50%, ${alpha(THEME.primary, 0)} 100%)`,
+          }}
+        />
+        <canvas ref={canvasRef} className="relative h-full w-full" />
       </div>
     </div>
   );

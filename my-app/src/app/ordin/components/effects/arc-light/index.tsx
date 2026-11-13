@@ -715,13 +715,18 @@ export default function ArcLight({
       schedule();
     };
 
+    // Without a GPU the light is drawn once and held still, like reduced motion. A software-rendered page has
+    // to copy a WebGL canvas back to the main thread after every changed frame, which stalls it for most of each
+    // frame (and keeps PageSpeed Insights' machines from ever going idle). A still canvas is never copied again.
+    const still = () => configRef.current.reducedMotion || software;
+
     const schedule = () => {
-      if (raf || !visible || !onscreen || configRef.current.reducedMotion) return;
+      if (raf || !visible || !onscreen || still()) return;
       raf = requestAnimationFrame(frame);
     };
 
     const redraw = () => {
-      if (configRef.current.reducedMotion) {
+      if (still()) {
         stirred = false;
         draw(clock);
         return;

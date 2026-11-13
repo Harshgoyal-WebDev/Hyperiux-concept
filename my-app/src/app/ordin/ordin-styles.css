@@ -175,6 +175,12 @@ html:not(.ord-ready) .ord-page [data-ord-hide] {
   --scrollbar-thumb: linear-gradient(to bottom, var(--ord-primary-deep), var(--ord-primary));
 }
 
+/* While the enquiry dialog is open the scrollbar stays, so the layout never shifts by its width.
+   scrollbar-gutter doesn't hold the space once the root's overflow is clipped; the dialog pins the scroll position */
+html.lenis[data-ord-modal]:has(.ord-page) {
+  overflow-y: scroll;
+}
+
 html:has(.ord-page)::-webkit-scrollbar {
   width: 0.6vw;
 }
@@ -310,4 +316,11 @@ html:has(.ord-page)::-webkit-scrollbar-thumb:hover {
 
 .ord-page [data-ord-light] :focus-visible {
   outline-color: var(--ord-primary-deep);
+}
+
+/* The enquiry dialog's fields show focus with their own mint underline, so they (and the dialog box,
+   which takes focus as it opens) skip the ring */
+.ord-page [data-slot="dialog-content"]:focus-visible,
+.ord-page [data-slot="dialog-content"] :is(input, textarea, select):focus-visible {
+  outline: none;
 }

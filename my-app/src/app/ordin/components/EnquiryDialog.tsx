@@ -73,6 +73,23 @@ const EnquiryDialog = () => {
     return () => setScenePaused(false);
   }, [open]);
 
+  // The page keeps its scrollbar while the dialog is open (see html[data-ord-modal] in ordin-styles.css), so
+  // nothing shifts sideways; it is held at its scroll position so keys and the bar can't move it underneath
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const y = window.scrollY;
+    const hold = () => {
+      if (window.scrollY !== y) window.scrollTo(0, y);
+    };
+    root.setAttribute("data-ord-modal", "");
+    window.addEventListener("scroll", hold);
+    return () => {
+      root.removeAttribute("data-ord-modal");
+      window.removeEventListener("scroll", hold);
+    };
+  }, [open]);
+
   useGSAP(
     () => {
       if (state !== "sent" || prefersReducedMotion()) return;

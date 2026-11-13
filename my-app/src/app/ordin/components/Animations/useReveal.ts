@@ -5,6 +5,7 @@
 import type { RefObject } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { prefersReducedMotion } from "./reducedMotion";
 
@@ -12,7 +13,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Fades every [data-ord-reveal] inside the section up into place as it scrolls into view
 export function useReveal(root: RefObject<HTMLElement | null>) {
-  useGSAP(
+  useDeferredGSAP(
     () => {
       if (prefersReducedMotion()) return;
       const items = gsap.utils.toArray<HTMLElement>("[data-ord-reveal]", root.current);

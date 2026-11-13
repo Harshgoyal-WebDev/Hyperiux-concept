@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./Animations/useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useResizeKey } from "./Animations/useResizeKey";
@@ -44,7 +45,7 @@ const Stack = () => {
     if (dim && i !== LAYERS.length - 1) gsap.to(dim, { opacity: on ? 1 : 0, duration: 0.4, ease: "power2.out", overwrite: true });
   };
 
-  useGSAP(
+  useDeferredGSAP(
     () => {
       const section = root.current;
       if (!section) return;

@@ -73,9 +73,14 @@ export default function OverflowTextReveal({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let ctx: ReturnType<typeof gsap.context> | undefined;
+    let cancelled = false;
 
     const init = async () => {
       await document.fonts.ready;
+      // Once fonts are loaded the await above resumes in the same task, so every reveal on the page would
+      // split its text in the one task that hydrates the page. A timeout gives each split a task of its own.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (cancelled) return;
 
       ctx = gsap.context(() => {
         const initialProps = DIRECTION_INITIAL[direction] ?? DIRECTION_INITIAL.bottom;
@@ -163,6 +168,7 @@ export default function OverflowTextReveal({
     init();
 
     return () => {
+      cancelled = true;
       if (ctx) ctx.revert();
       splitRefs.current.forEach((split) => split?.revert());
     };

@@ -5,6 +5,7 @@
 import type { RefObject } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { prefersReducedMotion } from "./reducedMotion";
 
@@ -12,7 +13,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Cards marked [data-ord-build] fade up in a diagonal wave
 export function useBuildIn(root: RefObject<HTMLElement | null>, columns = 3) {
-  useGSAP(
+  useDeferredGSAP(
     () => {
       if (prefersReducedMotion()) return;
       const cards = gsap.utils.toArray<HTMLElement>("[data-ord-build]", root.current);

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { noteRenderer } from "../../Animations/reducedMotion";
 
 // Reduced motion
 
@@ -472,7 +473,8 @@ export default function ArcLight({
     // the resolution there and is scaled up by CSS.
     const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
     const renderer = String(debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-    const software = /swiftshader|llvmpipe|software|basic render/i.test(renderer);
+    // Shared with the signal orb, so it can skip creating a WebGL context of its own just to ask
+    const software = noteRenderer(renderer);
     const maxPixels = software ? SOFTWARE_MAX_PIXELS : MAX_PIXELS;
 
     let fieldProgram: WebGLProgram;

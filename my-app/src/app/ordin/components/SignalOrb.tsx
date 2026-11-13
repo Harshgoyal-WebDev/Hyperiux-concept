@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { isMobile, isSoftwareRendering, prefersReducedMotion } from "./Animations/reducedMotion";
+import { isMobile, isSoftwareRendering, knownSoftwareRendering, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey, useResizeKey } from "./Animations/useResizeKey";
 import { intro } from "./Animations/intro";
 import { MOTION } from "../config";
@@ -114,8 +114,11 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     const ctx = canvas?.getContext("2d");
     if (!wrap || !canvas || !ctx) return;
     // Without a GPU the canvas is drawn on the CPU after every frame, outside the timing below, so the orb
-    // starts in its lightest mode at 1x resolution instead of finding out over dozens of slow frames
-    const software = isSoftwareRendering();
+    // starts in its lightest mode at 1x resolution instead of finding out over dozens of slow frames.
+    // The hero light has usually reported the renderer already; if not, the orb starts light and checks in a
+    // task of its own, since the check itself is slow without a GPU.
+    const known = knownSoftwareRendering();
+    let software = known ?? true;
 
     const count = isMobile() ? MOTION.particles.mobile : MOTION.particles.desktop;
     const golden = Math.PI * (3 - Math.sqrt(5));
@@ -205,6 +208,15 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     // half the frame rate. Fast devices never leave 0.
     let lastGlow = -1;
     let quality = software ? 2 : 0;
+    const check = known === null
+      ? window.setTimeout(() => {
+          software = isSoftwareRendering();
+          if (!software) {
+            quality = 0;
+            fit();
+          }
+        }, 0)
+      : 0;
     let cost = 0;
     let measured = 0;
     let frame = 0;
@@ -469,7 +481,10 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
 
     if (prefersReducedMotion()) {
       draw(0);
-      return () => ro.disconnect();
+      return () => {
+        clearTimeout(check);
+        ro.disconnect();
+      };
     }
 
     let last = 0;
@@ -500,6 +515,7 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     document.documentElement.addEventListener("pointerleave", onLeave);
     return () => {
       gsap.ticker.remove(tick);
+      clearTimeout(check);
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       ro.disconnect();

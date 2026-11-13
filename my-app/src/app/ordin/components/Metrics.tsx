@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./Animations/useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { prefersReducedMotion } from "./Animations/reducedMotion";
 import { useReveal } from "./Animations/useReveal";
@@ -38,7 +39,7 @@ const Metrics = () => {
   const root = useRef<HTMLElement>(null);
   useReveal(root);
 
-  useGSAP(
+  useDeferredGSAP(
     () => {
       if (prefersReducedMotion()) return;
       gsap.from("[data-ord-tick]", {

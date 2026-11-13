@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./Animations/useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { prefersReducedMotion } from "./Animations/reducedMotion";
 import { OrdButton } from "./Buttons";
@@ -16,7 +17,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 const Cta = () => {
   const root = useRef<HTMLElement>(null);
 
-  useGSAP(
+  useDeferredGSAP(
     () => {
       if (prefersReducedMotion()) return;
       gsap.from("[data-ord-cta]", {

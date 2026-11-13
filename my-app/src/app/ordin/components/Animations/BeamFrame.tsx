@@ -5,6 +5,7 @@
 import { useRef, type ReactNode } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./useDeferredGSAP";
 import { prefersReducedMotion } from "./reducedMotion";
 
 gsap.registerPlugin(useGSAP);
@@ -12,7 +13,7 @@ gsap.registerPlugin(useGSAP);
 export default function BeamFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
 
-  useGSAP(
+  useDeferredGSAP(
     () => {
       if (prefersReducedMotion()) return;
       const spin = gsap.to("[data-ord-beam-spin]", { rotate: 360, duration: 6, repeat: -1, ease: "none", paused: true });

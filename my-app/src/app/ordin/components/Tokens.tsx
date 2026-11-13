@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useDeferredGSAP } from "./Animations/useDeferredGSAP";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useResizeKey } from "./Animations/useResizeKey";
@@ -22,7 +23,7 @@ const Tokens = () => {
   const root = useRef<HTMLElement>(null);
   const resizeKey = useResizeKey();
 
-  useGSAP(
+  useDeferredGSAP(
     () => {
       const section = root.current;
       const stage = section?.querySelector<HTMLElement>("[data-ord-stage]");

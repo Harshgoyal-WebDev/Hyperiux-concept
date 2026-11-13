@@ -21,8 +21,23 @@ export function hasFinePointer() {
 
 // True when the browser draws without a GPU (SwiftShader / llvmpipe: hardware acceleration off, old or
 // virtual machines, and the machines PageSpeed Insights tests on). Canvas work then runs on the CPU, so the
-// heavy effects draw a lighter version. Checked once with a throwaway WebGL context.
+// heavy effects draw a lighter version.
 let software: boolean | null = null;
+const SOFTWARE = /swiftshader|llvmpipe|software|basic render/i;
+
+// A WebGL effect that already has a context reports its renderer here, so the check needs no context of its
+// own (creating one costs over 100ms without a GPU)
+export function noteRenderer(renderer: string) {
+  software = SOFTWARE.test(renderer);
+  return software;
+}
+
+// The answer if it's already known, without paying for a check
+export function knownSoftwareRendering() {
+  return software;
+}
+
+// Checked once with a throwaway WebGL context when nothing has reported yet; call it outside page start-up
 export function isSoftwareRendering() {
   if (software !== null) return software;
   if (typeof document === "undefined") return false;
@@ -36,7 +51,7 @@ export function isSoftwareRendering() {
     }
     const info = gl.getExtension("WEBGL_debug_renderer_info");
     const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-    software = /swiftshader|llvmpipe|software|basic render/i.test(renderer);
+    software = SOFTWARE.test(renderer);
     gl.getExtension("WEBGL_lose_context")?.loseContext();
   } catch {}
   return software;

@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { noteRenderer } from "../../Animations/reducedMotion";
+import { isScenePaused, onScenePause } from "../../Animations/scenePause";
 
 // Reduced motion
 
@@ -723,7 +724,7 @@ export default function ArcLight({
     const still = () => configRef.current.reducedMotion || software;
 
     const schedule = () => {
-      if (raf || !visible || !onscreen || still()) return;
+      if (raf || !visible || !onscreen || still() || isScenePaused()) return;
       raf = requestAnimationFrame(frame);
     };
 
@@ -795,6 +796,11 @@ export default function ArcLight({
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
     document.addEventListener("visibilitychange", onVisibility);
+    // Ordin: stops under a modal and picks up again when it closes
+    const stopPause = onScenePause(() => {
+      last = 0;
+      schedule();
+    });
 
     resize();
     draw(clock);
@@ -808,6 +814,7 @@ export default function ArcLight({
       window.removeEventListener("pointermove", onPointerMove);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       document.removeEventListener("visibilitychange", onVisibility);
+      stopPause();
       gl.deleteProgram(fieldProgram);
       gl.deleteProgram(glowProgram);
       gl.deleteProgram(grainProgram);

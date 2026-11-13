@@ -696,11 +696,14 @@ function DialogContent({
   children,
   showCloseButton = true,
   container,
+  overlayClassName,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   /** Ordin: portal target, so the dialog renders inside the template's scoped styles. */
   container?: HTMLElement | null
+  /** Ordin: extra classes for the backdrop, e.g. a tint in the template's own colour. */
+  overlayClassName?: string
 }) {
   const { open, origin, motion: options } = useDialog()
   const popup = React.useRef<HTMLDivElement | null>(null)
@@ -755,6 +758,7 @@ function DialogContent({
       {open && (
         <DialogPortal keepMounted container={container ?? undefined}><ThemeScope>
           <DialogOverlay
+            className={overlayClassName}
             onPointerDown={!options.dismissible && options.shakeOnBlock ? shake : undefined}
           />
           <DialogPrimitive.Popup

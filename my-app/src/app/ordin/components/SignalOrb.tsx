@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { isMobile, isSoftwareRendering, knownSoftwareRendering, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey, useResizeKey } from "./Animations/useResizeKey";
 import { intro } from "./Animations/intro";
+import { isScenePaused } from "./Animations/scenePause";
 import { MOTION } from "../config";
 import { THEME, alpha, rgb } from "../theme";
 
@@ -490,6 +491,11 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
     let last = 0;
     let gaps = 0;
     const tick = () => {
+      // Held still under a modal; last resets so the frame gap check doesn't count the pause
+      if (isScenePaused()) {
+        last = 0;
+        return;
+      }
       frame++;
       const start = performance.now();
       // Time between frames catches the canvas work that lands after draw() returns (rasterising on a CPU),

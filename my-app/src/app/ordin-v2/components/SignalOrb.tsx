@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { isMobile, prefersReducedMotion } from "./Animations/reducedMotion";
 import { useElementHeightKey, useResizeKey } from "./Animations/useResizeKey";
 import { intro } from "./Animations/intro";
+import { isScenePaused } from "./Animations/scenePause";
 import { MOTION } from "../config";
 import { THEME, alpha, rgb } from "../theme";
 
@@ -395,7 +396,11 @@ const SignalOrb = ({ poses }: SignalOrbProps) => {
       return () => ro.disconnect();
     }
 
-    const tick = () => draw(performance.now() / 1000);
+    const tick = () => {
+      // Held still under a modal
+      if (isScenePaused()) return;
+      draw(performance.now() / 1000);
+    };
     gsap.ticker.add(tick);
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);

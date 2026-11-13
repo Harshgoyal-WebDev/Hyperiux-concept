@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useLenis } from "lenis/react";
 import { prefersReducedMotion } from "./Animations/reducedMotion";
+import { setScenePaused } from "./Animations/scenePause";
 import { HX_DARK } from "./hxPalette";
 import Icon from "./Icon";
 import { Dialog, DialogContent, DialogDescription, DialogTheme, DialogTitle } from "./effects/animated-dialog";
@@ -66,6 +67,12 @@ const EnquiryDialog = () => {
     else lenis?.start();
   }, [open, lenis]);
 
+  // The globe and the light behind the dialog hold still while it is open
+  useEffect(() => {
+    setScenePaused(open);
+    return () => setScenePaused(false);
+  }, [open]);
+
   useGSAP(
     () => {
       if (state !== "sent" || prefersReducedMotion()) return;
@@ -88,9 +95,12 @@ const EnquiryDialog = () => {
 
   return (
     <DialogTheme palette={HX_DARK}>
-      <Dialog open={open} onOpenChange={setOpen} openFrom={from} rounded="none" backdrop="blur" rollingText>
+      <Dialog open={open} onOpenChange={setOpen} openFrom={from} rounded="none" backdrop="none" rollingText>
         <DialogContent
           container={host}
+          // A flat ink tint instead of a backdrop blur: blurring the full screen over the live globe and
+          // the page grain on every frame is what made opening and closing stutter
+          overlayClassName="bg-(--ord-ink)/75"
           className="z-[70] max-h-[90svh] w-[44vw] max-w-none! gap-0! overflow-y-auto border border-(--ord-bone)/12 bg-(--ord-ink)! p-0! ring-0! max-lg:w-[80vw] max-md:w-[92vw]"
         >
           <div ref={body} className="flex flex-col gap-[3.2vh] px-[2.4vw] py-[4vh] max-lg:px-[4vw] max-md:px-[7vw]">

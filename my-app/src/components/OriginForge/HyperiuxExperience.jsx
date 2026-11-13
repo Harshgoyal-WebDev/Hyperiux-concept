@@ -142,7 +142,7 @@ export default function HyperiuxExperience({ env }) {
             <SceneBoundary>
               <Canvas
                 dpr={dpr}
-                shadows={tier.shadows}
+                shadows={tier.shadows ? "percentage" : false}
                 gl={{ antialias: !tier.post, powerPreference: "high-performance", alpha: false, stencil: false }}
                 camera={{ fov: 40, near: 0.1, far: 900, position: [0, 2.3, 62] }}
                 onCreated={({ gl }) => {

@@ -34,28 +34,27 @@ export const FORGE = {
 //             (input locked) in either direction; the camera holds still
 //   after   – the swirl around the forged hero
 //   then the camera approaches the cube outline's opening, passes through
-//   it in a burst of its light and flies on over the open dunes beyond,
-//   towards the low sun, the beam running on ahead of it over the sand.
-//   pillars  – vertical rocks grow up out of the sand on the way; four carry
-//              a glowing pin (click: a close-up of the rock and its copy)
-//   whiteout – a wave of white spreads out from just ahead of the camera;
-//              the land turns white, the dunes left as a black contour
-//              drawing, the beam running on over it
-//   dissolve – the rocks turn to sand and blow away
-//   outro    – the light opens onto the site
+//   it in a burst of its light and comes on down into the oasis beyond
+//   (world/oasis.js), the energy streaks running on ahead of it:
+//   passage  – straight out of the cut (scene/CutTransition.jsx): the oasis
+//              rises out of the desert behind a line of light
+//   glow     – on along the stream, an amber glow ahead
+//   reveal   – the last curve: the tree
+//   canopy   – the beam runs into its core; the tree fills with light
+//   outro    – the camera rises as the light opens onto the site
 export const SCROLL_VH = {
-  hero: 90,
-  ground: 140,
-  climb: 90,
+  hero: 72,
+  ground: 112,
+  climb: 72,
   event: 200,
-  after: 140,
-  approach: 170,
-  pass: 90,
-  dunes: 200, // out over the dunes, the beam racing on ahead
-  pillars: 720, // the rocks grow up beside the beam
-  whiteout: 260, // the land turns white
-  dissolve: 280, // the rocks turn to sand
-  outro: 150, // the light opens onto the site
+  after: 112,
+  approach: 136,
+  pass: 72,
+  passage: 140, // straight out of the cut: the oasis rises out of the desert ("What we bring")
+  glow: 130, // on along the stream, an amber glow ahead ("From concept to conversion")
+  reveal: 130, // the last curve: the tree ("Potential deserves a place to grow")
+  canopy: 150, // the beam runs into its core; the tree fills with light ("Growth you can see")
+  outro: 100, // the camera rises as the light opens onto the site
 };
 const TOTAL_VH = Object.values(SCROLL_VH).reduce((a, b) => a + b, 0);
 // + one screen: the pinned viewport itself
@@ -73,19 +72,20 @@ export const P = {
   held: ends.after, // the forged hero's last frame: the flight through the mark starts here
   pass: ends.approach, // at the opening
   through: ends.approach + (ends.pass - ends.approach) * 0.5, // inside the mark, in its light
-  out: ends.pass, // clear of the slab, over the open dunes
-  dunes: ends.dunes,
-  pillars: ends.pillars,
-  whiteout: ends.whiteout,
-  dissolve: ends.dissolve,
+  out: ends.pass, // clear of the slab
+  passage: ends.passage,
+  glow: ends.glow,
+  reveal: ends.reveal,
+  canopy: ends.canopy,
 };
 // p of a point (0..1) inside the event
 export const eventAt = (e) => P.core + e * (P.forged - P.core);
 // p of a point (0..1) inside the orbit / hold stretch
 export const afterAt = (e) => P.forged + e * (P.held - P.forged);
 // p of a point (0..1) inside one of the zones past the mark
-const ZONE_START = { dunes: P.out, pillars: P.dunes, whiteout: P.pillars, dissolve: P.whiteout, outro: P.dissolve };
-const ZONE_END = { dunes: P.dunes, pillars: P.pillars, whiteout: P.whiteout, dissolve: P.dissolve, outro: 1 };
+const ZONES_PAST = ["passage", "glow", "reveal", "canopy", "outro"];
+const ZONE_START = Object.fromEntries(ZONES_PAST.map((z, i) => [z, i ? P[ZONES_PAST[i - 1]] : P.out]));
+const ZONE_END = Object.fromEntries(ZONES_PAST.map((z) => [z, z === "outro" ? 1 : P[z]]));
 export const zoneAt = (name, e) => ZONE_START[name] + e * (ZONE_END[name] - ZONE_START[name]);
 
 // Where the camera goes through the forged mark, as composed in the
@@ -93,22 +93,22 @@ export const zoneAt = (name, e) => ZONE_START[name] + e * (ZONE_END[name] - ZONE
 // opening's offset from this (the slab's placement depends on the sand).
 export const OPENING_NOMINAL = new THREE.Vector3(0, 31, 6);
 
-// The flight on over the dunes (world/duneCamera.js). The run at the opening
-// starts from the event's still shot at this z; the flight carries on at
-// the speed the run reaches the opening with.
-export const DUNES = {
-  runFrom: 114, // camera z of the still shot (timeline.js EVENT_SHOT)
-  height: 20, // cruising height (clears the crests on the way by ~9 m)
-  weave: 16, // the flight's sway from side to side (m)
-  weaveLength: 340, // ...over this many metres
-  look: 110, // how far ahead it looks
-  drop: 7, // ...and how far down (m at that distance)
-  fov: 50,
-  slowTo: 0.4, // the flight's pace at the end (× cruising), slowing from the whiteout on
-  beamLead: 170, // how far ahead of the camera the beam's head runs (m)
-  beamHeight: 4.5, // ...and how high over the sand
-  whiteAhead: 70, // where the white spreads out from: this far ahead of the camera as it starts
-};
+// The render layer the forge's world is on (the slab and the forged mark,
+// the beam into it, the broken rock and its sand and embers): the logo shot
+// sees it, the valley beyond the cut never does (scene/CutTransition.jsx,
+// CameraRig), so nothing of it carries over into the oasis.
+export const FORGE_LAYER = 2;
+// ...and the one only the valley sees: the beam running on through it
+// (it never shows leaving the logo before the cut)
+export const VALLEY_LAYER = 3;
+// ...and one the water's mirror leaves out: the low plants (grass, reeds,
+// bushes) — barely seen in a reflection, a lot to draw twice
+export const NO_MIRROR_LAYER = 4;
+
+// The run at the opening starts from the event's still shot at this z;
+// past the mark the camera carries on at the speed the run reaches the
+// opening with (world/oasisCamera.js).
+export const RUN_FROM_Z = 114; // camera z of the still shot (timeline.js EVENT_SHOT)
 
 // Ten visual states as ranges of p. Everything in between is interpolated.
 export const STATES = [
@@ -126,25 +126,13 @@ export const STATES = [
   { id: "d-forged", n: "11", label: "Forged logo", start: P.held, end: P.held + (P.pass - P.held) * 0.35 },
   { id: "d-approach", n: "12", label: "Approach", start: P.held + (P.pass - P.held) * 0.35, end: P.pass },
   { id: "d-pass", n: "13", label: "Pass through", start: P.pass, end: P.out },
-  { id: "d-dunes", n: "14", label: "Dunes", start: P.out, end: P.dunes },
-  { id: "d-pillars", n: "15", label: "Pillars", start: P.dunes, end: P.pillars },
-  { id: "d-whiteout", n: "16", label: "Whiteout", start: P.pillars, end: P.whiteout },
-  { id: "d-dissolve", n: "17", label: "Dissolve", start: P.whiteout, end: P.dissolve },
-  { id: "d-outro", n: "18", label: "Into the light", start: P.dissolve, end: 1 },
+  { id: "o-rise", n: "15", label: "The oasis rises", start: P.out, end: P.passage },
+  { id: "o-stream", n: "16", label: "Along the stream", start: P.passage, end: P.glow },
+  { id: "o-tree", n: "17", label: "The tree", start: P.glow, end: P.reveal },
+  { id: "o-growth", n: "18", label: "Growth", start: P.reveal, end: P.canopy },
+  { id: "o-outro", n: "19", label: "Into the light", start: P.canopy, end: 1 },
 ];
 
-// Labels on the bottom progress rail, at their p.
-export const RAIL = [
-  { label: "Hero", at: 0 },
-  { label: "Beam", at: P.hero },
-  { label: "Forging", at: eventAt(0.5) },
-  { label: "Orbits", at: P.forged },
-  { label: "Through", at: P.held },
-  { label: "Dunes", at: P.out },
-  { label: "Pillars", at: P.dunes },
-  { label: "White", at: P.pillars },
-  { label: "Dissolve", at: P.whiteout },
-];
 
 // ---------------------------------------------------------------------------
 // Look
@@ -168,7 +156,8 @@ export const TIERS = {
     name: "high",
     dpr: [1, 1.25],
     terrainSegments: 480,
-    pillarGrains: 60000, // sand the rocks turn into
+    veg: 1, // the oasis's vegetation (share of its full density)
+    reflections: true, // the water mirrors the oasis and the tree
     dust: 700,
     // soil swirl: most grains / dust it can draw (Leva picks how many)
     maxCrumble: 60000, // sand the broken rock turns into
@@ -182,7 +171,8 @@ export const TIERS = {
     name: "medium",
     dpr: [1, 1.2],
     terrainSegments: 350,
-    pillarGrains: 32000,
+    veg: 0.7,
+    reflections: true,
     dust: 450,
     maxCrumble: 30000,
     maxGravel: 2000,
@@ -195,7 +185,8 @@ export const TIERS = {
     name: "low",
     dpr: [1, 1],
     terrainSegments: 240,
-    pillarGrains: 12000,
+    veg: 0.4,
+    reflections: false,
     dust: 220,
     maxCrumble: 10000,
     maxGravel: 600,

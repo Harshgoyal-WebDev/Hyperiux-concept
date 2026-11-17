@@ -1,3 +1,5 @@
+import { zoneAt } from "./config";
+
 // All copy for the forging-sand-dune-concept page. Lines marked "site" are taken from
 // hyperiux-staging.vercel.app / the existing About component; lines marked
 // "editable" are general brand messaging written around that positioning —
@@ -75,12 +77,19 @@ export const CTA = {
   address: "Grandslam I-Thum, A-40, Sector 62, Noida, Uttar Pradesh 201309",
 };
 
-// The four sections over the dunes past the mark, one per pillar of the
-// positioning statement (the JOURNEY markers above). Titles are the site's
-// own lines where it has them.
-export const SECTIONS = [
-  { id: "behaviour", n: "01", tag: "Human behaviour", title: ["We start", "with people"], body: JOURNEY[0].body, layout: "bottom" }, // editable
-  { id: "design", n: "02", tag: "Design", title: ["We don't just offer", "solutions, we", "craft impact"], body: JOURNEY[1].body, layout: "left" }, // site
-  { id: "technology", n: "03", tag: "Technology", title: ["From concept", "to conversion"], body: JOURNEY[2].body, layout: "bottom" }, // site
-  { id: "growth", n: "04", tag: "Organic growth", title: ["Let's bring your", "ideas to life"], body: JOURNEY[3].body, layout: "center" }, // site
+// The story told over the oasis past the mark, one moment at a time, each
+// over its stretch of the way (zone and share of it, config.js): from the
+// bare sand to the tree. Lines marked "site" are the site's own words (see
+// above); the rest is editorial copy written for the concept around its
+// positioning — no claims, names or figures.
+const LINES = [
+  { id: "bring", eyebrow: "What we bring", text: "Strategy. Design. Technology.", from: ["passage", 0.12], to: ["passage", 0.95], place: "low" },
+  { id: "concept", eyebrow: "Design × Technology", text: "From concept to conversion.", body: JOURNEY[2].body, from: ["glow", 0.1], to: ["glow", 0.92], place: "left" }, // site
+  { id: "tree", text: "Potential deserves a place to grow.", from: ["reveal", 0.2], to: ["canopy", 0.08], place: "left" },
+  { id: "growth", eyebrow: "Organic growth", text: "Growth you can see.", body: JOURNEY[3].body, from: ["canopy", 0.2], to: ["outro", 0.35], place: "right" }, // site
 ];
+export const OASIS_LINES = LINES.map((l) => {
+  const from = zoneAt(...l.from);
+  const to = zoneAt(...l.to);
+  return { ...l, from, to, mid: (from + to) / 2 };
+});

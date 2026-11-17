@@ -22,9 +22,19 @@ export const TERRAIN_CENTER = [-60, -500];
 // (Heights come from the terrain itself, not this mesh: see buildHeightField.)
 const NEAR = 150;
 const GROW = 0.03;
-// grid lines along one axis from lo to hi, closest round 0 (the slab)
-function gridLines(lo, hi, fine) {
-  const spacing = (x) => fine + Math.max(Math.abs(x) - NEAR, 0) * GROW;
+// ...and finer still over the passage and the oasis past the mark (x and z
+// spans, world/oasis.js), where the camera travels low between the dunes
+const OASIS_X = [-230, 430];
+const OASIS_Z = [-1320, 0];
+const OASIS_FINE = 0.78;
+// grid lines along one axis from lo to hi: fine within `near` (the slab's
+// surroundings), finer within `oasis`, coarser out towards the horizon
+function gridLines(lo, hi, fine, oasis) {
+  const spacing = (x) => {
+    if (x >= oasis[0] && x <= oasis[1]) return fine * OASIS_FINE;
+    const out = Math.min(Math.max(Math.abs(x) - NEAR, 0), Math.max(oasis[0] - x, x - oasis[1], 0));
+    return fine + out * GROW;
+  };
   // the running count of lines, at 1 m steps
   const xs = [];
   const run = [];
@@ -50,8 +60,8 @@ function gridLines(lo, hi, fine) {
 export function buildTerrainGeometry(terrain, segments) {
   const fine = (TERRAIN_SIZE / segments) * 0.9;
   const half = TERRAIN_SIZE / 2;
-  const gx = gridLines(TERRAIN_CENTER[0] - half, TERRAIN_CENTER[0] + half, fine);
-  const gz = gridLines(TERRAIN_CENTER[1] - half, TERRAIN_CENTER[1] + half, fine);
+  const gx = gridLines(TERRAIN_CENTER[0] - half, TERRAIN_CENTER[0] + half, fine, OASIS_X);
+  const gz = gridLines(TERRAIN_CENTER[1] - half, TERRAIN_CENTER[1] + half, fine, OASIS_Z);
   const nx = gx.length;
   const nz = gz.length;
   const position = new Float32Array(nx * nz * 3);

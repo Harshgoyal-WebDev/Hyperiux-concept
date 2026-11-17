@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
+import { oasisHeight } from "./oasis";
 
 // Deterministic RNG so every build of the world (and every reload) is
 // identical — required for the scroll timeline to always map one progress
@@ -98,7 +99,12 @@ export function createTerrainSampler() {
     const u = x * wx + z * wz;
     const v = -x * wz + z * wx;
     const warp = noiseB(x * 0.0035, z * 0.0035) * 45;
-    const crest = 1 - Math.abs(noise((u + warp) * 0.0105, v * 0.0032));
+    // (a soft |n|: the crests are sharp but rounded over the last metres, so
+    // the mesh never saws them into teeth)
+    const cn = noise((u + warp) * 0.0105, v * 0.0032);
+    // (offset so it is exactly |n| far from the crest, and never below 0:
+    // pow() of a negative is NaN)
+    const crest = Math.max(1 - (Math.sqrt(cn * cn + 0.006) - Math.sqrt(0.006)), 0);
     // Sharp, slightly asymmetric crests.
     const dunes = Math.pow(crest, 2.4) * 12;
     const rolling = noise(x * 0.0022 + 7.1, z * 0.0022 - 3.3) * 7 + noiseB(x * 0.009, z * 0.009) * 1.6;
@@ -112,7 +118,8 @@ export function createTerrainSampler() {
     const r = Math.hypot(x, z * 0.85);
     const plaza = smooth(34, 125, r);
     h = THREE.MathUtils.lerp(0.2 + raw(x, z) * 0.04, h, plaza);
-    return h;
+    // past the mark: the passage through the dunes and the oasis (world/oasis.js)
+    return oasisHeight(h, x, z);
   }
 
   return { height, raw };

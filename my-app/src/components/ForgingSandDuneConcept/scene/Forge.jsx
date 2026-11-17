@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ASSETS } from "../config";
 import { T } from "../tuning";
-import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, pieceProgress, prepareForge } from "../world/forgeAsset";
+import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
 import { pieceFlight, syncFlow } from "../world/breakup";
 
@@ -328,7 +328,30 @@ export default function Forge({ J, shared, groundY, onReady }) {
     shell.renderOrder = 6;
     shell.visible = false;
 
-    return { U, coreLevel, excessLevel, assign, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point, shell };
+    // The cube outline's openings filled with light once the mark is forged
+    // (not its walls): a sheet cut to the outline's hexagon, inside the mark
+    // at the core's depth — the outline's own strokes hide it everywhere but
+    // the gaps between them (as the forging concept has it).
+    // (its edge under the outline's strokes, so it meets their inner faces
+    // with no gap, without reaching out behind the logo's bars, whose seams
+    // would let it through)
+    const corners = cubeHexagon();
+    const mid = corners.reduce((m, v) => m.add(v), new THREE.Vector2()).multiplyScalar(1 / corners.length);
+    const hex = corners.map((v) => {
+      const q = v.clone().sub(mid).multiplyScalar(0.97).add(mid);
+      const p = forge.toWorld(new THREE.Vector3(q.x, q.y, 0));
+      return new THREE.Vector2(p.x, p.y);
+    });
+    const fill = new THREE.Mesh(
+      new THREE.ShapeGeometry(new THREE.Shape(hex)),
+      new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false })
+    );
+    fill.position.z = forge.world.core.z;
+    fill.renderOrder = 4;
+    fill.visible = false;
+    const fillColor = new THREE.Color("#ffc890");
+
+    return { U, coreLevel, excessLevel, assign, fill, fillColor, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point, shell };
   }, [forge, shared]);
 
   useEffect(() => {
@@ -365,6 +388,8 @@ export default function Forge({ J, shared, groundY, onReady }) {
       built.point.material.dispose();
       built.shell.geometry.dispose();
       built.shell.material.dispose();
+      built.fill.geometry.dispose();
+      built.fill.material.dispose();
     },
     [built]
   );
@@ -444,6 +469,10 @@ export default function Forge({ J, shared, groundY, onReady }) {
     // at night the core keeps its cracks but not its glow (the point, the
     // halo)
     const lit = 1 - shared.uNight.value;
+    // the light filling the cube outline's openings (from the forging on)
+    const fillK = J.innerGlow * T.innerGlow * (0.35 + 0.65 * lit);
+    built.fill.visible = fillK > 0.001;
+    built.fill.material.color.copy(built.fillColor).multiplyScalar(fillK * 3);
     U.uFissureGlow.value = T.fissureGlow;
     U.uSurge.value = Math.min(J.sphere / 2, 1);
     built.coreLevel.value = J.logoCrackGlow;
@@ -538,6 +567,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
       <primitive object={built.halo} />
       <primitive object={built.point} />
       <primitive object={built.shell} />
+      <primitive object={built.fill} />
       <pointLight ref={coreLight} distance={70} decay={2} position={[w.core.x, w.core.y, w.core.z + 1.6]} />
     </>
   );

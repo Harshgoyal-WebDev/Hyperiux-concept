@@ -90,33 +90,63 @@ export const T = {
   // The sand and gravel the broken rock turns into (counts are capped by the
   // quality tier).
   swirlSpeed: 0.99, // pace of the swirl's sound
-  crumbleSand: 6000, // grains of sand the broken rock turns into (capped by the quality tier)
-  crumbleSize: 0.83,
+  crumbleSand: 1640, // grains of sand the broken rock turns into (capped by the quality tier)
+  crumbleSize: 1.07,
   crumbleOpacity: 1.0,
-  gravelCount: 4000, // gravel it turns into (capped by the quality tier)
-  gravelSize: 1.47,
+  gravelCount: 1650, // gravel it turns into (capped by the quality tier)
+  gravelSize: 1.79,
   gravelEmbers: 0.02, // share of the gravel that stays glowing embers
-  gravelEmberGlow: 2.0, // ...how bright they glow
+  gravelEmberGlow: 1.79, // ...how bright they glow
   sandBrightness: 0.19,
 
-  // Past the mark, over the dunes
-  beamLeadScale: 1.0, // how far ahead of the camera the beam runs (× DUNES.beamLead)
-  pillarGlow: 1.0, // the rocks' glowing cracks (× the slab's)
-  rockCrackSize: 22, // metres of rock the slab's crack pattern covers (top to bottom; the slab's scale)
-  contourStrength: 0.95, // the dunes' contour lines on the white (1 = black)
-  contourSpacing: 1.8, // metres of height between them
-  ashSize: 1.0, // the sand the rocks turn into
-  ashWind: 1.0, // ...how far the wind carries it
+  // Past the mark: the oasis (scene/oasis)
+  waterShallow: "#00535f", // the water over the sand
+  waterDeep: "#000000", // ...where it is deep
+  waterShore: "#102200", // wet sand under the very edge
+  waterMirror: 1.2, // how much it mirrors (× fresnel)
+  waterWaves: 0.41, // its small wind-driven waves
+  waterRipple: 1.0, // the rings the cursor drops into it
+  grassColor: "#336700", // the banks' grass, in the sand's shader
+  soilColor: "#2a1305", // the darker soil where the oasis lives
+  leafTint: "#5e8a4c", // the crown's leaves (× the atlas)
+  leafGlow: 1.43, // leaves lit from behind by the low sun
+  treeGlow: 1.0, // the tree's cracks, core and aura (× the timeline)
+  treeAura: 0.0, // its amber aura and haze
+  treeLight: 1.0, // the warm light it casts round it
+  strandGain: 0.6, // the tree of light's filaments (additive: higher saturates the trunk)
+  strandDim: 0.35, // ...where the light hasn't climbed to yet
+  strandPulseSpeed: 0.25, // pace of the pulses running up them
+  strandFill: -1, // where its light has climbed to (flow 0..1; -1 follows the scroll)
+  embers: 1.0, // motes of light drifting up round the trunk
+  oasisBeam: 1.0, // the beam past the mark (x trailIntensity)
+  oasisBeamLead: 0.5, // how far ahead of the camera it runs (x 150 m)
+  innerGlow: 1.8, // the forged logo's cube outline lit from within (the light in its openings)
+  revealRing: 1.0, // the line of light the oasis rises behind
+  cutGlass: 1.0, // the glass tiles of the cut from the logo: how much they bend the image
+  cutChroma: 0.12, // ...and split its colours
+  oasisStreamWidth: 1.6, // the oasis stream's width (x; the land is reshaped round it)
+  eyePassage: 4.4, // the camera's height over the stream (m)
+  eyeLake: 8.5, // ...and over the lake, coming in to the tree
+  // the camera magnet, both scenes: the camera swings round a point ahead of it, towards the cursor
+  magnet: 1.0, // overall amount (0 = off)
+  magnetYaw: 8, // degrees left/right at the screen's edge
+  magnetPitch: 4, // degrees up/down
+  magnetBank: 1.6, // degrees of roll into the move
+  magnetSwing: 2.4, // degrees of sway with the cursor's speed
+  magnetEdge: 0.5, // 0 = even across the screen, 1 = mostly at the edges
+  magnetDamping: 2.5, // how quickly it follows (lower = lazier, floatier)
+  magnetReach: 55, // the point it swings round: metres ahead (at most)
+  magnetDip: 1.2, // how far it may sink towards the water with the cursor low (m)
+  foliage: 1.92, // the plants' brightness
+  waterRippleRadius: 1.0, // the cursor's rings: size
+  waterRippleDamping: 0.986, // ...how long they last
+  waterRippleSpeed: 0.55, // ...how fast they spread
 
   // Post
   bloomIntensity: 1.07,
   bloomThreshold: 0.64,
   bloomRadius: 0.7,
   vignette: 0.8,
-
-  // Mouse parallax
-  parallax: 0.5, // how much the camera moves with the cursor
-  parallaxDamping: 3.5,
 
   // Sand interaction
   stirRadius: 3.0,
@@ -173,7 +203,7 @@ export const T = {
   breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
   breakSandShare: 0.55, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
   breakShrink: 0.43, // the pieces' size once broken off
-  breakSpin: 0.6, // how fast the streams carry it round
+  breakSpin: 0.26, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)
   // — set from the seq values above
@@ -189,13 +219,13 @@ export const T = {
   breakSandFlow: 0.6, // how long a grain takes to find its place in the stream
   // the streams of sand the broken rock is carried round the mark in
   streams: 2, // how many
-  streamRadius: 41.4, // metres: how far round the mark they loop
-  streamTilt: 35, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
-  streamWobble: 11.5, // degrees their loops keep tilting and turning by as they go
-  streamHeight: 4.8, // metres they rise and fall on the way round
-  streamTail: 0.67, // how long each stream's tail is (share of a turn)
-  streamWidth: 8.9, // metres: how wide a stream spreads (wider towards its tail)
-  streamLoose: 0.16, // share of the grains drifting loose all round
+  streamRadius: 32.3, // metres: how far round the mark they loop
+  streamTilt: 51.5, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
+  streamWobble: 0.0, // degrees their loops keep tilting and turning by as they go
+  streamHeight: 0.0, // metres they rise and fall on the way round
+  streamTail: 0.78, // how long each stream's tail is (share of a turn)
+  streamWidth: 7.4, // metres: how wide a stream spreads (wider towards its tail)
+  streamLoose: 0.06, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
   forgeDuration: 8.0,

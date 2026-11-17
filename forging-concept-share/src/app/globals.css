@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  /* the Hyperiux homepage sections (components/HyperiuxHome) */
+  --font-aeonik: var(--font-aeonikpro);
+  --font-aeonikpro: var(--font-aeonikpro);
+  --text-60: var(--text-60);
+  --text-32: var(--text-32);
+  --text-16: var(--text-16);
+  --text-160: var(--text-160);
+}
+
+:root {
+  --border-radius: clamp(34px, calc(24 / 1440 * 100vw), 14px);
+  --text-60: 18vw;
+  --text-32: 2.5vw;
+  --text-16: 1.15vw;
+  --text-160: 8vw;
+}
+
+@media (max-width: 542px) {
+  :root {
+    --text-60: 15vw;
+    --text-32: 8vw;
+    --text-16: 4.4vw;
+  }
+}
+
+@utility font-orbitron {
+  font-family: var(--font-orbitron), Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* forging-sand-dune-concept: the pins' ring breathing, glowing like the beam
+   — a hot pale line with an orange falloff, inside and out (it is also
+   centred by the transform, so the keyframes carry the translate) */
+@keyframes fsd-pin-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.86);
+    opacity: 0.7;
+    box-shadow: 0 0 2px #ffc890, 0 0 7px 1px rgba(255, 95, 0, 0.65), 0 0 16px 3px rgba(255, 95, 0, 0.3), inset 0 0 2px #ffc890, inset 0 0 6px rgba(255, 95, 0, 0.5);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 3px 1px #ffc890, 0 0 12px 3px rgba(255, 95, 0, 0.9), 0 0 28px 8px rgba(255, 95, 0, 0.45), inset 0 0 3px #ffc890, inset 0 0 9px rgba(255, 95, 0, 0.75);
+  }
+}
+
+/* The Hyperiux homepage sections, as on the site (its body and type
+   defaults, kept to the sections so the journey above is unchanged) */
+[data-hyperiux-home] {
+  font-size: var(--text-16);
+  letter-spacing: 0.4px;
+  color: #111111;
+  font-family: var(--font-aeonikpro), Arial, Helvetica, sans-serif;
+}
+[data-hyperiux-home] p {
+  line-height: 1.5;
+}
+[data-hyperiux-home] :is(h1, h2, h3, h4) {
+  font-family: var(--font-aeonikpro);
+  line-height: 1.2;
+}
+.radius {
+  border-radius: var(--border-radius);
+}
+.solutions-char {
+  display: inline-block;
+  will-change: transform;
+}
+.solutions-link-main,
+.solutions-link-shadow {
+  white-space: nowrap;
+}
+.solutions-link-line {
+  transform: scaleX(1);
+  transform-origin: right center;
+  will-change: transform;
+}

@@ -8,17 +8,17 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import Scene from "./scene/Scene";
-import { AssetBadge, CloseUp, HeroOverlay, Pins, ProgressRail } from "./Overlays";
+import { AssetBadge, HeroOverlay, OasisCopy } from "./Overlays";
 import WhiteWebsite from "./WhiteWebsite";
 import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
-import { SOUND_EVENT, getAudio, setSound, soundOn, soundWanted } from "./audio";
+import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
 import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
-import { ASSETS, JOURNEY_VH, P, RAIL, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
-import { CTA } from "./content";
+import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
+import { CTA, OASIS_LINES } from "./content";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -47,8 +47,6 @@ function useForgeAsset() {
 // Header → journey: jump to the forged hero. Cancelled by the journey when
 // it handles it; otherwise the header scrolls on to the site.
 const SKIP_EVENT = "forging-sand-dune-concept:skip";
-// Journey → header: the journey has turned white in the whiteout (or back).
-const WHITE_EVENT = "forging-sand-dune-concept:white";
 
 // A broken GLB shouldn't take the whole canvas down.
 class SceneBoundary extends Component {
@@ -69,7 +67,7 @@ class SceneBoundary extends Component {
 }
 
 // Client capabilities, read once. null on the server so hydration matches.
-// the Leva tuning panels: loaded (and shown) only with ?stats
+// the Leva tuning panels: loaded (and shown) only with ?leva
 const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
 
 let clientEnv = null;
@@ -81,10 +79,11 @@ function getClientEnv() {
       reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
       tier: detectTier(),
       debug: new URLSearchParams(window.location.search).has("debug"),
-      // the tuning panels only with ?stats (or ?=stats) in the address
+      // the Leva tuning panels: only with ?leva (or ?=leva) in the address —
+      // never on the plain page
       stats: (() => {
         const q = new URLSearchParams(window.location.search);
-        return q.has("stats") || [...q.values()].includes("stats");
+        return q.has("leva") || [...q.values()].includes("leva");
       })(),
     };
   }
@@ -176,25 +175,22 @@ function SoundToggle() {
   );
 }
 
-// True once the header sits over white: the journey's own whiteout (the journey marks it on its section), or the white site below it.
-// The header switches to dark type and the black logo there (no blend-mode
+// True once the header sits over the white site below the journey. The
+// header switches to dark type and the black logo there (no blend-mode
 // trick).
 function useOverLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
     const check = () => {
       const site = document.querySelector("[data-white-site]");
-      const journeyWhite = document.querySelector("[data-journey]")?.getAttribute("data-white") === "true";
-      setLight(journeyWhite || (!!site && site.getBoundingClientRect().top <= 80));
+      setLight(!!site && site.getBoundingClientRect().top <= 80);
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", check);
-    window.addEventListener(WHITE_EVENT, check);
     return () => {
       window.removeEventListener("scroll", check);
       window.removeEventListener("resize", check);
-      window.removeEventListener(WHITE_EVENT, check);
     };
   }, []);
   return light;
@@ -269,17 +265,9 @@ function Journey({ env }) {
 
   const sectionRef = useRef(null);
   const heroRef = useRef(null);
-  const railRef = useRef(null);
-  const railFillRef = useRef(null);
-  const railItemRefs = useRef([]);
   const hudRef = useRef(null);
   const outroRef = useRef(null);
-  const pinRefs = useRef([]);
-  // a pin's close-up: which key pillar (-1: none) and how far the camera is
-  // into it (eased here, read by the camera rig)
-  const [focus] = useState(() => ({ index: -1, k: 0 }));
-  const [panel, setPanel] = useState({ index: -1, shown: false });
-  const revealCall = useRef(null);
+  const copyRefs = useRef([]);
 
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
@@ -412,7 +400,6 @@ function Journey({ env }) {
       const section = sectionRef.current;
       if (!section) return;
       const tl = buildMasterTimeline(J, { hero: heroRef.current });
-      const railItems = railItemRefs.current;
       const st = ScrollTrigger.create({ trigger: section, start: "top top", end: "bottom bottom" });
       const D = driver.current;
       D.auto = null;
@@ -426,8 +413,6 @@ function Journey({ env }) {
         lastP = p;
         tl.progress(p);
         deriveBreak(J);
-        if (railFillRef.current) railFillRef.current.style.transform = `scaleX(${p})`;
-        railItems.forEach((el, i) => el && el.setAttribute("data-active", String(RAIL[i].at <= p + 0.002)));
         if (hudRef.current) {
           const state = STATES.find((s) => p < s.end) || STATES.at(-1);
           const mode = D.auto ? "auto (locked)" : D.review ? "review" : "free";
@@ -461,11 +446,6 @@ function Journey({ env }) {
       };
 
       const onInput = (e) => {
-        // in a close-up the page holds still (Lenis is stopped; keys too)
-        if (focus.index >= 0) {
-          if (e.type === "keydown" && SCROLL_KEYS.has(e.key)) e.preventDefault();
-          return;
-        }
         if (D.auto?.locked) {
           if (e.type === "keydown" && SCROLL_KEYS.has(e.key)) e.preventDefault();
           return;
@@ -517,28 +497,33 @@ function Journey({ env }) {
           else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
         }
         apply(current);
-        // the light at the end of the flight, white to the site below
+        // the light at the end, white to the site below
         if (outroRef.current) {
           const w = Math.min(Math.max(J.outro, 0), 1);
           outroRef.current.style.opacity = String(w * w * (3 - 2 * w));
         }
-        // in the whiteout the page is white: the header and rail go dark
-        const white = String(J.white > 0.5);
-        if (sectionRef.current && sectionRef.current.getAttribute("data-white") !== white) {
-          sectionRef.current.setAttribute("data-white", white);
-          window.dispatchEvent(new Event(WHITE_EVENT));
-        }
+        // the oasis's lines of copy, each over its stretch of the way
+        OASIS_LINES.forEach((line, i) => {
+          const el = copyRefs.current[i];
+          if (!el) return;
+          const a = lineAlpha(line, current);
+          const v = a.toFixed(3);
+          if (el.dataset.a === v) return;
+          el.dataset.a = v;
+          el.style.opacity = v;
+          el.style.transform = `translate3d(0, ${((1 - a) * (current < line.mid ? 18 : -18)).toFixed(1)}px, 0)`;
+          el.style.visibility = a > 0.001 ? "visible" : "hidden";
+        });
       };
       gsap.ticker.add(follow);
 
-      // Skip intro: straight past the mark — out over the dunes, the first
-      // pillars rising ahead.
+      // Skip intro: straight past the mark — down into the passage through
+      // the dunes, the streaks running on ahead.
       const onSkip = (e) => {
         e.preventDefault();
-        if (focus.index >= 0) return;
         D.auto = null;
         D.guard = false;
-        const y = pToY(zoneAt("pillars", 0.05));
+        const y = pToY(zoneAt("passage", 0.02));
         const l = lenisRef.current;
         if (l) l.scrollTo(y, { immediate: true, force: true });
         else window.scrollTo(0, y);
@@ -579,63 +564,15 @@ function Journey({ env }) {
         tl.kill();
       };
     },
-    { scope: sectionRef, dependencies: [J, resizeKey, pToY, focus] }
+    { scope: sectionRef, dependencies: [J, resizeKey, pToY] }
   );
-
-  // Pin close-ups. Opening one stops the page and flies the camera in to
-  // the rock; its copy reveals once it is nearly there. Closing hides the
-  // copy, flies back to the shot the journey left off at and hands the
-  // scroll back.
-  // (focus is, like J, plain state the render loop reads every frame: it is
-  // written here and by gsap, never rendered from)
-  /* eslint-disable react-hooks/immutability */
-  const openPin = useCallback(
-    (i) => {
-      if (focus.index >= 0) return;
-      focus.index = i;
-      lenis?.stop();
-      setPanel({ index: i, shown: false });
-      getAudio()?.passThrough();
-      gsap.to(focus, { k: 1, duration: 1.9, ease: "power3.inOut", overwrite: true });
-      revealCall.current?.kill();
-      revealCall.current = gsap.delayedCall(1.1, () => setPanel({ index: i, shown: true }));
-    },
-    [focus, lenis]
-  );
-  const closePin = useCallback(() => {
-    if (focus.index < 0 || focus.closing) return;
-    focus.closing = true;
-    revealCall.current?.kill();
-    setPanel((p) => ({ ...p, shown: false }));
-    gsap.to(focus, {
-      k: 0,
-      duration: 1.6,
-      delay: 0.3,
-      ease: "power3.inOut",
-      overwrite: true,
-      onComplete: () => {
-        focus.index = -1;
-        focus.closing = false;
-        lenis?.start();
-        setPanel({ index: -1, shown: false });
-      },
-    });
-  }, [focus, lenis]);
-  /* eslint-enable react-hooks/immutability */
-  useEffect(() => {
-    if (panel.index < 0) return;
-    const onKey = (e) => e.key === "Escape" && closePin();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [panel.index, closePin]);
-  useEffect(() => () => revealCall.current?.kill(), []);
 
   // Rail / panel jumps to a scroll fraction. A rail jump glides there and
   // the driver picks up where it lands (inside the impact it plays on to the
   // rock ground to sand); a panel scrub is held as a review frame.
   const jump = useCallback(
     (p, immediate = false) => {
-      if (!sectionRef.current || focus.index >= 0) return;
+      if (!sectionRef.current) return;
       const D = driver.current;
       const y = pToY(p);
       D.auto = null;
@@ -659,14 +596,14 @@ function Journey({ env }) {
         setTimeout(land, 2200);
       }
     },
-    [lenis, pToY, focus]
+    [lenis, pToY]
   );
 
   const onMissing = useCallback((parts) => setAsset({ problem: { kind: "incomplete", parts } }), [setAsset]);
 
   const tier = env?.tier;
   return (
-    <section ref={sectionRef} data-journey data-white="false" className="group/journey relative w-full bg-[#0e0b09]" style={{ height: `${JOURNEY_VH}vh` }}>
+    <section ref={sectionRef} data-journey className="group/journey relative w-full bg-[#0e0b09]" style={{ height: `${JOURNEY_VH}vh` }}>
       <div data-viewport className="sticky top-0 h-screen w-full overflow-hidden">
         <div className="pointer-events-none absolute inset-0 z-0">
           {env && tier && mounted && asset && (
@@ -681,20 +618,18 @@ function Journey({ env }) {
             >
               <color attach="background" args={["#0e0b09"]} />
               <SceneBoundary onError={(error) => setAsset({ problem: { kind: "incomplete", parts: [String(error?.message || error)] } })}>
-                <Scene J={J} tier={tier} withForge={!!asset.ok} onMissing={onMissing} focus={focus} pins={pinRefs} />
+                <Scene J={J} tier={tier} withForge={!!asset.ok} onMissing={onMissing} />
               </SceneBoundary>
             </Canvas>
           )}
         </div>
 
-        {/* the light at the end of the flight: white, onto the site */}
+        {/* the light at the end: white, onto the site */}
         <div ref={outroRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-[#fff9f1] opacity-0" />
 
         {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
         <HeroOverlay ref={heroRef} />
-        <Pins pinRefs={pinRefs} onOpen={openPin} />
-        <CloseUp index={panel.index} shown={panel.shown} onClose={closePin} />
-        <ProgressRail ref={railRef} fillRef={railFillRef} itemRefs={railItemRefs} onJump={jump} />
+        <OasisCopy lineRefs={copyRefs} />
         <AssetBadge problem={asset?.problem} />
         {env?.stats && <TuningPanel onScrub={jump} />}
         {env?.debug && (
@@ -717,6 +652,14 @@ function startJourney(J) {
 
 function clamp01(v) {
   return Math.min(Math.max(v, 0), 1);
+}
+
+// How visible one of the oasis's lines is at p: in over its first stretch,
+// out over its last (the copy moves with the scroll, both ways).
+function lineAlpha(line, p) {
+  const fade = (line.to - line.from) * 0.22;
+  const a = clamp01((p - line.from) / fade) * clamp01((line.to - p) / fade);
+  return a * a * (3 - 2 * a);
 }
 
 // The forged hero holding: the reduced-motion still.

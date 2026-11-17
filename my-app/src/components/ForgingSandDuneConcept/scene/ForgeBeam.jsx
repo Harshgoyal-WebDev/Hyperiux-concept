@@ -123,9 +123,10 @@ const FORGE_SPREAD = (u) =>
   THREE.MathUtils.lerp(1, 0.04, THREE.MathUtils.smoothstep(u, 0.86, 1));
 
 // The bundle's strands as ribbons along the path (`spreadAt`: how wide the
-// bundle is at u, `spacing`: metres between samples).
-export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6 } = {}) {
-  const rng = mulberry32(5);
+// bundle is at u, `spacing`: metres between samples; `count`, `seed` and
+// `width` make the oasis's other, finer streaks).
+export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6, count = STRANDS, seed = 5, width = 1 } = {}) {
+  const rng = mulberry32(seed);
   const length = path.getLength();
   const n = Math.ceil(length / spacing);
   const pts = path.getSpacedPoints(n);
@@ -133,13 +134,13 @@ export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6 } = 
   const up = new THREE.Vector3(0, 1, 0);
   const side = new THREE.Vector3();
   const lift = new THREE.Vector3();
-  const strands = Array.from({ length: STRANDS }, (_, s) => ({
+  const strands = Array.from({ length: count }, (_, s) => ({
     // a flat-ish bundle: wider across than up and down
     across: (rng() - 0.5) * 2,
     vertical: (rng() - 0.5) * 0.7,
     wave: 0.15 + rng() * 0.35,
     phase: rng() * 10,
-    width: s < 2 ? 0.16 : 0.035 + rng() * 0.07,
+    width: (s < 2 ? 0.16 : 0.035 + rng() * 0.07) * width,
     bright: s < 2 ? 1.0 : 0.3 + rng() * 0.55,
     hot: s < 2 ? 1 : rng() * 0.3,
   }));
@@ -286,9 +287,10 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const k = THREE.MathUtils.clamp((performance.now() / 1000 - J.enterAt - 0.5) / 2.8, 0, 1);
     const race = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     u.uHead.value = THREE.MathUtils.lerp(built.intro, head, Math.max(race, J.intro));
-    // once the core has taken the energy the beam settles to a quieter glow
-    // ...and goes out as the camera heads for the opening
-    u.uIntensity.value = T.trailIntensity * (1 - 0.45 * J.beamFade) * J.beamVis;
+    // once the core has taken the energy the beam settles to a quieter glow,
+    // and comes up again as it runs on out of the core past the mark
+    // (scene/oasis/Streaks.jsx): one line, in and out
+    u.uIntensity.value = T.trailIntensity * THREE.MathUtils.lerp(1 - 0.45 * J.beamFade, 1, J.duneBeam) * J.beamVis;
     u.uFlow.value = T.beamFlow;
     u.uSpread.value = T.beamSpread;
     u.uDashFreq.value = 1 / Math.max(T.beamDashSpacing, 0.5);

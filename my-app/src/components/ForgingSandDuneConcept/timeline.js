@@ -15,13 +15,15 @@ export function createJourneyState() {
     tgtY: 26.9,
     tgtZ: 0,
     fov: 45.9,
-    parallax: 1, // how much mouse parallax this shot allows
+    orbit: 1, // how much of the cursor's pull moves the camera rather than only turning it (world/magnet.js)
     // energy
     intro: 0, // 1 skips the beam's load-in race (review frames)
     enterAt: 0, // when the visitor entered (s, page clock): the beam's race starts from it (Infinity while the loader is up)
     reveal: 0, // the loader opening over the scene (0..1, as Loader.jsx draws it; 0 when there is no loader)
     arrive: 1, // the camera's arrival from far off as the visitor enters (0 → 1; the loader sets it going)
     forgeReady: false, // set by Scene once the forge is built (or found missing)
+    warmup: 4, // frames the oasis draws in full at the start, so its materials compile behind the loader
+    sceneVersion: 0, // bumped when something that casts shadows arrives (the shadows are redrawn)
     beam: 0, // the beam's travel along its whole path, from the hero to the core
     beamSparks: 0, // particles running along the line while it travels
     beamFade: 0, // the line on the stone goes as the stone breaks away
@@ -35,15 +37,20 @@ export function createJourneyState() {
     fracture: 0, // breakup of the excess rock (0..1; see deriveBreak)
     breakBurst: 0, // its impact: the burst of energy as the rock blasts off (0..1, dying away)
     orbitSpeed: 0, // pace of the swirl's sound once the rock breaks (0 → cruising)
-    // through the mark, on over the dunes
+    // through the mark, on into the oasis
     align: 0, // shots corrected onto the real opening (see CameraRig)
-    beamVis: 1, // the beam goes out as the camera heads for the opening
+    beamVis: 1, // the beam into the core (stays lit: the beam runs on out of the core past the mark)
     duneBeam: 0, // the beam running on out of the core ahead of the camera, past the mark
-    duneBeamFade: 0, // ...and fades once the rocks turn to sand
-    whiteR: 0, // the white spreading out from just ahead of the camera (radius, m)
-    white: 0, // ...then everything white, sky and all
-    contours: 0, // the dunes' contour drawing on the white
-    dissolve: 0, // the rocks turning to sand (0..1)
+    innerGlow: 0, // the forged mark's cube outline lit from within (the light in its openings)
+    cut: 0, // the glass-tile transition from the logo to the valley (0..1; scene/CutTransition.js)
+    revealR: 0, // the oasis rising out of the desert: radius its front has spread to (m)
+    amber: 0, // the tree's amber glow, first seen beyond the dunes
+    treeGlow: 0, // its aura, the light in its roots and trunk
+    converge: 0, // the beam running on into the tree's core (0..1)
+    treeFillFrom: 0, // set by Streaks: the p at which the beam first touches a root (the tree's light climbs from there)
+    beamInTree: 0, // set by Streaks: how far the beam has run from a root's tip up into the core (0..1)
+    fill: 0, // how far up the tree of light its glow has climbed (its flow: 0.5 the trunk's foot, 1 the crown's tips)
+    corePulse: 0, // (no flash as they meet: kept at 0)
     outro: 0, // the light opening onto the site at the end (1 = all light)
     shock: 0, // shockwave across the dunes as the beam merges into the core (0 → spent)
     jolt: 0, // the camera's jolt at that impact
@@ -101,7 +108,7 @@ export function brokenAt() {
 // gathering pace into the opening
 const runIn = (x) => 0.4 * x + 0.6 * (1 - Math.cos((x * Math.PI) / 2));
 // ...and how fast it arrives there, × its mean pace (runIn's slope at 1): the
-// flight over the dunes carries on at that speed (world/duneCamera.js)
+// camera carries on into the oasis at that speed (world/oasisCamera.js)
 export const RUN_ARRIVAL = 0.4 + 0.6 * (Math.PI / 2);
 
 const shots = () => [
@@ -114,8 +121,8 @@ const shots = () => [
   // again), one straight run at the cube outline's opening — no swing, no
   // stop — gathering pace into it and on through
   [P.through, [O.x, O.y, 0.3], [O.x, O.y - 0.6, -40], 44, runIn],
-  // 13–18 on over the dunes: one continuous flight from the scroll
-  // (world/duneCamera.js), taken over by the CameraRig
+  // 13– on into the oasis: one continuous move from the scroll
+  // (world/oasisCamera.js), taken over by the CameraRig
 ];
 
 // The breakup, from the event's clock and the breakup controls (T.breakStart
@@ -179,26 +186,15 @@ export function buildMasterTimeline(J, dom) {
   axis("tgtY", (_p, q) => q[1]);
   axis("tgtZ", (_p, q) => q[2]);
   axis("fov", (_p, _q, f) => f);
-  // The shot holds its position through the event, but the cursor still
-  // moves it (parallax): a little through the cracking, more once the slab
-  // breaks, most over the forged mark until the camera nears the cube's
-  // opening — and none at all through it (it is only ±1.4 m clear)
-  track(tl, J, "parallax", [
+  // The cursor's pull swings the camera round what it looks at
+  // (world/magnet.js) all the way — except through the cube's opening,
+  // which is only ±1.4 m clear: there it only turns the camera, in place
+  track(tl, J, "orbit", [
     [0, 1],
-    [P.climb, 0.8],
-    [P.core, 1.1],
-    // the slab broken and the mark forged: plenty, all the way to the gap
-    [eventAt(T.breakStart + 0.05), 1.6],
-    [P.forged, 2.0],
-    [afterAt(0.4), 2.2],
-    [P.held, 2.2],
-    [P.held + (P.pass - P.held) * 0.55, 1.2],
-    [P.held + (P.pass - P.held) * 0.8, 0.2],
-    [P.pass, 0],
+    [P.held, 1],
+    [P.held + (P.pass - P.held) * 0.5, 0, "sine.inOut"],
     [P.out, 0],
-    [P.dunes, 0.45],
-    [zoneAt("outro", 0.2), 0.45],
-    [zoneAt("outro", 0.6), 0],
+    [P.out + 0.004, 1, "sine.inOut"],
   ]);
   // (back off once clear of the slab: the flight's shots are its own)
   track(tl, J, "align", [
@@ -297,31 +293,67 @@ export function buildMasterTimeline(J, dom) {
   // remains. When, on the event's clock, is live-tunable: see deriveBreak.
   seg(tl, J, "eventT", 0, 1, P.core, P.forged, "none");
 
-  // ----- through the mark, on over the dunes
+  // ----- through the mark, on into the oasis
+  // The beam that brought the energy in stays lit all the way (J.beamVis
+  // holds at 1), and runs on out of the back of the core as the camera
+  // closes on the logo: one continuous line, into the core and out again,
+  // racing on ahead of the camera into the passage.
   const approach = (k) => P.held + (P.pass - P.held) * k;
-  seg(tl, J, "beamVis", 1, 0, approach(0.1), approach(0.6), "sine.inOut");
-  // ...and the beam runs on out of the core, ahead of the camera
-  seg(tl, J, "duneBeam", 0, 1, P.through, P.out, "sine.out");
-
-  // ----- the whiteout: white spreads out across the land from just ahead
-  // of the camera, the dunes left as a contour drawing and the beam running
-  // on over it, then the sky goes too
-  track(tl, J, "whiteR", [
-    [zoneAt("whiteout", 0.12), 0],
-    [P.whiteout, 1100, "sine.in"],
-    [P.dissolve, 3600, "sine.in"],
+  // (out of the core and away down the valley before the cut shows it)
+  seg(tl, J, "duneBeam", 0, 1, approach(0.15), approach(0.5), "sine.inOut");
+  // ----- the cut: as the camera closes on the logo, the frame breaks into
+  // cubes of the mark's own shape, and turns over onto the valley beyond
+  // (there is no flight down: the camera is low in the dunes after it)
+  // (spread over more scroll than the camera's run through it: the cut plays
+  // a little slower, the two shots keep the same pace — world/oasisCamera.js)
+  seg(tl, J, "cut", 0, 1, approach(0.55), P.out, "none");
+  // the forged mark's cube outline lit from within: as the logo is forged
+  // its openings fill with warm light, brightening as the camera closes on it
+  track(tl, J, "innerGlow", [
+    [Math.min(brokenAt(), P.forged) - 0.002, 0],
+    [P.forged, 1, "sine.out"],
+    [P.held, 1.1],
+    [P.through, 1.5, "sine.in"],
   ]);
-  track(tl, J, "contours", [
-    [zoneAt("whiteout", 0.1), 0],
-    [zoneAt("whiteout", 0.3), 1],
-    [zoneAt("outro", 0.3), 1],
-    [1, 0.4],
+  // ----- the oasis rises out of the bare desert: a front spreads out across
+  // the sand from just ahead in the valley; behind it the water, the green
+  // and the tree come up (world/oasis.js REVEAL_ORIGIN)
+  track(tl, J, "revealR", [
+    [P.out, 0],
+    [zoneAt("passage", 0.3), 70, "sine.in"],
+    [P.passage, 360],
+    [zoneAt("reveal", 0.4), 1000, "sine.inOut"],
   ]);
-  seg(tl, J, "white", 0, 1, zoneAt("whiteout", 0.5), P.whiteout, "sine.inOut");
 
-  // ----- the rocks turn to sand and blow away; the beam goes with them
-  seg(tl, J, "dissolve", 0, 1, P.whiteout, zoneAt("dissolve", 0.92), "none");
-  seg(tl, J, "duneBeamFade", 0, 1, zoneAt("dissolve", 0.35), zoneAt("dissolve", 0.95), "sine.in");
+  // ----- the tree: its amber glow first seen beyond the dunes, then its
+  // aura and the light in its roots; the streaks run on into its core and
+  // meet there in a flash
+  track(tl, J, "amber", [
+    [zoneAt("passage", 0.7), 0],
+    [zoneAt("glow", 0.85), 1],
+    [1, 1],
+  ]);
+  track(tl, J, "treeGlow", [
+    [zoneAt("glow", 0.6), 0.25],
+    [zoneAt("reveal", 0.8), 0.55],
+    [zoneAt("canopy", 0.6), 0.75],
+    [zoneAt("outro", 0.4), 1],
+  ]);
+  // the tree of light: its roots and foot glow as the beam nears, and once
+  // the beam has reached the core the light climbs the trunk, the branches
+  // and on into the crown
+  // (nothing of it is lit — roots, trunk, branches alike — until the beam
+  // has reached its core; then the light climbs it from the roots' ends up)
+  // (one climb, roots to crown, from the moment the beam touches a root —
+  // as the converge starts — at one steady pace with the scroll)
+  track(tl, J, "fill", [
+    [zoneAt("reveal", 0.9), 0],
+    [zoneAt("outro", 0.5), 1.0, "none"],
+  ]);
+  track(tl, J, "converge", [
+    [zoneAt("reveal", 0.9), 0],
+    [zoneAt("canopy", 0.5), 1, "sine.inOut"],
+  ]);
 
   // at the end: the light opens onto the site
   seg(tl, J, "outro", 0, 1, zoneAt("outro", 0.3), 1, "sine.in");

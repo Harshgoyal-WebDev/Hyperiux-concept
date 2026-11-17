@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { NOISE, BUMP, VORONOI, DISSOLVE } from "./glsl";
+import { NOISE, BUMP, VORONOI } from "./glsl";
 import { PALETTE, WIND_DIR } from "../config";
 
 // Uniforms every world material shares; UniformSync in Scene.jsx writes
@@ -41,9 +41,19 @@ export function createSharedUniforms() {
     uContourSpacing: { value: 1.8 },
     // the rocks turning to sand (0..1)
     uDissolve: { value: 0 },
-    // the pillar in close-up: x, y, z, how far in
-    uFocus: { value: new THREE.Vector4(0, -1000, 0, 0) },
-    uPillarGlow: { value: 1 },
+    // The oasis past the mark (scene/oasis/groundMap.js): a map of its
+    // ground over a rect (x0, z0, width, depth) — wet sand, grass, soil,
+    // water depth — tinting the sand there.
+    uOasisMap: { value: null },
+    uOasisRect: { value: new THREE.Vector4(0, 0, 1, 1) },
+    uOasisOn: { value: 0 },
+    uOasisGrass: { value: new THREE.Color("#2c3a12") },
+    uOasisSoil: { value: new THREE.Color("#2a1406") },
+    // the oasis rising out of the desert: its front's origin (x, z), radius
+    // and band (m); behind it the ground is the oasis's, ahead bare sand
+    // (the stream's bed filled level) — and the front itself a line of light
+    uOasisReveal: { value: new THREE.Vector4(0, 0, 0, 45) },
+    uOasisRing: { value: 1 },
   };
 }
 
@@ -90,8 +100,17 @@ uniform float uContours;
 uniform float uContourStrength;
 uniform float uContourSpacing;
 uniform float uDissolve;
-uniform vec4 uFocus;
-uniform float uPillarGlow;
+uniform sampler2D uOasisMap;
+uniform vec4 uOasisRect;
+uniform float uOasisOn;
+uniform vec3 uOasisGrass;
+uniform vec3 uOasisSoil;
+uniform vec4 uOasisReveal;
+uniform float uOasisRing;
+// how far the oasis has come up at p (0 bare desert … 1 the oasis)
+float ncReveal(vec2 p) {
+  return clamp((uOasisReveal.z - length(p - uOasisReveal.xy)) / uOasisReveal.w, 0.0, 1.0);
+}
 // how white the world is at p: inside the spreading wave, or everywhere
 float ncWhiteAt(vec3 p) {
   float r = 1.0 - smoothstep(uWhiteR - 90.0, uWhiteR, length(p.xz - uWhitePos));
@@ -175,6 +194,20 @@ export function createSandMaterial(shared) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shared);
     injectWorldVertex(shader);
+    // until the oasis comes up here, its stream's bed is filled level with
+    // sand (the map's depth, lifted back), and sinks as the front passes
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+      if (uOasisOn > 0.5) {
+        vec2 ncOuv = (position.xz - uOasisRect.xy) / uOasisRect.zw;
+        if (ncOuv.x > 0.0 && ncOuv.y > 0.0 && ncOuv.x < 1.0 && ncOuv.y < 1.0) {
+          float ncDepth = textureLod(uOasisMap, ncOuv, 0.0).a * 6.0;
+          float ncUp = 1.0 - ncReveal(position.xz);
+          transformed.y += (ncDepth + 0.25 * step(0.001, ncDepth)) * ncUp * ncUp;
+        }
+      }`
+    );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
@@ -242,6 +275,26 @@ export function createSandMaterial(shared) {
         float ncPh2 = ncU * 0.55 + ncNoise(vec3(ncP * 0.011, 4.0)) * 9.0 + sin(ncV * 0.045) * 2.0;
         float ncRip2 = pow(0.5 + 0.5 * sin(ncPh2), 2.4) * 0.36 * ncF2 * uRipple;
         float ncGrain = ncF1 > 0.0 ? ncFbm(vNcWorld * 0.85) : 0.5;
+        // the oasis: wet sand by the water, grass, darker soil (r, g, b; a: depth)
+        vec4 ncOasis = vec4(0.0);
+        if (uOasisOn > 0.5) {
+          vec2 ncOuv = (ncP - uOasisRect.xy) / uOasisRect.zw;
+          if (ncOuv.x > 0.0 && ncOuv.y > 0.0 && ncOuv.x < 1.0 && ncOuv.y < 1.0) ncOasis = texture2D(uOasisMap, ncOuv);
+        }
+        // (none of it until the oasis has come up here)
+        float ncRev = ncReveal(ncP);
+        ncOasis.rgb *= ncRev;
+        // the front: a line of light running out across the sand, a low
+        // ridge with it, a warm afterglow just behind
+        float ncFront = 0.0;
+        if (uOasisReveal.z > 0.5 && uOasisReveal.z < 1600.0) {
+          float ncFd = (length(ncP - uOasisReveal.xy) - uOasisReveal.z) / 2.2;
+          ncFront = exp(-ncFd * ncFd) * uOasisRing * smoothstep(0.0, 40.0, uOasisReveal.z) * (1.0 - smoothstep(800.0, 1250.0, uOasisReveal.z));
+          ncRip += ncFront * 0.25;
+        }
+        // (the ripples settle where it is wet or grown over)
+        ncRip *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.8;
+        ncRip2 *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.85;
         // a line drawn in the sand by the pointer: the ripples are smoothed
         // out inside it
         vec3 ncDraw = uStirActive > 0.5 && ncCam < 320.0 ? ncStirLine(ncP) : vec3(0.0);
@@ -268,7 +321,20 @@ export function createSandMaterial(shared) {
         diffuseColor.rgb *= mix(0.8, 1.14, ncLift) * mix(0.88, 1.06, ncNoise(vNcWorld * 0.04));
         diffuseColor.rgb *= 1.0 + (ncRip2 / max(0.36 * uRipple, 1e-3) - 0.5) * 0.08 * ncF2;
         // the groove sits in its own shade; the heaped edges catch light
-        diffuseColor.rgb *= 1.0 + (ncDraw.z * 0.14 - ncDraw.y * 0.3) * min(uLineDepth, 2.0);`
+        diffuseColor.rgb *= 1.0 + (ncDraw.z * 0.14 - ncDraw.y * 0.3) * min(uLineDepth, 2.0);
+        if (ncOasis.r + ncOasis.g + ncOasis.b > 0.002) {
+          float ncOn = ncNoise(vec3(ncP * 0.21, 3.0)) * 0.5 + ncNoise(vec3(ncP * 0.9, 5.0)) * 0.25;
+          diffuseColor.rgb = mix(diffuseColor.rgb, uOasisSoil * (0.85 + ncOn * 0.5), ncOasis.b * 0.8);
+          float ncG = clamp(ncOasis.g * (1.0 + ncOn * 1.2) - 0.05, 0.0, 1.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb, uOasisGrass * (0.75 + ncOn * 0.6), ncG);
+          diffuseColor.rgb *= 1.0 - ncOasis.r * 0.3;
+        }`
+      )
+      .replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+        // wet sand by the water has a sheen
+        roughnessFactor = mix(roughnessFactor, 0.42, ncOasis.r * 0.85);`
       )
       .replace(
         "#include <normal_fragment_maps>",
@@ -278,7 +344,8 @@ export function createSandMaterial(shared) {
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.42, 0.1) * (shRing * 0.8 + shTrail * 0.12);`
+        totalEmissiveRadiance += vec3(1.0, 0.42, 0.1) * (shRing * 0.8 + shTrail * 0.12);
+        totalEmissiveRadiance += vec3(1.0, 0.5, 0.14) * ncFront * 1.6;`
       )
       .replace(
         "#include <fog_fragment>",
@@ -299,123 +366,4 @@ export function createSandMaterial(shared) {
   };
   material.customProgramCacheKey = () => "nc-sand";
   return { material };
-}
-
-// ---------------------------------------------------------------------------
-// Pillars
-// ---------------------------------------------------------------------------
-// The basalt of the rocks that grow up past the mark (instanced: aPillar is
-// each rock's base y, height, seed and whether it is a key pillar). It is the
-// slab's own stone: a clean patch of the logo core's baked basalt
-// (buildRockCrackMap), mirror-tiled over each facet by world position, and
-// its cracks glow exactly as the slab's do (Forge.jsx patchStone): the dark
-// crack lines of the albedo found against their neighbours, white-hot thin
-// cores with an orange falloff, bloom doing the glow — brighter on the rock in
-// close-up. On the white it goes to a dark silhouette, and it is eaten away
-// as it turns to sand, with an ember edge where it is going.
-export function createPillarMaterial(shared, crackMap) {
-  const material = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.82, metalness: 0 });
-  const local = {
-    uRockMap: { value: crackMap.texture },
-    uRockUv: { value: new THREE.Vector2(1, 1) }, // repeats per metre (see Pillars)
-    uRockHot: { value: new THREE.Color("#ffc47e") }, // the slab's uHotColor
-    uRockFissure: { value: 1 }, // T.fissureGlow, as on the slab
-    uRockLevel: { value: 1.2 }, // the forged logo's lit level (J.logoCrackGlow)
-  };
-  material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, shared, local);
-    injectWorldVertex(shader);
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec4 aPillar;\nvarying vec4 vPillar;")
-      .replace("#include <project_vertex>", "#include <project_vertex>\nvPillar = aPillar;");
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        "#include <common>",
-        `#include <common>
-        ${SHARED_DECLS}
-        ${WORLD_VARYINGS}
-        ${DISSOLVE}
-        varying vec4 vPillar;
-        uniform vec3 uCrackColor;
-        uniform sampler2D uRockMap;
-        uniform vec2 uRockUv;
-        uniform vec3 uRockHot;
-        uniform float uRockFissure;
-        uniform float uRockLevel;`
-      )
-      .replace(
-        "#include <clipping_planes_fragment>",
-        /* glsl */ `#include <clipping_planes_fragment>
-        float ncT = ncDisT(vNcWorld, vPillar.xyz);
-        if (ncT < uDissolve) discard;
-        float ncEdge = (1.0 - smoothstep(0.0, 0.035, ncT - uDissolve)) * step(0.0005, uDissolve);
-        float ncWh = ncWhiteAt(vNcWorld);
-        // the facet's plane (faces are flat shaded), offset per rock
-        vec3 ncA = abs(normalize(vNcNormal));
-        vec2 ncUv = ncA.z > max(ncA.x, ncA.y) ? vNcWorld.xy : (ncA.x > ncA.y ? vNcWorld.zy : vNcWorld.xz);
-        ncUv = ncUv * uRockUv + vPillar.z * vec2(7.3, 3.1);`
-      )
-      .replace(
-        "#include <color_fragment>",
-        /* glsl */ `#include <color_fragment>
-        diffuseColor.rgb *= texture2D(uRockMap, ncUv).rgb;
-        diffuseColor.rgb *= 1.0 - ncWh * 0.6;`
-      )
-      .replace(
-        "#include <emissivemap_fragment>",
-        /* glsl */ `#include <emissivemap_fragment>
-        {
-          // the slab's cracks: thin lines darker than the stone around them
-          vec2 ncTs = 3.0 / vec2(textureSize(uRockMap, 0));
-          float ncC0 = dot(texture2D(uRockMap, ncUv).rgb, vec3(0.3333));
-          float ncCn = dot(
-            texture2D(uRockMap, ncUv + vec2(ncTs.x, 0.0)).rgb + texture2D(uRockMap, ncUv - vec2(ncTs.x, 0.0)).rgb +
-            texture2D(uRockMap, ncUv + vec2(0.0, ncTs.y)).rgb + texture2D(uRockMap, ncUv - vec2(0.0, ncTs.y)).rgb,
-            vec3(0.0833));
-          float ncRaw = 1.0 - ncC0 / max(ncCn, 1e-4);
-          float ncThin = smoothstep(0.42, 0.8, ncRaw);
-          float ncSoft = smoothstep(0.28, 0.6, ncRaw);
-          float focus = uFocus.w * (1.0 - smoothstep(4.0, 12.0, length(vNcWorld.xz - uFocus.xz)));
-          float lit = uRockLevel * (1.0 + 0.8 * focus) * uPillarGlow * (1.0 - ncWh);
-          // white-hot thin cores, orange falloff; bloom does the glow
-          totalEmissiveRadiance += (uCrackColor * ncSoft * 0.5 + uRockHot * ncThin * 1.2) * lit * uRockFissure;
-          totalEmissiveRadiance += uCrackColor * ncEdge * 2.0 * (1.0 - ncWh * 0.7);
-          totalEmissiveRadiance = min(totalEmissiveRadiance, vec3(24.0));
-        }`
-      )
-      .replace(
-        "#include <fog_fragment>",
-        /* glsl */ `gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.025, 0.022, 0.02), ncWh * 0.9); // a dark silhouette against the white
-        #include <fog_fragment>`
-      );
-  };
-  material.customProgramCacheKey = () => "nc-pillar";
-  return { material, uniforms: local };
-}
-
-// A clean patch of the slab's baked basalt for the rocks: the logo core's
-// albedo is an atlas of UV islands with black between them, so a rectangle
-// inside one large island (shares of the image) is copied out and tiled
-// mirrored (no seams).
-const ROCK_PATCH = { x: 0.43, y: 0.264, w: 0.23, h: 0.139 };
-export function buildRockCrackMap(forge) {
-  const source = forge.coreMeshes.map((m) => m.material?.map).find((t) => t?.image);
-  if (!source) {
-    // (no baked albedo: plain stone, no cracks to light)
-    const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
-    white.needsUpdate = true;
-    return { texture: white, aspect: 1 };
-  }
-  const img = source.image;
-  const sw = Math.round(ROCK_PATCH.w * img.width);
-  const sh = Math.round(ROCK_PATCH.h * img.height);
-  const canvas = document.createElement("canvas");
-  canvas.width = sw;
-  canvas.height = sh;
-  canvas.getContext("2d").drawImage(img, Math.round(ROCK_PATCH.x * img.width), Math.round(ROCK_PATCH.y * img.height), sw, sh, 0, 0, sw, sh);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.MirroredRepeatWrapping;
-  texture.anisotropy = 4;
-  return { texture, aspect: sw / sh };
 }

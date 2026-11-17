@@ -52,3 +52,9 @@ export function attachPointer() {
     }
   };
 }
+
+// Where the pointer has touched the oasis's water since last frame (world
+// x, z, strength): SandField's pointer ray lands on the water there instead
+// of the sand (no sand drawn, no sand sound); the water's ripples
+// (scene/oasis/Water.jsx) take them.
+export const waterHits = [];

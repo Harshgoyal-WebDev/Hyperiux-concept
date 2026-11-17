@@ -6,24 +6,24 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
-import { OPENING_NOMINAL, P, SUN_DIR } from "../config";
-import { WHITE_POS, duneCamera } from "../world/duneCamera";
+import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
+import { CUT_TO, oasisCamera, runOnPast } from "../world/oasisCamera";
+import { REVEAL_BAND, REVEAL_ORIGIN, WATER_Y } from "../world/oasis";
+import { CutPass, createCutPass } from "./CutTransition";
 import { T } from "../tuning";
-import { attachPointer, pointer } from "../pointer";
+import { attachPointer } from "../pointer";
+import { applyMagnet, stepMagnet } from "../world/magnet";
 
 // ---------------------------------------------------------------------------
 // Camera: a pure function of the timeline's shot channels (position, aim,
-// lens), so every story time maps to exactly one shot. Mouse parallax is
-// layered on top (damped, and scaled down by J.parallax while the core is
-// close). Every shot keeps the camera well in front of the slab and outside
-// the space the flying chunks pass through. A pin's close-up (focus.k, eased
-// by the journey) is blended in over the flight's shot.
+// lens), so every story time maps to exactly one shot; through the mark and
+// on into the oasis it is world/oasisCamera.js. The cursor's pull is layered
+// on top (world/magnet.js). Every
+// shot keeps the camera well in front of the slab and outside the space the
+// flying chunks pass through.
 // ---------------------------------------------------------------------------
 const UP = new THREE.Vector3(0, 1, 0);
-
-const CLOSE_UP_FOV = 40;
-
-export function CameraRig({ J, opening, focus, closeUps }) {
+export function CameraRig({ J, opening }) {
   const { camera } = useThree();
   const v = useMemo(
     () => ({
@@ -32,10 +32,7 @@ export function CameraRig({ J, opening, focus, closeUps }) {
       fwd: new THREE.Vector3(),
       right: new THREE.Vector3(),
       up: new THREE.Vector3(),
-      mouse: { x: 0, y: 0 },
       shift: new THREE.Vector3(),
-      cp: new THREE.Vector3(),
-      ct: new THREE.Vector3(),
     }),
     []
   );
@@ -45,8 +42,24 @@ export function CameraRig({ J, opening, focus, closeUps }) {
     v.p.set(J.camX, J.camY, J.camZ);
     v.t.set(J.tgtX, J.tgtY, J.tgtZ);
     let lens = J.fov;
-    // through the mark and on: its own continuous flight over the dunes
-    if (J.progress >= P.through) lens = duneCamera(J.progress, v.p, v.t);
+    // past the cut: the valley shot (and nothing of the forge's world)
+    const valley = J.progress >= CUT_TO();
+    if (valley) lens = oasisCamera(J.progress, v.p, v.t);
+    else if (J.progress > P.through) {
+      // (while the cut runs, the logo shot keeps going at its pace, on
+      // through the opening)
+      const on = runOnPast(J.progress);
+      v.p.z -= on;
+      v.t.z -= on;
+    }
+    camera.layers.enable(NO_MIRROR_LAYER);
+    if (valley) {
+      camera.layers.disable(FORGE_LAYER);
+      camera.layers.enable(VALLEY_LAYER);
+    } else {
+      camera.layers.enable(FORGE_LAYER);
+      camera.layers.disable(VALLEY_LAYER);
+    }
     // shots through the mark are composed on the nominal opening: move them
     // onto the real one (the slab's height depends on the sand under it)
     if (opening && J.align > 0) {
@@ -55,37 +68,11 @@ export function CameraRig({ J, opening, focus, closeUps }) {
       v.t.add(v.shift);
     }
 
-    // a pillar's close-up: the rock off to one side (on the right; above on
-    // a portrait screen), room for its copy on the other; the move there
-    // arcs up a little
-    const e = focus && focus.index >= 0 ? focus.k : 0;
-    if (e > 0) {
-      const c = closeUps[focus.index];
-      v.cp.copy(c.pos);
-      v.ct.copy(c.center);
-      v.fwd.subVectors(c.center, c.pos).setY(0).normalize();
-      v.right.crossVectors(v.fwd, UP).normalize();
-      if (camera.aspect < 1) v.ct.y -= c.dist * 0.2;
-      else v.ct.addScaledVector(v.right, -c.dist * 0.3);
-      v.p.lerp(v.cp, e);
-      v.p.y += Math.sin(Math.PI * e) * 6;
-      v.t.lerp(v.ct, e);
-      lens = THREE.MathUtils.lerp(lens, CLOSE_UP_FOV, e);
-    }
+    // the cursor's pull (world/magnet.js): all the way, turning the camera
+    // in place through the logo's opening (J.orbit)
+    stepMagnet(delta);
+    const roll = applyMagnet(v.p, v.t, valley ? 1 : J.orbit, valley ? WATER_Y + 1.5 : -Infinity);
 
-    const k = 1 - Math.exp(-T.parallaxDamping * Math.min(delta, 0.1));
-    v.mouse.x += ((pointer.active ? pointer.x : 0) - v.mouse.x) * k;
-    v.mouse.y += ((pointer.active ? pointer.y : 0) - v.mouse.y) * k;
-    const amt = J.parallax * T.parallax * (1 - 0.5 * e);
-    if (amt > 0) {
-      v.fwd.subVectors(v.t, v.p).normalize();
-      v.right.crossVectors(v.fwd, UP).normalize();
-      v.up.crossVectors(v.right, v.fwd);
-      // camera travels, aim barely moves: near dunes slide past, the
-      // slab holds — that's what reads as depth
-      v.p.addScaledVector(v.right, v.mouse.x * 5 * amt).addScaledVector(v.up, v.mouse.y * 2.2 * amt);
-      v.t.addScaledVector(v.right, v.mouse.x * 0.4 * amt).addScaledVector(v.up, v.mouse.y * 0.2 * amt);
-    }
     // entering: the whole scene comes in from far off to the camera's place
     // (pulled back along its view and lifted, closing in quickly then
     // settling), the lens a little wider on the way
@@ -106,6 +93,7 @@ export function CameraRig({ J, opening, focus, closeUps }) {
     }
     camera.position.copy(v.p);
     camera.lookAt(v.t);
+    if (roll !== 0) camera.rotateZ(roll);
     // Portrait screens keep more of the horizontal framing (bounded so the
     // lens doesn't distort): the choreography is composed for landscape.
     const widen = Math.max(1, Math.pow(1 / camera.aspect, 0.6));
@@ -123,9 +111,6 @@ export function CameraRig({ J, opening, focus, closeUps }) {
 // ---------------------------------------------------------------------------
 const HAZE = new THREE.Color(0.62, 0.37, 0.21);
 const NIGHT_HAZE = new THREE.Color(0.035, 0.042, 0.075);
-const WHITE = new THREE.Color();
-// HDR white the world goes to (tone-maps to ~#FFF)
-const WHITE_LEVEL = 6.0;
 
 export function UniformSync({ J, shared, shockCenter }) {
   const { scene, gl } = useThree();
@@ -157,23 +142,14 @@ export function UniformSync({ J, shared, shockCenter }) {
     if (shockCenter) shared.uShockPos.value.set(shockCenter.x, shockCenter.z);
     shared.uLineWidth.value = T.lineWidth;
     shared.uLineDepth.value = T.lineDepth;
-    // the white past the pillars, the dunes' contour drawing on it, and the
-    // rocks turning to sand
-    shared.uWhite.value = J.white;
-    shared.uWhiteR.value = J.whiteR;
-    shared.uWhitePos.value.set(WHITE_POS[0], WHITE_POS[1]);
-    shared.uWhiteLevel.value = WHITE_LEVEL;
-    shared.uContours.value = J.contours;
-    shared.uContourStrength.value = T.contourStrength;
-    shared.uContourSpacing.value = T.contourSpacing;
-    shared.uDissolve.value = J.dissolve;
-    // On the white the fog stays near display white (not HDR) and thin, so
-    // the rocks keep reading as dark silhouettes while they turn to sand.
-    const level = THREE.MathUtils.lerp(0.9, WHITE_LEVEL, J.white * J.white * J.white);
-    fog.color.copy(HAZE).lerp(NIGHT_HAZE, night).lerp(WHITE.setScalar(Math.min(level, 1.6)), J.white);
-    fog.density = THREE.MathUtils.lerp(T.fogDensity, 0.0009, J.white * J.white);
+    // the oasis rising out of the desert (world/oasis.js REVEAL_ORIGIN)
+    shared.uOasisReveal.value.set(REVEAL_ORIGIN.x, REVEAL_ORIGIN.y, J.revealR, REVEAL_BAND);
+    shared.uOasisRing.value = T.revealRing;
+    // (the whiteout's uniforms stay at rest: shared.uWhite etc.)
+    fog.color.copy(HAZE).lerp(NIGHT_HAZE, night);
+    fog.density = T.fogDensity;
     // the captured environment is the sunset sky: dim it right down at night
-    scene.environmentIntensity = T.envIntensity * (1 - night * 0.8) * (1 - J.white * 0.7);
+    scene.environmentIntensity = T.envIntensity * (1 - night * 0.8);
     gl.toneMappingExposure = T.exposure;
   });
   return null;
@@ -215,12 +191,16 @@ export function Lights({ J, tier, shared }) {
   const { camera, scene, gl } = useThree();
   const focus = useMemo(() => new THREE.Vector3(), []);
   const fwd = useMemo(() => new THREE.Vector3(), []);
-  const shadow = useMemo(() => ({ key: "", eventT: -1, forge: false, rise: -1 }), []);
+  const shadow = useMemo(() => ({ key: "", eventT: -1, forge: false, version: -1 }), []);
   useEffect(() => {
     gl.shadowMap.autoUpdate = false;
     gl.shadowMap.needsUpdate = true;
   }, [gl]);
 
+  // (the forge's world casts its shadows too)
+  useEffect(() => {
+    sun.current?.shadow.camera.layers.enable(FORGE_LAYER);
+  }, []);
   useEffect(() => {
     const target = sun.current?.target;
     if (!target) return;
@@ -234,18 +214,20 @@ export function Lights({ J, tier, shared }) {
     if (s) {
       camera.getWorldDirection(fwd);
       focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
-      focus.set(Math.round(focus.x / SHADOW_GRID) * SHADOW_GRID, 0, Math.round(focus.z / SHADOW_GRID) * SHADOW_GRID);
+      // (past the mark the box moves on in bigger steps: the oasis's plants
+      // are a lot to redraw)
+      const grid = J.progress > P.through ? 26 : SHADOW_GRID;
+      focus.set(Math.round(focus.x / grid) * grid, 0, Math.round(focus.z / grid) * grid);
       const key = `${focus.x},${focus.z}`;
       // (and once the forge has arrived in the scene)
       // (and whenever the event's clock moves: the pieces' shadows go with
       // them, back to the whole slab's when scrolled back past the core)
-      // (and past the mark as the scroll moves: the pillars rise with it)
-      const rise = J.progress > P.out ? J.progress : 0;
-      if (key !== shadow.key || J.eventT !== shadow.eventT || J.forgeReady !== shadow.forge || rise !== shadow.rise) gl.shadowMap.needsUpdate = true;
+      // (and once the oasis's tree has arrived: OASIS_EVENT bumps J.sceneVersion)
+      if (key !== shadow.key || J.eventT !== shadow.eventT || J.forgeReady !== shadow.forge || J.sceneVersion !== shadow.version) gl.shadowMap.needsUpdate = true;
       shadow.key = key;
       shadow.eventT = J.eventT;
       shadow.forge = J.forgeReady;
-      shadow.rise = rise;
+      shadow.version = J.sceneVersion;
       s.target.position.copy(focus);
       s.position.copy(focus).addScaledVector(SUN_DIR, 320);
       s.target.updateMatrixWorld();
@@ -372,7 +354,7 @@ export function Dust({ J, tier, shared }) {
     u.uCam.value.copy(camera.position);
     u.uScale.value = gl.domElement.height * 0.5;
     // warm sunlit motes; only a few catch the moonlight
-    u.uDust.value = J.dust * T.dust * (1 - shared.uNight.value * 0.7) * (1 - J.white);
+    u.uDust.value = J.dust * T.dust * (1 - shared.uNight.value * 0.7);
     if (ref.current) ref.current.visible = u.uDust.value > 0.001;
   });
 
@@ -494,6 +476,15 @@ export function Post({ J, tier }) {
   useEffect(() => () => edgeFx.dispose(), [edgeFx]);
   const sanitize = useMemo(() => createSanitizePass(), []);
   useEffect(() => () => sanitize.dispose(), [sanitize]);
+  // the cut from the logo to the valley (CutTransition.jsx)
+  const cut = useMemo(() => createCutPass(), []);
+  useEffect(
+    () => () => {
+      cut.pass.dispose();
+      cut.material.dispose();
+    },
+    [cut]
+  );
   useFrame(() => {
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
@@ -508,22 +499,23 @@ export function Post({ J, tier }) {
     fx.get("uRevealChroma").value = T.revealChroma;
     fx.get("uAspect").value = size.width / Math.max(size.height, 1);
     if (bloom.current) {
-      // (none on the white: blooming HDR white washes the black contour
-      // drawing and the rocks' silhouettes out to grey)
-      const keep = 1 - J.white;
-      bloom.current.intensity = (J.bloom + J.breakBurst * 0.8 * T.breakImpact) * T.bloomIntensity * keep * keep;
+      bloom.current.intensity = (J.bloom + J.breakBurst * 0.8 * T.breakImpact) * T.bloomIntensity;
       bloom.current.luminanceMaterial.threshold = T.bloomThreshold;
       if (bloom.current.mipmapBlurPass) bloom.current.mipmapBlurPass.radius = T.bloomRadius;
     }
-    if (vignette.current) vignette.current.darkness = J.vignette * T.vignette * (1 - J.white);
+    if (vignette.current) vignette.current.darkness = J.vignette * T.vignette;
   });
   return (
+    <>
+    <CutPass J={J} cut={cut} />
     <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
       <primitive object={sanitize} dispose={null} />
       <primitive object={edgeFx} dispose={null} />
+      <primitive object={cut.pass} dispose={null} />
       <Bloom ref={bloom} mipmapBlur intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette ref={vignette} offset={0.32} darkness={0.6} />
     </EffectComposer>
+    </>
   );
 }

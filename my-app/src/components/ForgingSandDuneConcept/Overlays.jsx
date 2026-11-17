@@ -1,11 +1,11 @@
 "use client";
 
 import { forwardRef } from "react";
-import { HERO, SECTIONS } from "./content";
-import { ASSETS, RAIL } from "./config";
+import { HERO, OASIS_LINES } from "./content";
+import { ASSETS } from "./config";
 
-// HTML layers above the canvas. Nothing here captures the pointer except
-// the rail buttons, so text stays selectable and links stay clickable.
+// HTML layers above the canvas. Nothing here captures the pointer, so text
+// stays selectable and links stay clickable.
 
 export const HeroOverlay = forwardRef(function HeroOverlay(_, ref) {
   return (
@@ -35,122 +35,49 @@ export const HeroOverlay = forwardRef(function HeroOverlay(_, ref) {
   );
 });
 
-// The key pillars' pins: a dot in a breathing ring, both glowing like the
-// beam (white-hot cores, orange falloff), and its label, kept over each rock by
-// the scene (Pillars sets each button's transform / opacity every frame).
-export function Pins({ pinRefs, onOpen }) {
+// The oasis's lines of copy: quiet, editorial, one at a time over its
+// stretch of the way (the journey sets each one's opacity and drift from
+// the scroll). The environment stays the subject.
+const PLACE = {
+  low: "items-end justify-center pb-[17vh] text-center",
+  left: "items-center justify-start text-left",
+  right: "items-center justify-end text-right",
+  center: "items-center justify-center text-center",
+};
+export function OasisCopy({ lineRefs }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
-      {SECTIONS.map((s, i) => (
-        <button
-          key={s.id}
-          ref={(el) => (pinRefs.current[i] = el)}
-          type="button"
-          onClick={() => onOpen(i)}
-          aria-label={`${s.tag}: take a closer look`}
-          className="group absolute left-0 top-0 -ml-5 -mt-5 size-10 cursor-pointer rounded-full opacity-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
-          style={{ visibility: "hidden", pointerEvents: "none" }}
+      {OASIS_LINES.map((l, i) => (
+        <div
+          key={l.id}
+          ref={(el) => (lineRefs.current[i] = el)}
+          className={`absolute inset-0 flex px-[7vw] max-[33.875rem]:items-end max-[33.875rem]:justify-center max-[33.875rem]:pb-[16vh] max-[33.875rem]:text-center ${PLACE[l.place]}`}
+          style={{ opacity: 0, visibility: "hidden" }}
         >
-          {/* a glowing ring that breathes (fsd-pin-breathe, globals.css) round a glowing dot */}
-          <span className="absolute left-1/2 top-1/2 block size-[1.5vw] min-h-[22px] min-w-[22px] animate-[fsd-pin-breathe_2.6s_ease-in-out_infinite] rounded-full border-[1.5px] border-[#ffd9b0]" />
-          <span className="absolute left-1/2 top-1/2 block size-[0.5vw] min-h-[8px] min-w-[8px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#fff1e0] shadow-[0_0_3px_1px_#ffc890,0_0_9px_3px_rgba(255,95,0,0.9),0_0_20px_6px_rgba(255,95,0,0.45)] transition-transform duration-300 group-hover:scale-125" />
-          <span className="absolute left-full top-1/2 flex -translate-y-1/2 items-center gap-[0.5vw] whitespace-nowrap font-[family-name:var(--font-aeonikpro)] text-[0.72vw] uppercase tracking-[0.22em] text-white/80 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)] transition-colors group-hover:text-white max-[64rem]:gap-2 max-[64rem]:text-[1.6vw] max-[33.875rem]:text-[2.8vw]">
-            <span className="text-[#FF5F00]">{s.n}</span>
-            {s.tag}
-          </span>
-        </button>
+          <div className="max-w-[34vw] max-[64rem]:max-w-[64vw] max-[33.875rem]:max-w-full">
+            {l.eyebrow && (
+              <p className="mb-[1vw] font-[family-name:var(--font-aeonikpro)] text-[0.72vw] uppercase tracking-[0.32em] text-[#ffb27a] max-[64rem]:text-[1.6vw] max-[33.875rem]:mb-3 max-[33.875rem]:text-[2.8vw]">
+                {l.eyebrow}
+              </p>
+            )}
+            <p className="font-[family-name:var(--font-aeonikpro)] text-[2.7vw] font-light leading-[1.08] tracking-[-0.015em] text-white [text-shadow:0_2px_28px_rgba(30,12,0,0.45)] max-[64rem]:text-[4.6vw] max-[33.875rem]:text-[7.4vw]">
+              {l.text}
+            </p>
+            {l.body && (
+              <p
+                className={`mt-[1.2vw] max-w-[26vw] font-[family-name:var(--font-aeonikpro)] text-[0.98vw] leading-[1.55] text-white/80 [text-shadow:0_1px_18px_rgba(30,12,0,0.55)] max-[64rem]:max-w-[56vw] max-[64rem]:text-[2vw] max-[33.875rem]:mt-3 max-[33.875rem]:max-w-full max-[33.875rem]:text-[3.8vw] ${
+                  l.place === "right" ? "ml-auto" : l.place === "left" ? "" : "mx-auto"
+                }`}
+              >
+                {l.body}
+              </p>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );
 }
-
-// A pillar's close-up copy: revealed once the camera has arrived (the rock
-// is framed on the right; on a phone it sits above, the copy below), with
-// the way back to the journey.
-export function CloseUp({ index, shown, onClose }) {
-  const s = SECTIONS[index];
-  if (!s) return null;
-  // staggered on the way in, all at once on the way out
-  const after = (delay) => ({ transitionDelay: shown ? `${delay}ms` : "0ms" });
-  const reveal = `transition-[opacity,transform,color,background-color] duration-700 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${shown ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`;
-  return (
-    <div
-      role="dialog"
-      aria-modal="false"
-      aria-label={s.tag}
-      className={`absolute inset-0 z-40 flex items-center px-[5vw] max-[33.875rem]:items-end max-[33.875rem]:pb-[12vh] ${shown ? "pointer-events-auto" : "pointer-events-none"}`}
-    >
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-y-0 left-0 w-[60vw] bg-gradient-to-r from-black/55 via-black/25 to-transparent transition-opacity duration-700 max-[33.875rem]:inset-x-0 max-[33.875rem]:top-auto max-[33.875rem]:h-[70vh] max-[33.875rem]:w-full max-[33.875rem]:bg-gradient-to-t ${shown ? "opacity-100" : "opacity-0"}`}
-      />
-      <div className="relative flex max-w-[38vw] flex-col gap-[1.4vw] max-[64rem]:max-w-[70vw] max-[33.875rem]:max-w-full max-[33.875rem]:gap-4">
-        <div className={`flex items-center gap-[0.8vw] max-[33.875rem]:gap-3 ${reveal}`} style={after(0)}>
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[#FF5F00] px-3 py-1 font-[family-name:var(--font-aeonikpro)] text-[0.7vw] uppercase tracking-[0.2em] text-white max-[64rem]:text-[1.5vw] max-[33.875rem]:text-[2.8vw]">
-            <span className="opacity-70">{s.n}</span>
-            {s.tag}
-          </span>
-          <span className="font-[family-name:var(--font-aeonikpro)] text-[0.7vw] tracking-[0.2em] text-white/55 max-[64rem]:text-[1.5vw] max-[33.875rem]:text-[2.8vw]">
-            {s.n} / {String(SECTIONS.length).padStart(2, "0")}
-          </span>
-        </div>
-        <h2 className="font-[family-name:var(--font-aeonikpro)] text-[4.2vw] font-normal uppercase leading-[0.95] tracking-[-0.02em] text-white [text-shadow:0_2px_30px_rgba(0,0,0,0.3)] max-[64rem]:text-[7vw] max-[33.875rem]:text-[10vw]">
-          {s.title.map((line, i) => (
-            <span key={line} className="block overflow-hidden pb-[0.06em]">
-              <span
-                className={`block transition-transform duration-[900ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] ${shown ? "translate-y-0" : "translate-y-[110%]"}`}
-                style={after(80 + i * 90)}
-              >
-                {line}
-              </span>
-            </span>
-          ))}
-        </h2>
-        <p
-          className={`max-w-[26vw] font-[family-name:var(--font-aeonikpro)] text-[0.85vw] uppercase leading-[1.5] tracking-[0.08em] text-white/85 max-[64rem]:max-w-[60vw] max-[64rem]:text-[1.8vw] max-[33.875rem]:max-w-full max-[33.875rem]:text-[3.2vw] ${reveal}`}
-          style={after(380)}
-        >
-          {s.body}
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`mt-[0.8vw] flex w-fit cursor-pointer items-center gap-[0.8vw] rounded-full border border-white/50 px-[1.3vw] py-[0.6vw] font-[family-name:var(--font-aeonikpro)] text-[0.8vw] uppercase tracking-[0.18em] text-white hover:bg-white hover:text-black max-[64rem]:gap-2 max-[64rem]:px-4 max-[64rem]:py-2 max-[64rem]:text-[1.6vw] max-[33.875rem]:text-[3vw] ${reveal}`}
-          style={after(500)}
-        >
-          <span aria-hidden="true">←</span>
-          Back to the journey
-          <span className="text-white/45 max-[64rem]:hidden">Esc</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export const ProgressRail = forwardRef(function ProgressRail({ fillRef, itemRefs, onJump }, ref) {
-  return (
-    <nav ref={ref} aria-label="Forging progress" className="absolute inset-x-[5vw] bottom-[3.2vh] z-30 max-[33.875rem]:inset-x-[6vw]">
-      <div className="relative h-px w-full bg-white/20 transition-colors duration-500 group-data-[white=true]/journey:bg-black/15">
-        <div ref={fillRef} className="absolute inset-0 origin-left scale-x-0 bg-[#FF5F00]" />
-      </div>
-      <ol className="relative mt-0 h-[3.4vh]">
-        {RAIL.map((item, i) => (
-          <li key={item.label} className="absolute top-0 -translate-x-1/2" style={{ left: `${item.at * 100}%` }}>
-            <button
-              type="button"
-              ref={(el) => (itemRefs.current[i] = el)}
-              onClick={() => onJump(item.at)}
-              className="group flex -translate-y-[5px] cursor-pointer flex-col items-center gap-[0.7vh] text-white/45 transition-colors duration-300 data-[active=true]:text-white group-data-[white=true]/journey:text-black/40 group-data-[white=true]/journey:data-[active=true]:text-[#111]"
-            >
-              <span className="block size-[9px] rounded-full border border-current bg-[#0c0a09] transition-colors duration-300 group-data-[active=true]:border-[#FF5F00] group-data-[active=true]:bg-[#FF5F00]" />
-              <span className="font-[family-name:var(--font-aeonikpro)] text-[0.72vw] uppercase tracking-[0.22em] max-[64rem]:text-[1.4vw] max-[33.875rem]:hidden">{item.label}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
-});
 
 // Shown only when the forging GLB can't be used. Nothing stands in for it:
 // a substitute slab or logo would misrepresent the asset.

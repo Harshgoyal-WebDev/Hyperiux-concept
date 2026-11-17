@@ -1,0 +1,108 @@
+{
+  "asset": "yggdrasil.glb",
+  "path": "public/models/yggdrasil.glb",
+  "source": {
+    "blend": "blender/yggdrasil/yggdrasil.blend",
+    "generatorScripts": [
+      "blender/yggdrasil/scripts/ygg_textures.py",
+      "blender/yggdrasil/scripts/ygg_build.py",
+      "blender/yggdrasil/scripts/ygg_stage_export.py"
+    ],
+    "generatorSeed": 22,
+    "textures": "blender/yggdrasil/textures/",
+    "previews": [
+      "blender/yggdrasil/yggdrasil-preview.png"
+    ],
+    "previewStageNote": "The .blend also holds a PREVIEW_Stage collection (camera, sun, sand disc, sky colour) used only for the preview render. It is not exported.",
+    "determinism": "re-exported from the deterministic skeleton (noise.noise only) so the light-strand variant yggdrasil-strands.glb lines up exactly"
+  },
+  "units": "metres (1 glTF unit = 1 m)",
+  "orientation": {
+    "up": "+Y",
+    "front": "none (radially organic; rotate about +Y freely)",
+    "blenderToGltf": "gltf(x, y, z) = blender(x, z, -y)",
+    "handedness": "right-handed glTF"
+  },
+  "compression": "KHR_draco_mesh_compression (decoder served from /draco/)",
+  "dimensions": {
+    "height": 40.0,
+    "canopyExtentXZ": [
+      52.4,
+      53.5
+    ],
+    "rootSpreadXZ": [
+      41.7,
+      41.4
+    ],
+    "belowGround": "roots dive to y = -4.5 so the tree can sit on uneven sand; trunk flare meets y = 0",
+    "bboxMin": [
+      -27.1,
+      -4.5,
+      -27.9
+    ],
+    "bboxMax": [
+      25.3,
+      40.0,
+      25.6
+    ]
+  },
+  "nodes": {
+    "root": {
+      "name": "Yggdrasil",
+      "transform": "identity at world origin = trunk centre on the ground plane (y = 0)",
+      "children": [
+        "YGG_Roots",
+        "YGG_Trunk",
+        "YGG_Branches",
+        "YGG_Foliage",
+        "YGG_EmberChannels"
+      ]
+    },
+    "YGG_Roots": {
+      "material": "YGG_Root_Bark",
+      "triangles": 47620,
+      "content": "11 massive exposed roots (buttressed, arching, travelling horizontally then diving), 3 helically twisted companion roots, secondary roots and rootlets. 5 roots carry recessed ember grooves on their upper face."
+    },
+    "YGG_Trunk": {
+      "material": "YGG_Trunk_Bark",
+      "triangles": 41904,
+      "content": "Fused core with geometric bark ridges and burls, plus 7 helically intertwined strands. 3 strands carry recessed ember grooves on their outer face."
+    },
+    "YGG_Branches": {
+      "material": "YGG_Branch_Bark",
+      "triangles": 85144,
+      "content": "The 7 trunk strands continue seamlessly as the major limbs (shared vertex ring at the split, normals stitched), a central leader, 49 level-1 and 198 level-2 branches.",
+      "attributes": {
+        "_sway": "float 0..1 wind weight (0 at trunk, ~1 at twig tips). three.js attribute name: _sway"
+      }
+    },
+    "YGG_Foliage": {
+      "material": "YGG_Leaves",
+      "triangles": 55364,
+      "content": "308 layered foliage pads made of single cupped leaf-spray cards (2 quads each, 1.25-1.95 m) that mostly face out of their pad, so leaf faces meet the light and no card is seen edge-on. Atlas: 2x2 sprays (emerald / forest / olive / mixed), each a tapered twig carrying ~350 veined 9-13 cm leaves. Custom normals blend pad volume with card facing; the leaf normal map adds per-leaf tilt and fold. The inner crown is kept open so the trunk and limbs read.",
+      "attributes": {
+        "_sway": "float 0..1 wind weight (pad distance from trunk + height; card tops slightly higher)",
+        "_phase": "float 0..1 random phase per foliage pad, for desynchronised wind"
+      }
+    },
+    "YGG_EmberChannels": {
+      "material": "YGG_EmberChannel",
+      "triangles": 1856,
+      "content": "8 thin vein strips that sit 70% recessed inside grooves cut into the roots (5) and trunk strands (3). They are separate geometry so the orange glow can be driven entirely in three.js.",
+      "uv": {
+        "uv (TEXCOORD_0)": "u = 0..1 across the vein, v = 0..1 along this channel",
+        "uv1 (TEXCOORD_1, 'EnergyUV')": "u = channel id ((i + 0.5) / 8), v = global energy coordinate: 0.0 at outer root ends -> 0.5 where roots meet the trunk -> 1.0 at the top of the trunk channels. Animate a pulse as smoothstep on (uv1.y - time) to make energy flow from the roots up into the tree."
+      }
+    }
+  },
+  "materials": {
+    "YGG_Root_Bark / YGG_Trunk_Bark / YGG_Branch_Bark": "PBR metallic-roughness, single-sided. Share three textures: bark_basecolor (sRGB, dark walnut + earthy brown), bark_normal (OpenGL +Y), bark_orm (R = AO, G = roughness, B = metallic 0). Separate materials so each part can be tinted or animated independently.",
+    "YGG_Leaves": "alphaMode MASK (alphaTest 0.5), double-sided, roughness 0.58, KHR_materials_specular factor 0.7 (no grey sky sheen). leaf_atlas.png base colour + alpha, leaf_normal.jpg tangent-space normal map. Kept green; no orange baked in.",
+    "YGG_EmberChannel": "near-black base, emissive (1.0, 0.36, 0.05) at emissiveIntensity 1. No orange light is baked into any bark or leaf texture: bloom, aura, pulses and volumetrics belong in three.js."
+  },
+  "budget": {
+    "triangles": 231888,
+    "drawCalls": 5,
+    "glbBytes": "about 7.4 MB (Draco geometry + 5 shared textures: 4 x 2048 JPEG, 1 x 2048 PNG leaf atlas)"
+  }
+}

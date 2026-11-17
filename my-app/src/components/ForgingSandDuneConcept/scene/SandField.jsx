@@ -6,7 +6,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
 import { STIR_SLOTS } from "../world/materials";
-import { attachPointer, pointer } from "../pointer";
+import { attachPointer, pointer, waterHits } from "../pointer";
+import { P } from "../config";
+import { WATER_Y, revealAt } from "../world/oasis";
 import { T } from "../tuning";
 import { getAudio } from "../audio";
 
@@ -313,15 +315,24 @@ export default function SandField({ J, tier, shared, heightField }) {
     []
   );
 
-  // the pointer ray against the height field → s.p
+  // the pointer ray against the height field → s.p: 1 on the sand, 2 on
+  // the oasis's water (past the mark), 0 nothing
   const hitGround = (x, y) => {
     s.ndc.set(x, y);
     s.raycaster.setFromCamera(s.ndc, camera);
     const { origin, direction } = s.raycaster.ray;
     let t = 1;
     let prev = 0;
+    const water = J.progress > P.pass;
     for (let i = 0; i < 160 && t < 420; i++) {
       s.p.copy(origin).addScaledVector(direction, t);
+      // down through the water's surface where the ground is under it
+      if (water && s.p.y < WATER_Y && direction.y < 0) {
+        const tw = (WATER_Y - origin.y) / direction.y;
+        s.p.copy(origin).addScaledVector(direction, tw);
+        if (heightField.sample(s.p.x, s.p.z) < WATER_Y - 0.02 && revealAt(s.p.x, s.p.z, J.revealR) > 0.6) return 2;
+        s.p.copy(origin).addScaledVector(direction, t);
+      }
       if (s.p.y < heightField.sample(s.p.x, s.p.z)) {
         // refine between prev and t
         let lo = prev;
@@ -333,12 +344,12 @@ export default function SandField({ J, tier, shared, heightField }) {
           else lo = mid;
         }
         s.p.copy(origin).addScaledVector(direction, hi);
-        return true;
+        return 1;
       }
       prev = t;
       t += Math.max(0.5, t * 0.03);
     }
-    return false;
+    return 0;
   };
 
   useFrame((_, delta) => {
@@ -370,6 +381,12 @@ export default function SandField({ J, tier, shared, heightField }) {
     let count = 0;
     const width = Math.max(T.lineWidth, 0.05);
     const addPoint = (hit) => {
+      // on the water: ripples, not sand (and no sand sound)
+      if (hit === 2) {
+        if (waterHits.length < 256) waterHits.push({ x: s.p.x, z: s.p.z, t: now });
+        s.lastHit = null;
+        return;
+      }
       if (!hit) {
         s.lastHit = null;
         return;

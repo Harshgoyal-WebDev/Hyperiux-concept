@@ -13,6 +13,7 @@ import { STATES } from "./config";
 // Press "h" to show / hide them all.
 const OBJECT_SCHEMA = {
   "Slab & core": {
+    innerGlow: [0, 4, 0.01],
     fissureGlow: [0, 8, 0.05],
     crackSpread: [0, 1.5, 0.01],
     engrave: [0, 1, 0.01],
@@ -51,15 +52,6 @@ const OBJECT_SCHEMA = {
   "Breakup sand": {
     sandBrightness: [0, 3, 0.01],
     swirlSpeed: [0, 3, 0.01],
-  },
-  "Past the mark": {
-    beamLeadScale: [0.2, 3, 0.01],
-    pillarGlow: [0, 4, 0.01],
-    rockCrackSize: [2, 30, 0.1],
-    contourStrength: [0, 1, 0.01],
-    contourSpacing: [0.4, 6, 0.05],
-    ashSize: [0.2, 4, 0.01],
-    ashWind: [0, 3, 0.01],
   },
   Post: {
     bloomIntensity: [0, 3, 0.01],
@@ -137,12 +129,67 @@ const WORLD_SCHEMA = {
     grainColorDay: "color",
     grainColorNight: "color",
   },
-  Parallax: {
-    parallax: [0, 3, 0.01],
-    parallaxDamping: [0.5, 12, 0.1],
-  },
   Air: {
     dust: [0, 3, 0.01],
+  },
+};
+
+// Past the mark: the oasis, the beam through it, the water, the tree.
+const OASIS_SCHEMA = {
+  "Cut & reveal": {
+    cutGlass: [0, 3, 0.01],
+    cutChroma: [0, 0.6, 0.005],
+    revealRing: [0, 3, 0.01],
+  },
+  Camera: {
+    eyePassage: [1.5, 12, 0.1],
+    eyeLake: [2, 30, 0.1],
+  },
+  "Camera magnet (cursor, both scenes)": {
+    magnet: [0, 3, 0.01],
+    magnetYaw: [0, 25, 0.1],
+    magnetPitch: [0, 15, 0.1],
+    magnetBank: [-10, 10, 0.1],
+    magnetSwing: [-10, 10, 0.1],
+    magnetEdge: [0, 1, 0.01],
+    magnetDamping: [0.5, 12, 0.1],
+    magnetReach: [10, 200, 1],
+    magnetDip: [0, 6, 0.05],
+  },
+  "Beam past the mark": {
+    oasisBeam: [0, 3, 0.01],
+    oasisBeamLead: [0.2, 3, 0.01],
+  },
+  Water: {
+    oasisStreamWidth: [0.4, 4, 0.01],
+    waterShallow: "color",
+    waterDeep: "color",
+    waterShore: "color",
+    waterMirror: [0, 1.5, 0.01],
+    waterWaves: [0, 3, 0.01],
+  },
+  "Water ripples (cursor)": {
+    waterRipple: [0, 3, 0.01],
+    waterRippleRadius: [0.3, 3, 0.01],
+    waterRippleDamping: [0.95, 0.998, 0.001],
+    waterRippleSpeed: [0.1, 0.95, 0.01],
+  },
+  "Ground & plants": {
+    grassColor: "color",
+    soilColor: "color",
+    foliage: [0.2, 3, 0.01],
+    leafGlow: [0, 3, 0.01],
+    leafTint: "color",
+  },
+  "Tree of light": {
+    strandGain: [0, 2, 0.01],
+    strandDim: [0, 1, 0.01],
+    strandPulseSpeed: [0, 1.5, 0.01],
+    strandFill: [-1, 1, 0.01],
+    treeGlow: [0, 3, 0.01],
+    treeAura: [0, 3, 0.01],
+    treeLight: [0, 3, 0.01],
+    embers: [0, 3, 0.01],
   },
 };
 
@@ -229,6 +276,8 @@ function buildControls(schema) {
         T[key] = v;
         // (values the scroll timeline is built from: rebuild it)
         if (RETIME.has(key)) window.dispatchEvent(new Event(RETIME_EVENT));
+        // (the land itself: the terrain, its water and plants are rebuilt)
+        if (key === "oasisStreamWidth") window.dispatchEvent(new Event("forging-sand-dune-concept:reshape"));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };
@@ -254,6 +303,7 @@ export default function TuningPanel({ onScrub }) {
   const objectStore = useCreateStore();
   const worldStore = useCreateStore();
   const breakStore = useCreateStore();
+  const oasisStore = useCreateStore();
 
   useControls(
     () => ({
@@ -274,6 +324,18 @@ export default function TuningPanel({ onScrub }) {
     { store: objectStore }
   );
   useControls(() => buildControls(WORLD_SCHEMA), { store: worldStore });
+  useControls(
+    () => ({
+      ...buildControls(OASIS_SCHEMA),
+      "Copy oasis settings": button(() => {
+        const keys = Object.values(OASIS_SCHEMA).flatMap((f) => Object.keys(f));
+        const json = JSON.stringify(Object.fromEntries(keys.map((k) => [k, T[k]])), null, 2);
+        navigator.clipboard?.writeText(json);
+        console.info("[forging-sand-dune-concept] oasis:\n" + json);
+      }),
+    }),
+    { store: oasisStore }
+  );
   useControls(
     () => ({
       ...buildControls(BREAK_SCHEMA),
@@ -320,9 +382,14 @@ export default function TuningPanel({ onScrub }) {
       {[
         [objectStore, "Forge · energy (H)"],
         [breakStore, "Breakup · sand streams"],
+        [oasisStore, "Oasis · beam · water · tree"],
         [worldStore, "Atmosphere · sand · audio"],
       ].map(([store, title]) => (
-        <LevaPanel key={title} store={store} hidden={hidden} fill collapsed theme={THEME} titleBar={{ title, drag: false }} />
+        // each panel scrolls inside itself too, so a long open one never
+        // pushes the others off the screen
+        <div key={title} data-lenis-prevent style={{ maxHeight: "72vh", overflowY: "auto", overscrollBehavior: "contain", flexShrink: 0, borderRadius: 10 }}>
+          <LevaPanel store={store} hidden={hidden} fill collapsed theme={THEME} titleBar={{ title, drag: false }} />
+        </div>
       ))}
     </div>
   );

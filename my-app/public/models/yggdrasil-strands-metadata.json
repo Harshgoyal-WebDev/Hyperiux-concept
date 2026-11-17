@@ -1,0 +1,99 @@
+{
+  "asset": "yggdrasil-strands.glb",
+  "path": "public/models/yggdrasil-strands.glb",
+  "variantOf": "public/models/yggdrasil.glb (same generator seed, skeleton and scale, so the two line up if swapped or cross-faded)",
+  "concept": "A world tree woven purely from glowing filaments, with no bark and no leaves. Dense twisting bundles run through the trunk and roots, threads split into every limb and branch (branches 40% denser than the base build), and arcing light-fans spill from every branch tip to form the canopy. Hyperiux orange heat ramp.",
+  "source": {
+    "blend": "blender/yggdrasil/yggdrasil-strands.blend",
+    "generatorScripts": [
+      "blender/yggdrasil/scripts/ygg_build.py (skeleton)",
+      "blender/yggdrasil/scripts/ygg_strands.py (filaments; branch_density=1.4; optional glowing leaves via build(..., leaves=True), off in this export)",
+      "blender/yggdrasil/scripts/ygg_stage_export.py (night preview stage, bloom, export)"
+    ],
+    "generatorSeed": 22,
+    "previews": [
+      "blender/yggdrasil/yggdrasil-strands-preview.png"
+    ],
+    "determinism": "the generator uses noise.noise() only (mathutils.noise.noise_vector changes per Blender launch), so the same seed rebuilds the identical tree in any session; the realistic yggdrasil.glb was re-exported from the same skeleton so both variants line up"
+  },
+  "units": "metres (1 glTF unit = 1 m)",
+  "orientation": {
+    "up": "+Y",
+    "origin": "trunk centre on the ground plane (y = 0)",
+    "handedness": "right-handed glTF"
+  },
+  "compression": "KHR_draco_mesh_compression (decoder served from /draco/)",
+  "dimensions": {
+    "height": 43.2,
+    "heightNote": "the branch skeleton tops out at about 38 m; canopy light-fans rise to 43.2 m",
+    "canopyExtentXZ": [
+      55.6,
+      56.4
+    ],
+    "bboxMin": [
+      -28.9,
+      -4.5,
+      -29.7
+    ],
+    "bboxMax": [
+      26.7,
+      43.2,
+      26.7
+    ]
+  },
+  "nodes": {
+    "root": {
+      "name": "YggdrasilStrands",
+      "children": [
+        "YGG_StrandRoots",
+        "YGG_StrandTrunk",
+        "YGG_StrandBranches",
+        "YGG_StrandCanopy"
+      ]
+    },
+    "YGG_StrandRoots": {
+      "triangles": 92244,
+      "content": "filaments through every root, twisted companion root and rootlet; dim toward the root tips"
+    },
+    "YGG_StrandTrunk": {
+      "triangles": 69942,
+      "content": "dense twisting bundle through the trunk core and the 7 braided trunk strands (the strands that continue into the limbs carry the denser branch thread count)"
+    },
+    "YGG_StrandBranches": {
+      "triangles": 134590,
+      "content": "threads splitting into the 7 limbs, the leader and every level-1 and level-2 branch (1.4x the base thread count, at least 4 threads per branch), plus twig-threads that peel off along branches (1.4x as many) and roots and curve outward for finer branching"
+    },
+    "YGG_StrandCanopy": {
+      "triangles": 141532,
+      "content": "5,623 light-wisps: fountain-like fans arcing out of every branch tip, plus a lighter haze inside the old foliage volume; each fades to black at its tip"
+    }
+  },
+  "filaments": {
+    "coreStrands": 295,
+    "fineThreads": 3002,
+    "twigThreads": 1825,
+    "canopyWisps": 5623,
+    "geometry": "core strands are 3-sided tubes (5-10 cm radius); fine threads, twigs and wisps are twisting ribbons (2-6 cm wide) that never sit fully edge-on"
+  },
+  "vertexData": {
+    "COLOR_0": "linear RGB = Hyperiux orange heat ramp (deep red-orange -> brand orange #FF5C0D-ish -> hot amber near the trunk) x brightness (fades toward root tips and wisp tips)",
+    "uv": "u = across the strand (0..1); v = the same flow coordinate as _flow",
+    "_flow": "0 at the root tips -> 0.5 at the trunk base -> 1 at the canopy wisp tips. three.js attribute name: _flow",
+    "_seed": "random 0..1 per filament, to desynchronise pulses / flicker. three.js attribute name: _seed"
+  },
+  "material": {
+    "YGG_Strand": "KHR_materials_unlit (three.js MeshBasicMaterial, vertexColors = true), double-sided, no textures."
+  },
+  "threeJsSetup": {
+    "material": "material.blending = THREE.AdditiveBlending; material.depthWrite = false; material.transparent = true; material.color.setScalar(0.18)",
+    "bloom": "UnrealBloomPass(strength 0.65, radius 0.4, threshold 0.6) with ACESFilmic tone mapping on a dark background",
+    "why": "thousands of strands overlap in the trunk and root flare; with additive blending a colour gain above ~0.25 saturates the base to white",
+    "flowPulse": "in onBeforeCompile pass _flow and _seed as varyings, then e.g. band = fract(vFlow * 3.0 - uTime * 0.25 + vSeed * 0.15); outgoingLight *= 0.75 + 2.2 * smoothstep(0.0, 0.06, band) * (1.0 - smoothstep(0.06, 0.22, band)); this sends bright pulses from the root tips up through the trunk into the canopy",
+    "verified": "loaded and rendered with three r186 GLTFLoader + DRACOLoader + UnrealBloomPass (gain 0.18, bloom 0.65/0.4/0.6), no console errors"
+  },
+  "budget": {
+    "triangles": 438308,
+    "drawCalls": 4,
+    "glbBytes": "about 7.0 MB (geometry only, no textures)"
+  }
+}

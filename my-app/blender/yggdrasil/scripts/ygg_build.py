@@ -329,7 +329,7 @@ def spawn_children(parent_pts, parent_rads, parent_L, level, rnd, *, count, angl
     return kids
 
 
-def build_geometry(seed=1337):
+def build_geometry(seed=1337, leaf_density=1.0, leaf_scale=1.0):
     _SKEL.clear()
     _PADS.clear()
     rnd = random.Random(seed)
@@ -590,7 +590,7 @@ def build_geometry(seed=1337):
                 tube(roots, rp, rr_, 6, tile=0.8, lump=0.15, seed=rnd.randint(0, 9999), uv_r=rr_[0], cap=True)
 
     # ---------------- foliage pads ----------------
-    build_foliage(foliage, pads, rnd)
+    build_foliage(foliage, pads, rnd, leaf_density, leaf_scale)
 
     stats = {"l1": n_l1, "l2": n_l2, "pads": len(pads), "channels": chan[0]}
     return [roots, trunk, branches, foliage, ember], stats
@@ -601,8 +601,11 @@ ATLAS_CELLS = [(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)]
 CELL_WEIGHTS = [0.34, 0.30, 0.14, 0.22]
 
 
-def build_foliage(acc, pads, rnd):
-    for (c, rx, ry, rz, bias) in pads:
+def build_foliage(acc, pads, rnd, density=1.0, card_scale=1.0):
+    """density > 1 adds extra cards per pad from a separate RNG, so the pads and
+    the base cards stay exactly the same as density 1. card_scale enlarges every
+    leaf spray card without changing where the cards are."""
+    for pad_i, (c, rx, ry, rz, bias) in enumerate(pads):
         if math.hypot(c.x, c.y) < 8.0 and c.z < 27.0:
             continue   # keep the inner crown open so the trunk and limbs read
         if (rx < 2.4 and rnd.random() < 0.35) or rnd.random() < 0.12:
@@ -615,10 +618,11 @@ def build_foliage(acc, pads, rnd):
         dist_axis = math.hypot(c.x, c.y)
         sway_base = min(1.0, 0.35 + dist_axis / 30.0 + max(0.0, c.z - 20.0) / 40.0)
         n = int(math.pi * rx * ry * 1.45) + 6
-        for _ in range(n):
+
+        def card(rg):
             # point in a flattened ellipsoid, biased to its outer shell
             while True:
-                u = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1)))
+                u = Vector((rg.uniform(-1, 1), rg.uniform(-1, 1), rg.uniform(-1, 1)))
                 if 0.05 < u.length <= 1.0:
                     break
             u = u.normalized() * (u.length ** 0.4)
@@ -630,28 +634,28 @@ def build_foliage(acc, pads, rnd):
             o.normalize()
             # Real canopies present leaf faces to the light: most sprays face
             # out of the pad (no edge-on "X" cards), a few are random.
-            jitter = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1)))
-            if rnd.random() < 0.8:
+            jitter = Vector((rg.uniform(-1, 1), rg.uniform(-1, 1), rg.uniform(-1, 1)))
+            if rg.random() < 0.8:
                 fn = (o + jitter * 0.45).normalized()
             else:
                 fn = jitter.normalized() if jitter.length > 1e-3 else o.copy()
             # stem -> tip runs away from the pad centre, along the card plane
             tdir = (p - c)
             tdir.z *= 0.3
-            tdir = tdir + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.3, 0.6))) * 1.2
+            tdir = tdir + Vector((rg.uniform(-1, 1), rg.uniform(-1, 1), rg.uniform(-0.3, 0.6))) * 1.2
             tdir = tdir - fn * tdir.dot(fn)
             if tdir.length < 1e-4:
                 tdir = fn.orthogonal()
             tdir.normalize()
             side = tdir.cross(fn).normalized()
-            size = rnd.uniform(1.25, 1.95)
-            cup = rnd.uniform(0.1, 0.22) * size      # sprays cup toward the light
-            curl = rnd.uniform(0.05, 0.16) * size    # and droop at the tip
+            size = rg.uniform(1.25, 1.95) * card_scale
+            cup = rg.uniform(0.1, 0.22) * size      # sprays cup toward the light
+            curl = rg.uniform(0.05, 0.16) * size    # and droop at the tip
             # choose atlas cell
-            if rnd.random() < 0.55 and bias is not None:
+            if rg.random() < 0.55 and bias is not None:
                 cell = bias
             else:
-                x = rnd.random()
+                x = rg.random()
                 acc_w = 0.0
                 cell = 3
                 for ci, w in enumerate(CELL_WEIGHTS):
@@ -678,6 +682,13 @@ def build_foliage(acc, pads, rnd):
             for gu in (0, 1):
                 acc.face((grid[(gu, 0)], grid[(gu + 1, 0)], grid[(gu + 1, 1)], grid[(gu, 1)]),
                          [(us[gu], vs[0]), (us[gu + 1], vs[0]), (us[gu + 1], vs[1]), (us[gu], vs[1])])
+
+        for _ in range(n):
+            card(rnd)
+        if density > 1.0:
+            rg2 = random.Random(91733 + 7919 * pad_i)
+            for _ in range(int(round(n * (density - 1.0)))):
+                card(rg2)
 
 
 # --------------------------------------------------------------------------

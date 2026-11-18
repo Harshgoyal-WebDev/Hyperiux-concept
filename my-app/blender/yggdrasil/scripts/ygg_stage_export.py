@@ -154,8 +154,11 @@ def export(glb_path, draco=True, collection="Yggdrasil"):
     return glb_path
 
 
-def setup_night_stage(bloom=True, **cam_kw):
-    """Dark void + bloom for previewing the light-strand variant."""
+def setup_night_stage(bloom=True, leaf_fill=False, **cam_kw):
+    """Dark void + bloom for previewing the light-strand variant.
+
+    leaf_fill adds a cool low moon and two warm point lights at the trunk
+    (stand-ins for the strands' light spill) so green leaves read."""
     scene = bpy.context.scene
     setup_stage(**cam_kw)
     for name in ("PREVIEW_Ground", "PREVIEW_Sun"):
@@ -173,6 +176,29 @@ def setup_night_stage(bloom=True, **cam_kw):
         scene.view_settings.look = "AgX - Base Contrast"
     except TypeError:
         pass
+    stage = _coll("PREVIEW_Stage")
+    for name, loc, energy in (("PREVIEW_TrunkGlowHigh", (0.0, 0.0, 22.0), 70000.0),
+                              ("PREVIEW_TrunkGlowLow", (0.0, 0.0, 12.0), 30000.0)):
+        old = bpy.data.objects.get(name)
+        if old is not None:
+            bpy.data.objects.remove(old, do_unlink=True)
+        if not leaf_fill:
+            continue
+        ld = bpy.data.lights.get(name) or bpy.data.lights.new(name, "POINT")
+        ld.color = (1.0, 0.45, 0.12)
+        ld.energy = energy
+        ld.shadow_soft_size = 6.0
+        ob = bpy.data.objects.new(name, ld)
+        stage.objects.link(ob)
+        ob.location = loc
+    if leaf_fill:
+        bgn.inputs["Color"].default_value = (0.012, 0.02, 0.04, 1.0)
+        sun = bpy.data.objects.get("PREVIEW_Sun")
+        sun.hide_render = False
+        sun.hide_viewport = False
+        sun.data.color = (0.70, 0.80, 1.0)
+        sun.data.energy = 6.0
+        sun.rotation_euler = (math.radians(55), 0.0, math.radians(-70))
     if not bloom:
         return
     # Blender 5.x compositor: a node group assigned to the scene

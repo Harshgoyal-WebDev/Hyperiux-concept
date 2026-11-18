@@ -2,19 +2,22 @@
   "asset": "yggdrasil-strands.glb",
   "path": "public/models/yggdrasil-strands.glb",
   "variantOf": "public/models/yggdrasil.glb (same generator seed, skeleton and scale, so the two line up if swapped or cross-faded)",
-  "concept": "A world tree woven purely from glowing filaments, with no bark and no leaves. Dense twisting bundles run through the trunk and roots, threads split into every limb and branch (branches 40% denser than the base build), and arcing light-fans spill from every branch tip to form the canopy. Hyperiux orange heat ramp.",
+  "concept": "A world tree woven from glowing filaments with a cosmic leaf crown inspired by Loki's Yggdrasil: the crown is luminous haze rather than solid foliage - deep indigo, violet and dark purple, glowing electric-violet nebula cores against darker pockets, soft translucent edges and star-like glints. Dense twisting bundles run through the trunk and roots, threads split into every limb and branch (branches 40% denser than the base build); every branch thread, twig and light-wisp stays inside the leaf crown. Strands keep the Hyperiux orange heat ramp.",
   "source": {
     "blend": "blender/yggdrasil/yggdrasil-strands.blend",
     "generatorScripts": [
-      "blender/yggdrasil/scripts/ygg_build.py (skeleton)",
-      "blender/yggdrasil/scripts/ygg_strands.py (filaments; branch_density=1.4; optional glowing leaves via build(..., leaves=True), off in this export)",
-      "blender/yggdrasil/scripts/ygg_stage_export.py (night preview stage, bloom, export)"
+      "blender/yggdrasil/scripts/ygg_build.py (skeleton, leaf cards incl. build_geometry(seed, leaf_density, leaf_scale), leaf material)",
+      "blender/yggdrasil/scripts/ygg_strands.py (filaments; branch_density=1.4; leaf_density=2.0; leaf_scale=1.35; build(..., leaves=\"cosmic\" | \"green\" | \"amber\" | None); with leaves, clip_to_leaves keeps branch threads, twigs and wisps inside the leaf crown; cosmic_hue() picks each leaf card's hue from smooth noise + height; set_cosmic_preview() swaps in a Blender-only material that matches the three.js setup)",
+      "blender/yggdrasil/scripts/ygg_stage_export.py (night preview stage with leaf_fill moon + trunk-glow lights, bloom, export)"
     ],
     "generatorSeed": 22,
     "previews": [
-      "blender/yggdrasil/yggdrasil-strands-preview.png"
+      "blender/yggdrasil/yggdrasil-strands-preview.png (cosmic leaves, rendered at leaf colour x1.7 with the leaves covering the inner strands, as in three.js)",
+      "blender/yggdrasil/yggdrasil-strands-leaves-amber.png (amber leaves example)"
     ],
-    "determinism": "the generator uses noise.noise() only (mathutils.noise.noise_vector changes per Blender launch), so the same seed rebuilds the identical tree in any session; the realistic yggdrasil.glb was re-exported from the same skeleton so both variants line up"
+    "determinism": "the generator uses noise.noise() only (mathutils.noise.noise_vector changes per Blender launch), so the same seed rebuilds the identical tree in any session; the realistic yggdrasil.glb was re-exported from the same skeleton so both variants line up",
+    "textures": "blender/yggdrasil/textures/leaf_cosmic_atlas.png (1024 RGBA, baked from leaf_atlas.png: each of the 4 atlas cells recoloured to one hue - indigo, violet, deep purple, electric violet - through a steep space-black -> hue -> glow ramp on the leaf luminance, with per-hue brightness tiers; alpha is softened and scaled by brightness so dark parts are thin haze; ~110 star glints per cell)",
+    "previewLighting": "the cosmic leaves are unlit, so the preview needs no scene lights; bloom only"
   },
   "units": "metres (1 glTF unit = 1 m)",
   "orientation": {
@@ -24,21 +27,21 @@
   },
   "compression": "KHR_draco_mesh_compression (decoder served from /draco/)",
   "dimensions": {
-    "height": 43.2,
-    "heightNote": "the branch skeleton tops out at about 38 m; canopy light-fans rise to 43.2 m",
+    "height": 40,
+    "heightNote": "same skeleton and scale as yggdrasil.glb; the 35% bigger leaf cards reach 40.3 m at the crown top and widen the crown by under 1 m",
     "canopyExtentXZ": [
-      55.6,
-      56.4
+      52.5,
+      53.8
     ],
     "bboxMin": [
-      -28.9,
+      -27.1,
       -4.5,
-      -29.7
+      -28.2
     ],
     "bboxMax": [
-      26.7,
-      43.2,
-      26.7
+      25.4,
+      40,
+      25.6
     ]
   },
   "nodes": {
@@ -48,7 +51,8 @@
         "YGG_StrandRoots",
         "YGG_StrandTrunk",
         "YGG_StrandBranches",
-        "YGG_StrandCanopy"
+        "YGG_StrandCanopy",
+        "YGG_StrandLeaves"
       ]
     },
     "YGG_StrandRoots": {
@@ -60,20 +64,37 @@
       "content": "dense twisting bundle through the trunk core and the 7 braided trunk strands (the strands that continue into the limbs carry the denser branch thread count)"
     },
     "YGG_StrandBranches": {
-      "triangles": 134590,
-      "content": "threads splitting into the 7 limbs, the leader and every level-1 and level-2 branch (1.4x the base thread count, at least 4 threads per branch), plus twig-threads that peel off along branches (1.4x as many) and roots and curve outward for finer branching"
+      "triangles": 134564,
+      "content": "threads splitting into the 7 limbs, the leader and every level-1 and level-2 branch (1.4x the base thread count, at least 4 threads per branch), plus twig-threads that peel off along branches and roots; branch threads and twigs end inside the leaf crown"
     },
     "YGG_StrandCanopy": {
-      "triangles": 141532,
-      "content": "5,623 light-wisps: fountain-like fans arcing out of every branch tip, plus a lighter haze inside the old foliage volume; each fades to black at its tip"
+      "triangles": 140798,
+      "content": "light-wisps fanning out of branch tips and through the foliage pads, shortened where needed so each fades to black inside the leaf crown"
+    },
+    "YGG_StrandLeaves": {
+      "triangles": 110728,
+      "content": "cosmic leaf sprays on the realistic tree's foliage pads: twice the realistic tree's cards (the same base cards plus one extra card per base card, per pad) and every spray card 35% bigger, so the crown reads as a full nebula mass. Each card samples one hue cell of the cosmic atlas, picked from its centre, so hues form nebula patches: electric-violet glowing cores, violet body, deep purple pockets, dark indigo outer/lower crown",
+      "attributes": {
+        "_sway": "0..1 wind weight",
+        "_phase": "per-pad random phase for desynchronised wind",
+        "_flow": "0.88-1.0, top of the strand flow (for an optional pulse)",
+        "_seed": "per-pad random 0..1 (same as _phase)"
+      },
+      "hueCards": {
+        "indigo": 3466,
+        "violet": 9807,
+        "purple": 10028,
+        "electric": 4381
+      }
     }
   },
   "filaments": {
     "coreStrands": 295,
     "fineThreads": 3002,
-    "twigThreads": 1825,
-    "canopyWisps": 5623,
-    "geometry": "core strands are 3-sided tubes (5-10 cm radius); fine threads, twigs and wisps are twisting ribbons (2-6 cm wide) that never sit fully edge-on"
+    "twigThreads": 1824,
+    "canopyWisps": 5603,
+    "geometry": "core strands are 3-sided tubes (5-10 cm radius); fine threads, twigs and wisps are twisting ribbons (2-6 cm wide) that never sit fully edge-on",
+    "clippedToLeaves": 1395
   },
   "vertexData": {
     "COLOR_0": "linear RGB = Hyperiux orange heat ramp (deep red-orange -> brand orange #FF5C0D-ish -> hot amber near the trunk) x brightness (fades toward root tips and wisp tips)",
@@ -82,18 +103,21 @@
     "_seed": "random 0..1 per filament, to desynchronise pulses / flicker. three.js attribute name: _seed"
   },
   "material": {
-    "YGG_Strand": "KHR_materials_unlit (three.js MeshBasicMaterial, vertexColors = true), double-sided, no textures."
+    "YGG_Strand": "KHR_materials_unlit (three.js MeshBasicMaterial, vertexColors = true), double-sided, no textures.",
+    "YGG_CosmicLeaves": "KHR_materials_unlit (three.js MeshBasicMaterial), cosmic atlas base colour + soft alpha (alphaMode BLEND), double-sided, no normals. Self-luminous: needs no scene light."
   },
   "threeJsSetup": {
-    "material": "material.blending = THREE.AdditiveBlending; material.depthWrite = false; material.transparent = true; material.color.setScalar(0.18)",
+    "material": "strands (YGG_Strand, no map): material.blending = THREE.AdditiveBlending; material.depthWrite = false; material.transparent = true; material.color.setScalar(0.18); mesh.renderOrder = 0. Leaves (YGG_CosmicLeaves, has a map): keep the loaded NormalBlending + transparent; material.depthWrite = false (soft haze cards must not hide each other); material.color.setScalar(1.7) so the glowing cores reach the bloom (1.3 = darker and moodier, 2.4 = brighter violet); mesh.renderOrder = 2 so the leaf haze draws over the strands and the crown reads as a full nebula mass (renderOrder below the strands instead shows every branch thread through the crown).",
     "bloom": "UnrealBloomPass(strength 0.65, radius 0.4, threshold 0.6) with ACESFilmic tone mapping on a dark background",
     "why": "thousands of strands overlap in the trunk and root flare; with additive blending a colour gain above ~0.25 saturates the base to white",
     "flowPulse": "in onBeforeCompile pass _flow and _seed as varyings, then e.g. band = fract(vFlow * 3.0 - uTime * 0.25 + vSeed * 0.15); outgoingLight *= 0.75 + 2.2 * smoothstep(0.0, 0.06, band) * (1.0 - smoothstep(0.06, 0.22, band)); this sends bright pulses from the root tips up through the trunk into the canopy",
-    "verified": "loaded and rendered with three r186 GLTFLoader + DRACOLoader + UnrealBloomPass (gain 0.18, bloom 0.65/0.4/0.6), no console errors"
+    "verified": "loaded and rendered with three r186 GLTFLoader + DRACOLoader + UnrealBloomPass (strands gain 0.18, bloom 0.65/0.4/0.6, leaves x1.7, depthWrite false, leaves renderOrder 2); leaves load as MeshBasicMaterial transparent; no errors",
+    "lighting": "none required: strands and cosmic leaves are both unlit. Scene lights do not affect this asset.",
+    "whyNotAdditiveLeaves": "tried: additive leaves wash out to pale lavender where the crown is dense and let the orange strands swamp the crown"
   },
   "budget": {
-    "triangles": 438308,
-    "drawCalls": 4,
-    "glbBytes": "about 7.0 MB (geometry only, no textures)"
+    "triangles": 548276,
+    "drawCalls": 5,
+    "glbBytes": "about 8.9 MB (Draco geometry + 1024 cosmic leaf atlas PNG; no normal map)"
   }
 }

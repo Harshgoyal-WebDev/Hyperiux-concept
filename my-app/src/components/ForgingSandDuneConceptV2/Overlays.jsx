@@ -11,23 +11,18 @@ export const HeroOverlay = forwardRef(function HeroOverlay(_, ref) {
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-end px-[5vw] pb-[13vh] max-[33.875rem]:pb-[18vh]">
       <div className="max-w-[40vw] max-[64rem]:max-w-[70vw] max-[33.875rem]:max-w-full">
-        <p data-hero-reveal className="mb-[1.6vw] font-[family-name:var(--font-aeonikpro)] text-[0.85vw] uppercase tracking-[0.32em] text-white/70 max-[64rem]:text-[1.8vw] max-[33.875rem]:mb-4 max-[33.875rem]:text-[3vw]">
-          {HERO.eyebrow}
-        </p>
         <h1 className="font-[family-name:var(--font-aeonikpro)] text-[5.4vw] font-normal leading-[0.98] tracking-[-0.025em] text-white max-[64rem]:text-[8vw] max-[33.875rem]:text-[11vw]">
           {HERO.title.map((line) => (
-            <span key={line} className="block overflow-hidden pb-[0.08em]">
-              <span data-hero-line className="block">
-                {line}
-              </span>
+            <span key={line} data-hero-line className="block pb-[0.08em]">
+              {line}
             </span>
           ))}
         </h1>
-        <p data-hero-reveal className="pointer-events-auto mt-[1.8vw] max-w-[30vw] font-[family-name:var(--font-aeonikpro)] text-[1.1vw] leading-[1.5] text-white/80 max-[64rem]:max-w-[60vw] max-[64rem]:text-[2.2vw] max-[33.875rem]:mt-5 max-[33.875rem]:max-w-full max-[33.875rem]:text-[4vw]">
+        <p data-hero-body className="pointer-events-auto mt-[1.8vw] max-w-[30vw] font-[family-name:var(--font-aeonikpro)] text-[1.1vw] leading-[1.5] text-white/80 max-[64rem]:max-w-[60vw] max-[64rem]:text-[2.2vw] max-[33.875rem]:mt-5 max-[33.875rem]:max-w-full max-[33.875rem]:text-[4vw]">
           {HERO.body}
         </p>
       </div>
-      <div data-hero-reveal className="absolute bottom-[6vh] left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 max-[33.875rem]:bottom-[9vh]">
+      <div data-hero-reveal data-hero-cue className="absolute bottom-[6vh] left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 max-[33.875rem]:bottom-[9vh]">
         <span className="font-[family-name:var(--font-aeonikpro)] text-[0.75vw] uppercase tracking-[0.3em] text-white/60 max-[64rem]:text-[1.6vw] max-[33.875rem]:text-[2.8vw]">{HERO.cue}</span>
         <span className="block h-[5vh] w-px origin-top animate-pulse bg-gradient-to-b from-[#FF5F00] to-transparent" />
       </div>
@@ -55,11 +50,6 @@ export function OasisCopy({ lineRefs }) {
           style={{ opacity: 0, visibility: "hidden" }}
         >
           <div className="max-w-[34vw] max-[64rem]:max-w-[64vw] max-[33.875rem]:max-w-full">
-            {l.eyebrow && (
-              <p data-split="eyebrow" className="mb-[1vw] font-[family-name:var(--font-aeonikpro)] text-[0.72vw] uppercase tracking-[0.32em] text-[#ffb27a] max-[64rem]:text-[1.6vw] max-[33.875rem]:mb-3 max-[33.875rem]:text-[2.8vw]">
-                {l.eyebrow}
-              </p>
-            )}
             <p data-split="heading" className="font-[family-name:var(--font-aeonikpro)] text-[2.7vw] font-light leading-[1.08] tracking-[-0.015em] text-white [text-shadow:0_2px_28px_rgba(30,12,0,0.45)] max-[64rem]:text-[4.6vw] max-[33.875rem]:text-[7.4vw]">
               {l.text}
             </p>

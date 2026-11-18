@@ -381,7 +381,8 @@ export function buildMasterTimeline(J, dom) {
 
   // ----- DOM overlays
   if (dom.hero) {
-    tl.fromTo(dom.hero, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -60, duration: 0.04, immediateRender: false }, 0.03);
+    // (the scroll cue; the hero's words go on their own: ForgingSandDuneConcept)
+    tl.fromTo(dom.hero, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.03, immediateRender: false }, 0.02);
   }
 
   // Pin the timeline length to exactly 1 so progress == p.

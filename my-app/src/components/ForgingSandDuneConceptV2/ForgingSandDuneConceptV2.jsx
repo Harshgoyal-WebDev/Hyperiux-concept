@@ -271,6 +271,8 @@ function Journey({ env }) {
   const outroRef = useRef(null);
   const copyRefs = useRef([]);
   const copyAnims = useRef([]); // each line's text animation (below)
+  const heroAnim = useRef(null); // ...and the hero's
+  const heroIn = useRef({ v: 0 }); // how far the hero's words have come in (its entrance)
 
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
@@ -340,38 +342,38 @@ function Journey({ env }) {
     };
   }, [releaseOffscreen]);
 
-  // The oasis's lines of copy, animated in as each arrives (GSAP SplitText):
-  // the heading character by character, each coming out of a blur in its
-  // own random turn; the eyebrow's characters quickly the same way; the
-  // paragraph word by word, in reading order. (Split once the fonts are in,
-  // so the lines break where they will stay.)
+  // The words' animation (GSAP SplitText), on the hero's heading and
+  // paragraph and on each of the oasis's lines: the heading character by
+  // character, each coming out of a blur in its own random turn; the
+  // paragraph word by word, in reading order. Each is one paused timeline
+  // whose progress the scroll sets (the follow loop below), so the words come
+  // in with the scroll and go again — the same random blur, played back —
+  // as it scrolls on (and the hero's first comes in after the loader).
+  // (Split once the fonts are in, so the lines break where they will stay.)
   useEffect(() => {
     let alive = true;
     const splits = [];
+    const words = (el, from) => {
+      const tl = gsap.timeline({ paused: true });
+      const heading = el.querySelectorAll(from.heading);
+      const body = el.querySelector(from.body);
+      if (heading.length) {
+        const sp = SplitText.create(heading, { type: "words,chars" });
+        splits.push(sp);
+        tl.from(sp.chars, { opacity: 0, filter: "blur(14px)", yPercent: 18, duration: 0.8, ease: "power3.out", stagger: { each: 0.028, from: "random" } }, 0);
+      }
+      if (body) {
+        const sp = SplitText.create(body, { type: "words" });
+        splits.push(sp);
+        tl.from(sp.words, { opacity: 0, filter: "blur(8px)", y: 10, duration: 0.6, ease: "power2.out", stagger: 0.04 }, 0.3);
+      }
+      return tl;
+    };
     const build = () => {
       if (!alive) return;
+      if (heroRef.current) heroAnim.current = { tl: words(heroRef.current, { heading: "[data-hero-line]", body: "[data-hero-body]" }) };
       copyRefs.current.forEach((el, i) => {
-        if (!el) return;
-        const tl = gsap.timeline({ paused: true });
-        const eyebrow = el.querySelector('[data-split="eyebrow"]');
-        const heading = el.querySelector('[data-split="heading"]');
-        const body = el.querySelector('[data-split="body"]');
-        if (eyebrow) {
-          const sp = SplitText.create(eyebrow, { type: "chars" });
-          splits.push(sp);
-          tl.from(sp.chars, { opacity: 0, filter: "blur(8px)", duration: 0.5, ease: "power2.out", stagger: { each: 0.02, from: "random" } }, 0);
-        }
-        if (heading) {
-          const sp = SplitText.create(heading, { type: "words,chars" });
-          splits.push(sp);
-          tl.from(sp.chars, { opacity: 0, filter: "blur(14px)", yPercent: 18, duration: 0.8, ease: "power3.out", stagger: { each: 0.028, from: "random" } }, 0.08);
-        }
-        if (body) {
-          const sp = SplitText.create(body, { type: "words" });
-          splits.push(sp);
-          tl.from(sp.words, { opacity: 0, filter: "blur(8px)", y: 10, duration: 0.6, ease: "power2.out", stagger: 0.045 }, 0.35);
-        }
-        copyAnims.current[i] = { tl, on: false };
+        if (el) copyAnims.current[i] = { tl: words(el, { heading: '[data-split="heading"]', body: '[data-split="body"]' }) };
       });
     };
     if (document.fonts?.ready) document.fonts.ready.then(build);
@@ -380,6 +382,8 @@ function Journey({ env }) {
       alive = false;
       copyAnims.current.forEach((a) => a?.tl.kill());
       copyAnims.current = [];
+      heroAnim.current?.tl.kill();
+      heroAnim.current = null;
       splits.forEach((sp) => sp.revert());
     };
   }, []);
@@ -391,8 +395,9 @@ function Journey({ env }) {
     () => {
       if (!entered) return;
       const lead = withLoader ? T.arriveDuration * 0.45 : 0;
-      gsap.from("[data-hero-line]", { yPercent: 110, duration: 1.4, stagger: 0.12, ease: "power4.out", delay: lead + 0.3 });
-      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, stagger: 0.1, ease: "power3.out", delay: lead + 0.7 });
+      // (its words: the scroll loop plays them in as this goes 0 → 1)
+      gsap.fromTo(heroIn.current, { v: 0 }, { v: 1, duration: 2.4, ease: "none", delay: lead + 0.3 });
+      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, ease: "power3.out", delay: lead + 1.2 });
     },
     { scope: heroRef, dependencies: [J, entered, withLoader] }
   );
@@ -449,7 +454,7 @@ function Journey({ env }) {
     () => {
       const section = sectionRef.current;
       if (!section) return;
-      const tl = buildMasterTimeline(J, { hero: heroRef.current });
+      const tl = buildMasterTimeline(J, { hero: heroRef.current?.querySelector("[data-hero-cue]") });
       // Prime every segment: run it to the end and back to the start, so
       // each channel holds its own value wherever the scroll lands. (A fresh
       // timeline only writes the segments up to where it is first set; the
@@ -562,25 +567,29 @@ function Journey({ env }) {
           const w = Math.min(Math.max(J.outro, 0), 1);
           outroRef.current.style.opacity = String(w * w * (3 - 2 * w));
         }
+        // the hero's words: in after the loader, out (and back) with the
+        // first of the scroll
+        if (heroAnim.current) {
+          const k = Math.min(heroIn.current.v, 1 - clamp01((current - 0.012) / 0.05));
+          if (heroAnim.current.k !== k) {
+            heroAnim.current.k = k;
+            heroAnim.current.tl.progress(k);
+          }
+        }
         // the oasis's lines of copy, each over its stretch of the way
         OASIS_LINES.forEach((line, i) => {
           const el = copyRefs.current[i];
           if (!el) return;
-          const a = lineAlpha(line, current);
-          const v = a.toFixed(3);
+          // (its words come and go with the scroll: their timeline's progress;
+          // before they are split, the line just fades)
+          const k = lineShown(line, current);
+          const anim = copyAnims.current[i];
+          const v = (anim ? "w" : "f") + k.toFixed(3);
           if (el.dataset.a === v) return;
           el.dataset.a = v;
-          el.style.opacity = v;
-          el.style.transform = `translate3d(0, ${((1 - a) * (current < line.mid ? 18 : -18)).toFixed(1)}px, 0)`;
-          el.style.visibility = a > 0.001 ? "visible" : "hidden";
-          // its words come in as it arrives, and go as it leaves
-          const anim = copyAnims.current[i];
-          const on = a > 0.12;
-          if (anim && anim.on !== on) {
-            anim.on = on;
-            if (on) anim.tl.timeScale(1).play();
-            else anim.tl.timeScale(1.8).reverse();
-          }
+          el.style.visibility = k > 0.001 ? "visible" : "hidden";
+          el.style.opacity = anim ? "1" : k.toFixed(3);
+          if (anim) anim.tl.progress(k);
         });
       };
       gsap.ticker.add(follow);
@@ -722,12 +731,11 @@ function clamp01(v) {
   return Math.min(Math.max(v, 0), 1);
 }
 
-// How visible one of the oasis's lines is at p: in over its first stretch,
-// out over its last (the copy moves with the scroll, both ways).
-function lineAlpha(line, p) {
-  const fade = (line.to - line.from) * 0.22;
-  const a = clamp01((p - line.from) / fade) * clamp01((line.to - p) / fade);
-  return a * a * (3 - 2 * a);
+// How far one of the oasis's lines is shown at p: its words coming in over
+// its first stretch, going over its last (with the scroll, both ways).
+function lineShown(line, p) {
+  const fade = (line.to - line.from) * 0.3;
+  return Math.min(clamp01((p - line.from) / fade), clamp01((line.to - p) / fade));
 }
 
 // The forged hero holding: the reduced-motion still.

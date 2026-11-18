@@ -137,6 +137,12 @@ const eyeHeight = (s) => lerp(T.eyePassage, T.eyeLake, smooth(S_RIM, S_END, s));
 
 const LOOK = new THREE.Vector3();
 
+// how far the tree has grown at p (0 → 1: tuning.js tlTreeGrowStart / End)
+// (linear, as the strands' own uGrow: Yggdrasil.jsx)
+export const growAt = (p) => Math.min(Math.max((p - T.tlTreeGrowStart) / Math.max(T.tlTreeGrowEnd - T.tlTreeGrowStart, 0.002), 0), 1);
+// the cube at the lake's heart (where the tree grows from): its centre
+export const cubeY = () => WATER_Y + 0.78 + T.cubeHover + T.cubeSize * 0.5;
+
 export function oasisCamera(p, pos, tgt) {
   const s = routeDistance(p);
   routePoint(s, pos);
@@ -145,15 +151,38 @@ export function oasisCamera(p, pos, tgt) {
   // the aim: along the way ahead, a touch down to the floor and the beam
   routePoint(s + 46, tgt);
   tgt.y = pos.y - 1.4;
-  // ...and after the last curve, to the tree: the roots and trunk first,
-  // then up into its crown as it comes in over the lake
+  // ...and after the last curve, to the cube at the lake's heart (the sweep
+  // racing out from it across the desert, the beam running on into it);
+  // as the tree grows out of it, up with its growing top
   const toTree = smooth(S_RIM - 100, S_RIM + 15, s);
+  const g = growAt(p);
   if (toTree > 0) {
-    const up = smooth(S_RIM + 10, S_END, s);
-    LOOK.set(TREE.x, WATER_Y + lerp(9, 46, up), TREE.z);
+    // (up with the tree's growing top as it draws up out of the cube)
+    const look = lerp(cubeY() - WATER_Y + 2, T.orbitLookTop, smooth(0.05, 1, g));
+    LOOK.set(TREE.x, WATER_Y + look, TREE.z);
     tgt.lerp(LOOK, toTree);
   }
-  const fov = lerp(50, 56, smooth(S_RIM, S_END, s));
+  let fov = lerp(50, 54, smooth(S_RIM, S_END, s));
+
+  // round the tree as it draws up out of the cube (with the scroll): a
+  // long swing round the trunk, in closer on the way, rising and drawing
+  // back as the tree climbs to its full height — staying out over the lake
+  // (T.orbitRadius under its 150 m: the ring of trees round it is never in
+  // the way), the lens widening to take in the whole tree
+  const o = smoother(T.tlOrbitStart, Math.max(T.tlOrbitEnd, T.tlOrbitStart + 0.002), p);
+  if (o > 0) {
+    const dx = pos.x - TREE.x;
+    const dz = pos.z - TREE.z;
+    const r0 = Math.hypot(dx, dz);
+    // (and once round, still drifting on round it — slowly, steadily — as
+    // the white ink spreads over the screen at the end: no stop)
+    const drift = Math.max(p - T.tlOrbitEnd, 0) / Math.max(1 - T.tlOrbitEnd, 0.002);
+    const a = Math.atan2(dz, dx) - THREE.MathUtils.degToRad(T.orbitSweep * o + T.orbitDrift * drift);
+    const r = lerp(r0, T.orbitRadius, o) - T.orbitIn * Math.sin(Math.PI * o);
+    const y = lerp(pos.y, WATER_Y + T.orbitRise, Math.pow(o, 1.4));
+    pos.set(TREE.x + Math.cos(a) * r, y, TREE.z + Math.sin(a) * r);
+    fov = lerp(fov, T.orbitFov, o);
+  }
 
   return fov;
 }
@@ -168,12 +197,15 @@ export function oasisCamera(p, pos, tgt) {
 // begins its turn; tuning.js tlRevealStart / tlRevealEnd)
 // (to the clock by which all of it has come up, and its plants grown:
 // world/revealMap.js)
+// (as the reference's: setting off slowly from the cube, then racing out
+// across the desert — an eased-in-out curve, bent towards its end)
 export function revealRadiusAt(p) {
   const REVEAL_MAX = revealEnd() + 160;
   const from = T.tlRevealStart;
   const to = Math.max(T.tlRevealEnd, from + 0.002);
   const x = Math.min(Math.max((p - from) / (to - from), 0), 1);
-  return REVEAL_MAX * (0.5 - 0.5 * Math.cos(Math.PI * x));
+  const e = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  return REVEAL_MAX * Math.pow(e, 1.7);
 }
 // (the journey's state follows it: set with the timeline's progress)
 export function deriveReveal(J, p) {

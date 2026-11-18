@@ -18,8 +18,8 @@ import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
 import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
-import { deriveReveal } from "./world/oasisCamera";
-import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
+import { cameraPace, cruisePace, deriveReveal } from "./world/oasisCamera";
+import { ASSETS, CUT_TO, JOURNEY_VH, P, SCROLL_PACE, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
 import { CTA, OASIS_LINES } from "./content";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
@@ -244,6 +244,44 @@ const TRAVEL_VH = JOURNEY_VH - 100; // scroll travel of the pinned section
 // Keys that scroll the page natively; ignored while the event auto-scrolls.
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 const linear = (t) => t;
+// the wheel's glide (Lenis's own ease-out): its opening speed is
+// distance × 10·ln2 / duration, which is what caps the lead below
+const glide = (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
+const GLIDE_RATE = (10 * Math.LN2) / SCROLL_PACE.duration;
+
+// A fixed pace (SCROLL_PACE) on the site's Lenis; returns the undo. Every
+// wheel step glides over the same time on the same ease (Lenis's duration,
+// not its open-ended lerp), and the scroll target may only run so far ahead
+// of the page, which caps the speed: a hard spin or a trackpad fling moves it
+// no faster than maxSpeed. Touch keeps the phone's own scrolling.
+// boostAt(y): how much further a scroll from page position y goes (1 = as set).
+function pace(lenis, boostAt) {
+  const o = lenis.options;
+  const before = { duration: o.duration, easing: o.easing, virtualScroll: o.virtualScroll };
+  o.duration = SCROLL_PACE.duration;
+  o.easing = glide;
+  o.virtualScroll = (data) => {
+    const e = data.event;
+    if (!e.type.includes("wheel") || e.ctrlKey) return true;
+    // (panels that scroll themselves keep their own wheel)
+    if (e.target instanceof Element && e.target.closest("[data-lenis-prevent], [data-lenis-prevent-wheel]")) return true;
+    const boost = boostAt(lenis.targetScroll);
+    const maxLead = ((boost * SCROLL_PACE.maxSpeed) / 100) * window.innerHeight / GLIDE_RATE;
+    const lead = lenis.targetScroll - lenis.animatedScroll;
+    let d = data.deltaY * boost;
+    if (d > 0) d = Math.min(d, Math.max(0, maxLead - lead));
+    else if (d < 0) d = Math.max(d, Math.min(0, -maxLead - lead));
+    if (Math.abs(d) < 1e-3 && data.deltaY !== 0) {
+      // already at full speed: swallow the step (a zero step would let the
+      // browser scroll the page natively, past the cap)
+      if (e.cancelable) e.preventDefault();
+      return false;
+    }
+    data.deltaY = d;
+    return true;
+  };
+  return () => Object.assign(o, before);
+}
 // The loader (Loader.jsx) holds the page until the scene is in; a review
 // frame (?p=) skips it.
 const wantsLoader = () => typeof window !== "undefined" && !new URLSearchParams(window.location.search).has("p");
@@ -428,6 +466,31 @@ function Journey({ env }) {
     lenisRef.current = lenis;
   }, [lenis]);
 
+  // the scroll's fixed pace while the page is here (pace() above). From the
+  // rock ground into sand, through the forged mark, to the end of the cut,
+  // each scroll goes as far as keeps the camera at one pace: T.forgedPace ×
+  // the oasis's cruise, metres per scroll (its run at the opening gathers
+  // pace, so the boost eases off as it does); past the cut that eases back
+  // to the cruise itself, where the oasis camera runs on at 1.
+  useEffect(() => {
+    if (!lenis) return;
+    const e = SCROLL_PACE.forgedBoostEase;
+    const boostAt = (y) => {
+      const el = sectionRef.current;
+      if (!el) return 1;
+      const range = el.offsetHeight - window.innerHeight;
+      const p = range > 0 ? (y - el.offsetTop) / range : 0;
+      const into = clamp01((p - brokenAt()) / e);
+      const past = clamp01((p - CUT_TO()) / e);
+      if (into <= 0 || past >= 1) return 1;
+      const s = (x) => x * x * (3 - 2 * x);
+      const want = (1 + (T.forgedPace - 1) * (1 - s(past))) * cruisePace();
+      const match = Math.min(Math.max(want / Math.max(cameraPace(p), 1e-3), 1), 16);
+      return 1 + (match - 1) * s(into);
+    };
+    return pace(lenis, boostAt);
+  }, [lenis]);
+
   // Scroll position of a scroll fraction p, in page pixels.
   const pToY = useCallback((p) => {
     const el = sectionRef.current;
@@ -559,7 +622,7 @@ function Journey({ env }) {
         if (diff !== 0) {
           // jumps land at once; scrolling is eased
           if (Math.abs(diff) > 0.04 || Math.abs(diff) < 1e-6) current = goal;
-          else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
+          else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / SCROLL_PACE.follow));
         }
         apply(current);
         // the light at the end, white to the site below

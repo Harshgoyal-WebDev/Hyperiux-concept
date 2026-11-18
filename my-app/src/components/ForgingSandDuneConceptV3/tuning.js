@@ -78,24 +78,33 @@ export const T = {
   revealBlur: 3.0, // ...smeared outwards (motion blur)
   revealChroma: 1.4, // ...and split into its colours
 
+  // The scroll's pace (wheel): one fixed feel, whoever is scrolling
+  scrollDuration: 1.1, // seconds each wheel step eases in over
+  scrollStep: 110, // the most one wheel step moves (px)
+  scrollLead: 0.9, // the most it can run ahead of where it is (× the window's height)
+  scrollBoost: 1.3, // how much quicker it goes from the rock breaking off the logo until the cut lands in the valley
+
   // Beam
   trailIntensity: 2.98,
   beamStart: 0.58, // how far along its path the beam is already drawn at the hero (0..1)
   // Timeline points (scroll position p, 0 = top of the page, 1 = the end;
   // the dev HUD and the panel's scrubber show p): when things start and end
-  tlCutStart: 0.4506, // the glass-hexagon cut from the logo to the valley: starts
-  tlCutEnd: 0.6758, // ...ends (the valley camera takes over)
-  tlRevealStart: 0.7555, // the oasis starts rising, from the tree outwards (the camera turning to it)
-  tlRevealEnd: 0.85, // ...has spread over all of it
-  tlTreeGrowStart: 0.7585, // the Yggdrasil starts growing out of the lake, strand by strand
-  tlTreeGrowEnd: 0.81, // ...fully grown
+  tlCutStart: 0.3945, // the glass-hexagon cut from the logo to the valley: starts
+  tlCutEnd: 0.5917, // ...ends (the valley camera takes over)
+  tlRevealStart: 0.58, // the sweep sets off from the cube, across the desert (the camera turning to it)
+  tlRevealEnd: 0.8, // ...has swept over all of it
+  tlBeamToTreeStart: 0.752, // the beam leaves the stream for the cube
+  tlBeamToTreeEnd: 0.795, // ...touches it (the cube turns out: the tree starts)
+  tlTreeGrowStart: 0.797, // the Yggdrasil's strands start streaming out of the cube: the whole tree drawing up, bottom to top, in one
+  tlTreeGrowEnd: 0.915, // ...fully grown, to the top of its crown
+  tlTreeLightEnd: 0.94, // the tree's light has climbed to the top of its crown
+  tlOrbitStart: 0.797, // the camera starts round the tree as it draws up
+  tlOrbitEnd: 0.93, // ...and settles
+  treeDrawLength: 0.1, // how long (share of the growth) each strand's newest stretch takes to ease out of the cube into place
   treeLeafGlow: 1.0, // the Yggdrasil's (cosmic) leaves: their brightness before the tree's light reaches them
-  treeLeafLit: 1.2, // ...and the extra glow once it has climbed to them
+  treeLeafLit: 2.0, // ...and the extra glow once it has climbed to them
   treeLeafColor: "#ffffff", // ...a tint over their own colours (white: as made)
   treeGrowJitter: 0.25, // how far apart the strands grow (0 = all together, one front)
-  tlBeamToTreeStart: 0.812, // the beam leaves the stream for the tree (its light climbs from the root it touches)
-  tlBeamToTreeEnd: 0.868, // ...has run into its core
-  tlTreeLightEnd: 0.9605, // the tree's light has climbed to the top of its crown
 
   // the beam: one solid beam of light, a lightsaber's blade (scene/saber.js)
   beamIntensity: 1.68, // overall
@@ -138,6 +147,8 @@ export const T = {
   strandDim: 0.35, // ...where the light hasn't climbed to yet
   strandPulseSpeed: 0.25, // pace of the pulses running up them
   strandFill: -1, // where its light has climbed to (flow 0..1; -1 follows the scroll)
+  strandPush: 0.6, // the tree's strands moving aside from the cursor (m; 0 = none)
+  strandPushRadius: 7, // ...how far round the cursor (m)
   embers: 1.0, // motes of light drifting up round the trunk
   oasisBeam: 1.0, // the beam past the mark (x trailIntensity)
   oasisBeamLead: 0.31, // how far ahead of the camera it runs (x 150 m)
@@ -146,10 +157,30 @@ export const T = {
   logoParallax: 2.5, // the forged logo turning towards the cursor (0 = still)
   logoYaw: 10, // ...degrees left/right at the screen's edge
   logoPitch: 6, // ...degrees up/down
-  revealRing: 1.0, // the threads of light running and swirling out ahead of the oasis (0 = none)
-  rivuletColor: "#ff7a1f", // ...their colour
+  // the sweep: the oasis revealed by a line of light racing out from the cube across the desert
+  sweepGlow: 1.6, // its brightness (0 = none)
+  sweepColor: "#ff6a1a", // its glow's colour (the line itself is white-hot)
+  sweepWidth: 16, // its glow's width far out (m; finer near the cube)
+  sweepSplit: 2.5, // its colours split at the edge (m: red leading, blue trailing)
+  sweepWaver: 6, // its edge wavering as it goes (m)
+  // the cube at the lake's heart, where the tree will grow
+  cubeSize: 4, // its edge (m)
+  cubeHover: 1.2, // how far over the island it floats (m)
+  cubeGlow: 1.6, // how brightly it glows
+  cubeColor: "#ff7a2a",
+  cubeTilt: 24, // how far it is turned (degrees)
+  // the camera round the tree as it grows
+  orbitSweep: 270, // degrees it goes round (+ anticlockwise from above)
+  orbitDrift: 35, // degrees it drifts on round the tree after, as the white ink spreads at the end
+  orbitRadius: 138, // its distance from the trunk at the end (m)
+  orbitIn: 35, // how much closer it comes on the way round (m)
+  orbitRise: 44, // its height over the water at the end (m)
+  orbitFov: 64, // its lens at the end, wide enough for the whole tree (degrees)
+  orbitLookTop: 50, // the height it looks up to as the tree tops out (m over the water)
   cutGlass: 1.0, // the glass tiles of the cut from the logo: how much they bend the image
   cutChroma: 0.12, // ...and split its colours
+  oasisTreeSize: 1.9, // the oasis's trees (x; bigger still round the lake)
+  valleyWidth: 0.7, // the valley's floor between the dunes (x; the land is reshaped round it)
   oasisStreamWidth: 1.6, // the oasis stream's width (x; the land is reshaped round it)
   eyePassage: 4.4, // the camera's height over the stream (m)
   eyeLake: 8.5, // ...and over the lake, coming in to the tree

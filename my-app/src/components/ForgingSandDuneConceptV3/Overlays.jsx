@@ -22,9 +22,14 @@ export const HeroOverlay = forwardRef(function HeroOverlay(_, ref) {
           {HERO.body}
         </p>
       </div>
-      <div data-hero-reveal data-hero-cue className="absolute bottom-[6vh] left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 max-[33.875rem]:bottom-[9vh]">
-        <span className="font-[family-name:var(--font-aeonikpro)] text-[0.75vw] uppercase tracking-[0.3em] text-white/60 max-[64rem]:text-[1.6vw] max-[33.875rem]:text-[2.8vw]">{HERO.cue}</span>
-        <span className="block h-[5vh] w-px origin-top animate-pulse bg-gradient-to-b from-[#FF5F00] to-transparent" />
+      {/* (the scroll hides the cue — data-hero-cue, timeline.js — and the
+        entrance brings it in — data-hero-reveal: one each, so neither
+        overrides the other) */}
+      <div data-hero-cue className="absolute bottom-[6vh] left-1/2 -translate-x-1/2 max-[33.875rem]:bottom-[9vh]">
+        <div data-hero-reveal className="flex flex-col items-center gap-3">
+          <span className="font-[family-name:var(--font-aeonikpro)] text-[0.75vw] uppercase tracking-[0.3em] text-white/60 max-[64rem]:text-[1.6vw] max-[33.875rem]:text-[2.8vw]">{HERO.cue}</span>
+          <span className="block h-[5vh] w-px origin-top animate-pulse bg-gradient-to-b from-[#FF5F00] to-transparent" />
+        </div>
       </div>
     </div>
   );

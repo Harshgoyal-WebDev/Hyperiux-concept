@@ -9,6 +9,8 @@ import { ASSETS, P, SUN_DIR, zoneAt } from "../../config";
 import { T } from "../../tuning";
 import { TREE, WATER_Y, revealAt } from "../../world/oasis";
 import { buildCrown, buildWood } from "../../world/yggdrasil";
+import { attachPointer, pointer } from "../../pointer";
+import { cubeY } from "../../world/oasisCamera";
 
 // The Yggdrasil, at the heart of the oasis: public/models/yggdrasil.glb when
 // it is there (fitted to TREE's height on its island), and until then a
@@ -271,13 +273,53 @@ function strandMaterial(material, uniforms) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute float _flow;\nattribute float _seed;\nvarying float vFlow;\nvarying float vSeed;\nvarying float vClimb;")
+      .replace("#include <common>", "#include <common>\nattribute float _flow;\nattribute float _seed;\nuniform float uTime;\nuniform float uGrow;\nuniform float uGrowJitter;\nuniform float uDrawLen;\nuniform vec3 uCubeC;\nuniform float uCubeH;\nuniform vec3 uRayO;\nuniform vec3 uRayD;\nuniform float uPush;\nuniform float uPushR;\nvarying float vFlow;\nvarying float vSeed;\nvarying float vClimb;")
       // how far up the tree a point is, for the light's climb: its height in
       // the model (−4.5 m, the deepest root, to 42.9 m, the crown's top) with
       // a little of its flow, so the roots' ends light just before their foot.
       // (By flow alone the roots — half its range, a short way up — took half
       // the climb, then the trunk and branches went by in a rush: two parts.)
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvFlow = _flow;\nvSeed = _seed;\nvClimb = clamp((position.y + 4.5) / 47.4, 0.0, 1.0) * 0.9 + _flow * 0.1;");
+      // ...and how it grows (and the light climbs it after): one front, the
+      // whole tree at once from its deepest root (−4.5 m in the model) to the
+      // crown's top (42.9 m) — each filament a little apart by its seed
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvFlow = _flow;\nvSeed = _seed;\nvClimb = clamp((position.y + 4.5) / 47.4, 0.0, 1.0);"
+      )
+      // the cursor: strands near the line under it ease aside (out from the
+      // line, in world metres; a slight quiver along each, by its seed),
+      // turned back into the strand's own space (rotation × uniform scale)
+      .replace(
+        "#include <project_vertex>",
+        `// the roots spun out of the cube: the newest stretch of each root
+        // filament (just behind its growing tip) is drawn from the cube's
+        // outline — the point of it facing this vertex — and eases out into
+        // its place, so the roots stream out of the cube's lines; the trunk,
+        // limbs and crown simply draw up from the bottom, on the same front
+        if (uGrow < 0.999 && _flow < 0.5) {
+          float grownV = uGrow * (1.0 + uGrowJitter) - _seed * uGrowJitter;
+          float settle = clamp((grownV - vClimb) / uDrawLen, 0.0, 1.0);
+          settle = 1.0 - pow(1.0 - settle, 3.0);
+          vec3 pw0 = (modelMatrix * vec4(transformed, 1.0)).xyz;
+          vec3 dir = pw0 - uCubeC;
+          vec3 ad = abs(dir);
+          vec3 onCube = uCubeC + dir * (uCubeH / max(max(ad.x, max(ad.y, ad.z)), 1e-3));
+          vec3 dw0 = (onCube - pw0) * (1.0 - settle);
+          float s20 = dot(modelMatrix[0].xyz, modelMatrix[0].xyz);
+          transformed += transpose(mat3(modelMatrix)) * dw0 / s20;
+        }
+        if (uPush > 0.0001) {
+          vec3 pw = (modelMatrix * vec4(transformed, 1.0)).xyz;
+          vec3 rel = pw - uRayO;
+          vec3 off = rel - uRayD * dot(rel, uRayD);
+          float d = length(off);
+          float k = (1.0 - smoothstep(0.0, uPushR, d)) * uPush * (0.85 + 0.15 * sin(uTime * 4.0 + _seed * 40.0 + position.y * 0.6));
+          vec3 dw = off / max(d, 1e-3) * k;
+          float s2 = dot(modelMatrix[0].xyz, modelMatrix[0].xyz);
+          transformed += transpose(mat3(modelMatrix)) * dw / s2;
+        }
+        #include <project_vertex>`
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
@@ -329,15 +371,18 @@ function leafMaterial(material, uniforms) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying float vLeafClimb;\nvarying float vLeafSeed;")
+      .replace("#include <common>", "#include <common>\nvarying float vLeafClimb;\nvarying float vLeafH;\nvarying float vLeafSeed;")
+      // (vLeafH: its height on the tree's own scale — where the strands'
+      // light reaches it; vLeafClimb: when it comes out — only once the
+      // branches have drawn on past it, the last of them as the tree tops out)
       .replace(
         "#include <begin_vertex>",
-        "#include <begin_vertex>\nvLeafClimb = clamp((position.y + 4.5) / 47.4, 0.0, 1.0);\nvLeafSeed = fract(sin(dot(position.xz, vec2(12.9898, 78.233))) * 43758.5453);"
+        "#include <begin_vertex>\nvLeafH = clamp((position.y + 4.5) / 47.4, 0.0, 1.0);\nvLeafClimb = 0.3 + 0.7 * vLeafH;\nvLeafSeed = fract(sin(dot(position.xz, vec2(12.9898, 78.233))) * 43758.5453);"
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform float uFill;\nuniform float uGrow;\nuniform float uGrowJitter;\nuniform float uLeafBase;\nuniform float uLeafLit;\nuniform vec3 uLeafColor;\nvarying float vLeafClimb;\nvarying float vLeafSeed;"
+        "#include <common>\nuniform float uFill;\nuniform float uGrow;\nuniform float uGrowJitter;\nuniform float uLeafBase;\nuniform float uLeafLit;\nuniform vec3 uLeafColor;\nuniform vec3 uGlowColor;\nvarying float vLeafClimb;\nvarying float vLeafH;\nvarying float vLeafSeed;"
       )
       .replace(
         "#include <clipping_planes_fragment>",
@@ -348,8 +393,12 @@ function leafMaterial(material, uniforms) {
       .replace(
         "#include <opaque_fragment>",
         `{
-          float leafLit = 1.0 - smoothstep(uFill - 0.04, uFill + 0.01, vLeafClimb);
+          // the energy climbing the tree lights them as it passes: brighter
+          // behind its front, and a warm glow at the front itself
+          float leafLit = 1.0 - smoothstep(uFill - 0.04, uFill + 0.01, vLeafH);
+          float leafFront = exp(-pow((vLeafH - uFill) / 0.035, 2.0)) * step(0.001, uFill) * step(uFill, 0.999);
           outgoingLight *= uLeafColor * (uLeafBase + uLeafLit * leafLit);
+          outgoingLight += uGlowColor * leafFront * uLeafLit * 1.6 * max(max(outgoingLight.r, outgoingLight.g), max(outgoingLight.b, 0.25));
         }
         #include <opaque_fragment>`
       );
@@ -381,6 +430,7 @@ function StrandTree({ J, tier, uniforms, onReady }) {
         node.parent.add(copy);
       }
     }
+
     const materials = new Map();
     root.traverse((o) => {
       if (!o.isMesh) return;
@@ -396,14 +446,30 @@ function StrandTree({ J, tier, uniforms, onReady }) {
     return root;
   }, [gltf, tier, uniforms]);
   useEffect(() => onReady?.(), [object, onReady]);
+  const push = useMemo(() => ({ ndc: new THREE.Vector2(), on: 0, ray: new THREE.Raycaster() }), []);
+  useEffect(() => attachPointer(), []);
   // it grows out of the lake, strand by strand from the bottom up (not
   // scaled: its filaments extend — uGrow, tuning.js tlTreeGrowStart / End)
-  useFrame(() => {
+  useFrame(({ camera }, delta) => {
     const from = T.tlTreeGrowStart;
     const x = THREE.MathUtils.clamp((J.progress - from) / Math.max(T.tlTreeGrowEnd - from, 0.002), 0, 1);
     uniforms.uGrow.value = x;
     uniforms.uGrowJitter.value = T.treeGrowJitter;
+    uniforms.uCubeC.value.set(TREE.x, cubeY(), TREE.z);
+    uniforms.uCubeH.value = T.cubeSize * 0.5;
+    uniforms.uDrawLen.value = T.treeDrawLength;
     object.visible = x > 0.0005 || J.warmup > 0;
+    // the cursor's line through the scene (eased after the cursor: the
+    // strands drift aside and settle back, never snap)
+    const k = 1 - Math.exp(-delta * 7);
+    push.ndc.x += ((pointer.active ? pointer.x : push.ndc.x) - push.ndc.x) * k;
+    push.ndc.y += ((pointer.active ? pointer.y : push.ndc.y) - push.ndc.y) * k;
+    push.on += ((pointer.active && x > 0.0005 ? 1 : 0) - push.on) * (1 - Math.exp(-delta * 3));
+    push.ray.setFromCamera(push.ndc, camera);
+    uniforms.uRayO.value.copy(push.ray.ray.origin);
+    uniforms.uRayD.value.copy(push.ray.ray.direction);
+    uniforms.uPush.value = T.strandPush * push.on;
+    uniforms.uPushR.value = T.strandPushRadius;
   });
   return <primitive object={object} />;
 }
@@ -427,6 +493,18 @@ export default function Yggdrasil({ J, tier, onReady }) {
       uFill: { value: 0 },
       uGrow: { value: 0 },
       uGrowJitter: { value: 0.25 },
+      // the cube the strands stream out of (world centre, half its edge),
+      // and how much of the growth each filament's newest stretch takes to
+      // ease out of it into place
+      uCubeC: { value: new THREE.Vector3() },
+      uCubeH: { value: 2 },
+      uDrawLen: { value: 0.1 },
+      // the cursor's line through the scene (origin, direction), how far
+      // the strands round it move aside (m) and its reach (m)
+      uRayO: { value: new THREE.Vector3() },
+      uRayD: { value: new THREE.Vector3(0, 0, -1) },
+      uPush: { value: 0 },
+      uPushR: { value: 10 },
       uLeafBase: { value: 1 },
       uLeafLit: { value: 1.6 },
       uLeafColor: { value: new THREE.Color("#ffffff") },
@@ -534,7 +612,9 @@ export default function Yggdrasil({ J, tier, onReady }) {
     // (from the moment the beam touches a root — Streaks works out where in
     // the scroll that is — one steady climb to the crown, halfway through
     // the light opening onto the site)
-    const from = J.treeFillFrom;
+    // (the light follows the growth up out of the cube: from the moment it
+    // starts to the top of the crown)
+    const from = T.tlTreeGrowStart;
     const to = T.tlTreeLightEnd;
     const fill = from > 0 && from < to ? THREE.MathUtils.clamp((J.progress - from) / (to - from), 0, 1) : 0;
     uniforms.uFill.value = T.strandFill >= 0 ? T.strandFill : fill;
@@ -548,7 +628,10 @@ export default function Yggdrasil({ J, tier, onReady }) {
     // as the glow climbs it — no flash
     uniforms.uGain.value = T.strandGain;
     uniforms.uPulse.value = 0;
-    const lit = THREE.MathUtils.smoothstep(fill, 0.0, 0.35);
+    // (and not before the tree has grown up to its core: no light hanging
+    // over the cube while only the roots are out)
+    const grown = (p - T.tlTreeGrowStart) / Math.max(T.tlTreeGrowEnd - T.tlTreeGrowStart, 0.002);
+    const lit = THREE.MathUtils.smoothstep(fill, 0.0, 0.35) * THREE.MathUtils.smoothstep(grown, 0.42, 0.55);
     // (the aura and the haze round the crown: all of it under treeAura — 0, none)
     const amber = J.amber * risen;
     glow.aura.material.color.copy(ORANGE).multiplyScalar((0.12 * amber + 0.1 * g * lit) * T.treeAura);

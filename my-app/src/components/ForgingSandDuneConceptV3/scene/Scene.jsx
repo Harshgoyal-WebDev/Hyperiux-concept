@@ -9,8 +9,7 @@ import { RESHAPE_EVENT } from "../world/oasis";
 import * as THREE from "three";
 import { FORGE, FORGE_LAYER, NO_MIRROR_LAYER, VALLEY_LAYER } from "../config";
 import Sky from "./Sky";
-import Terrain, { buildHeightField, buildTerrainGeometry } from "./Terrain";
-import SandField from "./SandField";
+import Terrain, { buildTerrainGeometry } from "./Terrain";
 import Forge from "./Forge";
 import ForgeBeam from "./ForgeBeam";
 import Oasis from "./oasis/Oasis";
@@ -91,19 +90,12 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
   const terrain = useMemo(() => createTerrainSampler(), [shape]);
   const envSky = useMemo(() => ({ uNight: { value: 0 }, uWhite: { value: 0 }, uWhiteLevel: { value: 1 } }), []);
   const terrainGeometry = useMemo(() => buildTerrainGeometry(terrain, tier.terrainSegments), [terrain, tier]);
-  const heightField = useMemo(() => buildHeightField(terrain, tier.terrainSegments), [terrain, tier]);
   const groundY = useMemo(() => footprintGround(terrain), [terrain]);
   const rockSet = useMemo(() => {
     const shards = buildShards();
     return buildRockSet(shards, buildScatter(shards), terrain);
   }, [terrain]);
-  useEffect(
-    () => () => {
-      terrainGeometry.dispose();
-      heightField.texture.dispose();
-    },
-    [terrainGeometry, heightField],
-  );
+  useEffect(() => () => terrainGeometry.dispose(), [terrainGeometry]);
 
   const [forge, setForge] = useState(null);
   // the post passes, while the live quality keeps them (quality.js)
@@ -156,7 +148,6 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         <ValleyLayer>
           <Oasis J={J} tier={tier} shared={shared} terrain={terrain} forge={forge} />
         </ValleyLayer>
-        {tier.sandGrains > 0 && <SandField J={J} tier={tier} shared={shared} heightField={heightField} />}
         <Dust J={J} tier={tier} shared={shared} />
       </group>
 

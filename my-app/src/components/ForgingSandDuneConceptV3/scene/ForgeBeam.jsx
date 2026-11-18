@@ -233,10 +233,13 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const k = THREE.MathUtils.clamp((performance.now() / 1000 - J.enterAt - 0.5) / 2.8, 0, 1);
     const race = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     u.uHead.value = THREE.MathUtils.lerp(built.intro, head, Math.max(race, J.intro));
-    // once the core has taken the energy the beam settles to a quieter glow,
-    // and comes up again as it runs on out of the core past the mark
-    // (scene/oasis/Streaks.jsx): one line, in and out
-    u.uIntensity.value = T.beamIntensity * THREE.MathUtils.lerp(1 - 0.45 * J.beamFade, 1, J.duneBeam) * J.beamVis;
+    // ...and the whole of it goes as the stone breaks away — the stretch
+    // along the sand together with the one up the slab's face (J.beamFade):
+    // nothing left lying on the sand without a purpose (the beam on out of
+    // the core, past the mark, is Streaks.jsx's own)
+    const gone = J.beamFade;
+    built.beam.material.visible = gone < 0.999;
+    u.uIntensity.value = T.beamIntensity * J.beamVis * (1 - gone);
     // (the part up the slab's face goes as the stone breaks away)
     u.uWall.value = 1 - J.beamFade;
     u.uPixel.value = (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / gl.domElement.height;
@@ -246,7 +249,7 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const h = u.uHead.value;
     const cu = built.cap.material.uniforms;
     built.path.getPointAt(Math.min(h, 1), cu.uHeadPos.value);
-    cu.uCapOn.value = h < 0.999 ? THREE.MathUtils.smoothstep(h, 0.0, 0.05) * (h > foot ? 1 - J.beamFade : 1) : 0;
+    cu.uCapOn.value = h < 0.999 ? THREE.MathUtils.smoothstep(h, 0.0, 0.05) * (h > foot ? 1 - J.beamFade : 1) * (1 - gone) : 0;
   });
 
   return (

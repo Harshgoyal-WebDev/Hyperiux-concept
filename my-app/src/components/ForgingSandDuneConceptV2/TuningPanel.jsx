@@ -30,6 +30,7 @@ const OBJECT_SCHEMA = {
   "Scroll sequence": {
     forgeDuration: [2, 14, 0.1],
     forgeReverse: [0.5, 8, 0.1],
+    forgedPace: [0.5, 4, 0.05],
   },
   Entering: {
     arriveDuration: [0.5, 8, 0.05],

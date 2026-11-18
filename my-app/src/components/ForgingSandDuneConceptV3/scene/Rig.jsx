@@ -144,7 +144,13 @@ export function UniformSync({ J, shared, shockCenter }) {
     shared.uLineDepth.value = T.lineDepth;
     // the oasis rising out of the desert (world/oasis.js REVEAL_ORIGIN)
     shared.uOasisReveal.value.set(REVEAL_ORIGIN.x, REVEAL_ORIGIN.y, J.revealR, REVEAL_BAND);
-    shared.uOasisRing.value = T.revealRing;
+    shared.uOasisRing.value = T.sweepGlow;
+    // the sweep's look (world/revealMap.js ncSweep)
+    shared.uSweep.value.set(T.sweepWidth, T.sweepSplit, T.sweepGlow, T.sweepWaver);
+    if (shared.uSweepColor.userData !== T.sweepColor) {
+      shared.uSweepColor.value.set(T.sweepColor);
+      shared.uSweepColor.userData = T.sweepColor;
+    }
     // (the whiteout's uniforms stay at rest: shared.uWhite etc.)
     fog.color.copy(HAZE).lerp(NIGHT_HAZE, night);
     fog.density = T.fogDensity;

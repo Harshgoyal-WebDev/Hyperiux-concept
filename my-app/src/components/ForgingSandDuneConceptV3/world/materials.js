@@ -67,6 +67,10 @@ export function createSharedUniforms() {
     // (world/revealMap.js; until it is built: never)
     uRevealMap: { value: emptyRevealMap() },
     uRevealRect: { value: new THREE.Vector4(0, 0, 1, 1) },
+    // the sweep's look (world/revealMap.js ncSweep): glow width (m), colour
+    // split (m), intensity, waver (m); and its colour
+    uSweep: { value: new THREE.Vector4(10, 2.5, 1, 6) },
+    uSweepColor: { value: new THREE.Color("#ff6a1a") },
   };
 }
 
@@ -326,8 +330,9 @@ export function createSandMaterial(shared) {
         // (none of it until the oasis has come up here)
         float ncRev = ncReveal(ncP);
         ncOasis.rgb *= ncRev;
-        // (the light running out ahead of it is drawn apart: scene/oasis/Rivulets.jsx)
-        float ncFront = 0.0;
+        // the sweep: a line of light running out across the desert, the
+        // oasis behind it (its edge wavering slowly)
+        vec3 ncFront = uOasisReveal.z > 0.5 ? ncSweep(ncP, uTime, ncNoise(vec3(ncP * 0.015, uTime * 0.15)) - 0.5) : vec3(0.0);
         // (the ripples settle where it is wet or grown over)
         ncRip *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.8;
         ncRip2 *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.85;
@@ -381,7 +386,7 @@ export function createSandMaterial(shared) {
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
         totalEmissiveRadiance += vec3(1.0, 0.42, 0.1) * (shRing * 0.8 + shTrail * 0.12);
-        totalEmissiveRadiance += vec3(1.0, 0.5, 0.14) * ncFront * 1.6;`
+        totalEmissiveRadiance += ncFront;`
       )
       .replace(
         "#include <fog_fragment>",

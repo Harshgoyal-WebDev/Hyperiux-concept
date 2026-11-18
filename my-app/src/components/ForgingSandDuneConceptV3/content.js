@@ -85,8 +85,8 @@ export const CTA = {
 const LINES = [
   { id: "bring", eyebrow: "What we bring", text: "Strategy. Design. Technology.", from: ["passage", 0.22], to: ["passage", 0.95], place: "low" },
   { id: "concept", eyebrow: "Design × Technology", text: "From concept to conversion.", body: JOURNEY[2].body, from: ["glow", 0.1], to: ["glow", 0.92], place: "left" }, // site
-  { id: "tree", text: "Potential deserves a place to grow.", from: ["reveal", 0.2], to: ["canopy", 0.08], place: "left" },
-  { id: "growth", eyebrow: "Organic growth", text: "Growth you can see.", body: JOURNEY[3].body, from: ["canopy", 0.2], to: ["outro", 0.35], place: "right" }, // site
+  { id: "tree", text: "Potential deserves a place to grow.", from: ["reveal", 0.2], to: ["canopy", 0.55], place: "left" },
+  { id: "growth", eyebrow: "Organic growth", text: "Growth you can see.", body: JOURNEY[3].body, from: ["grow", 0.3], to: ["outro", 0.4], place: "right" }, // site
 ];
 export const OASIS_LINES = LINES.map((l) => {
   const from = zoneAt(...l.from);

@@ -11,6 +11,7 @@ import { SplitText } from "gsap/SplitText";
 import Scene from "./scene/Scene";
 import { AssetBadge, HeroOverlay, OasisCopy } from "./Overlays";
 import WhiteWebsite from "./WhiteWebsite";
+import InkOverlay from "./InkOverlay";
 import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
@@ -19,7 +20,7 @@ import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
 import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
 import { deriveReveal } from "./world/oasisCamera";
-import { ASSETS, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
+import { ASSETS, CUT_TO, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
 import { CTA, OASIS_LINES } from "./content";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
@@ -90,6 +91,31 @@ function getClientEnv() {
     };
   }
   return clientEnv;
+}
+
+// The page's set scroll pace on the site's (shared) Lenis: each wheel step
+// eases in over T.scrollDuration, is capped at T.scrollStep, never runs more
+// than T.scrollLead screens ahead, and goes T.scrollBoost quicker from the
+// rock breaking off the logo until the cut lands in the valley. Returns the
+// undo (the site's own settings back).
+function paceScroll(lenis, J) {
+  const o = lenis.options;
+  const saved = { duration: o.duration, easing: o.easing, virtualScroll: o.virtualScroll };
+  o.duration = T.scrollDuration;
+  o.easing = (t) => 1 - Math.pow(1 - t, 3);
+  o.virtualScroll = (data) => {
+    if (!data.event.type.includes("wheel")) return true;
+    o.duration = T.scrollDuration;
+    let d = Math.max(-T.scrollStep, Math.min(T.scrollStep, data.deltaY));
+    const p = J.progress;
+    if (p >= brokenAt() && p < CUT_TO()) d *= T.scrollBoost;
+    const ahead = lenis.targetScroll - lenis.animatedScroll;
+    const max = window.innerHeight * T.scrollLead;
+    if (Math.abs(ahead + d) > max) d = Math.sign(ahead + d) * max - ahead;
+    data.deltaY = d;
+    return true;
+  };
+  return () => Object.assign(o, saved);
 }
 
 export default function ForgingSandDuneConceptV3() {
@@ -428,6 +454,15 @@ function Journey({ env }) {
     lenisRef.current = lenis;
   }, [lenis]);
 
+  // One set pace for the scroll (the site's Lenis is shared: this page's
+  // settings go on while it is open and come off as it closes): every
+  // wheel step eases in over the same fixed time; no single flick can throw
+  // the page further than a set step, and it never runs more than a set
+  // distance ahead of where it is — so no one can race through the story,
+  // nor crawl through it. From the rock breaking off the logo until the cut
+  // has landed in the valley, it goes T.scrollBoost (30%) quicker.
+  useEffect(() => (lenis ? paceScroll(lenis, J) : undefined), [lenis, J]);
+
   // Scroll position of a scroll fraction p, in page pixels.
   const pToY = useCallback((p) => {
     const el = sectionRef.current;
@@ -562,11 +597,10 @@ function Journey({ env }) {
           else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
         }
         apply(current);
-        // the light at the end, white to the site below
-        if (outroRef.current) {
-          const w = Math.min(Math.max(J.outro, 0), 1);
-          outroRef.current.style.opacity = String(w * w * (3 - 2 * w));
-        }
+        // the light at the end: white ink spreading from the centre over the
+        // whole screen, onto the white site (InkOverlay: all white a little
+        // before the end)
+        if (outroRef.current) outroRef.current.set(Math.min(Math.max(J.outro, 0) * 1.12, 1));
         // the hero's words: in after the loader, out (and back) with the
         // first of the scroll
         if (heroAnim.current) {
@@ -702,7 +736,7 @@ function Journey({ env }) {
         </div>
 
         {/* the light at the end: white, onto the site */}
-        <div ref={outroRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-[#fff9f1] opacity-0" />
+        <InkOverlay ref={outroRef} />
 
         {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
         <HeroOverlay ref={heroRef} />

@@ -28,7 +28,7 @@ export const WATER_Y = -0.6;
 
 // The round oasis at the end: its centre, the radius of its level floor
 // (the dunes rise beyond it), the lake, and the island the tree stands on.
-export const BASIN = { x: 170, z: -1044, floor: 215, lake: 150, island: 26 };
+export const BASIN = { x: 170, z: -1044, floor: 188, lake: 150, island: 26 };
 
 // The Yggdrasil (a placeholder is built until public/models/yggdrasil.glb
 // exists): its foot, height, and its core — where the streaks meet, in the
@@ -138,8 +138,10 @@ export function streamHalfWidth(s) {
 }
 export function floorHalfWidth(s) {
   const extra = Math.max(streamHalfWidth(s) - streamHalfWidth(s) / Math.max(T.oasisStreamWidth, 1e-3), 0);
-  if (s < 170) return lerp(46, 15, smooth(70, 170, s)) + extra;
-  return 15 + 7 * smooth(170, 380, s) + 6 * smooth(380, 620, s) + 8 * smooth(620, 880, s) + extra;
+  // (T.valleyWidth narrows it: the dunes on both sides stay in view)
+  const k = T.valleyWidth;
+  if (s < 170) return lerp(46, 15, smooth(70, 170, s)) * k + extra;
+  return (15 + 7 * smooth(170, 380, s) + 6 * smooth(380, 620, s) + 8 * smooth(620, 880, s)) * k + extra;
 }
 export const RESHAPE_EVENT = "forging-sand-dune-concept-v3:reshape";
 export function meander(s) {
@@ -225,7 +227,7 @@ function massif(e, x, z) {
   // (lower near the mark, so the hero's backdrop stays the low dunes)
   const near = 0.45 + 0.55 * smooth(-150, -420, z);
   const height = (28 + 30 * ridge * ridge + noiseA(x * 0.004, z * 0.004) * 6) * near;
-  const rise = smooth(0, 70, e);
+  const rise = smooth(0, 48, e);
   const fall = 1 - smooth(160, 460, e);
   // a softer foot (no step up from the floor)
   return height * Math.pow(rise, 1.3) * fall;
@@ -262,7 +264,7 @@ export function oasisHeight(base, x, z) {
 // turns to it after the last curve (world/oasisCamera.js revealRadiusAt).
 // The band behind the front over which things come up is REVEAL_BAND m wide.
 export const REVEAL_ORIGIN = new THREE.Vector2(TREE.x, TREE.z);
-export const REVEAL_BAND = 45;
+export const REVEAL_BAND = 20;
 // how far the oasis has come up at (x, z) by the reveal's clock R (0..1):
 // when each spot comes up is world/revealMap.js's (set here once built;
 // until then, a ring out from the tree)

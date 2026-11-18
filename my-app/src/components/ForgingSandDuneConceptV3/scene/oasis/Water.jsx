@@ -7,10 +7,11 @@ import * as THREE from "three";
 import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import { NO_MIRROR_LAYER, P, SUN_DIR } from "../../config";
 import { T } from "../../tuning";
-import { OASIS_RECT, WATER_Y } from "../../world/oasis";
+import { OASIS_RECT, WATER_Y, oasisAt, revealAt } from "../../world/oasis";
 import { REVEAL_GLSL } from "../../world/revealMap";
 import { createWaterRipples } from "../../world/waterRipples";
-import { waterHits } from "../../pointer";
+import { attachPointer, pointer, waterHits } from "../../pointer";
+import { CUT_TO } from "../../world/oasisCamera";
 
 // The oasis's water: the stream down the passage and the lake round the
 // tree — one sheet at WATER_Y over the oasis, the ground rising through it
@@ -219,7 +220,8 @@ export default function Water({ J, tier, shared, ground, treePos }) {
   }, [mirror, shared, ground, treePos]);
 
   const ripples = useMemo(() => createWaterRipples(new THREE.Vector4(0, 0, RIPPLE_SIZE, RIPPLE_SIZE), RIPPLE_RES), []);
-  const rip = useMemo(() => ({ last: null, centre: new THREE.Vector2(1e9, 1e9), fwd: new THREE.Vector3(), drops: [] }), []);
+  const rip = useMemo(() => ({ last: null, centre: new THREE.Vector2(1e9, 1e9), fwd: new THREE.Vector3(), drops: [], ndc: new THREE.Vector2(), ray: new THREE.Raycaster(), o: {} }), []);
+  useEffect(() => attachPointer(), []);
   useEffect(() => () => ripples.dispose(), [ripples]);
 
   useEffect(
@@ -250,6 +252,27 @@ export default function Water({ J, tier, shared, ground, treePos }) {
     if ((away > 25 && ripples.idle()) || away > RIPPLE_SIZE * 0.42) {
       rip.centre.set(cx, cz);
       ripples.recentre(cx, cz);
+    }
+    // the cursor over the water: its exact path (pointer.path, coalesced
+    // moves) cast from the camera onto the water's surface, wherever the
+    // oasis's water has come up (in the valley only: the sand no longer
+    // answers the cursor at all)
+    if (pointer.path.length) {
+      if (J.progress >= CUT_TO()) {
+        for (const pt of pointer.path) {
+          rip.ndc.set(pt.x, pt.y);
+          rip.ray.setFromCamera(rip.ndc, camera);
+          const { origin, direction } = rip.ray.ray;
+          if (direction.y >= -1e-4) continue;
+          const t = (WATER_Y - origin.y) / direction.y;
+          if (t <= 0 || t > 900) continue;
+          const x = origin.x + direction.x * t;
+          const z = origin.z + direction.z * t;
+          if (oasisAt(x, z, rip.o).w > -0.3 || revealAt(x, z, J.revealR) < 0.6) continue;
+          if (waterHits.length < 256) waterHits.push({ x, z, t: pt.t });
+        }
+      }
+      pointer.path.length = 0;
     }
     // the pointer's path over the water → rings every ~0.6 m along it,
     // stronger and wider the faster it moves

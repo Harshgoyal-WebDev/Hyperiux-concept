@@ -37,7 +37,7 @@ const runIn = (x) => 0.4 * x + 0.6 * (1 - Math.cos((x * Math.PI) / 2));
 const runInSlope = (x) => 0.4 + 0.6 * (Math.PI / 2) * Math.sin((x * Math.PI) / 2);
 const START_Z = 0.3;
 const runFrom = () => Math.min(brokenAt(), P.forged);
-function runPace(p) {
+export function runPace(p) {
   const span = P.through - runFrom();
   const x = Math.min(Math.max((p - runFrom()) / span, 0), 1);
   return ((RUN_FROM_Z - START_Z) * runInSlope(x)) / span;
@@ -106,6 +106,20 @@ function table() {
   cache = { p0, p1, s0, cum };
   cacheKey = key;
   return cache;
+}
+// The oasis's cruising pace (metres per unit of p): the scroll through the
+// logo stretch is matched to it (ForgingSandDuneConceptV2.jsx, T.forgedPace).
+export function cruisePace() {
+  const m = (P.passage + P.glow) / 2;
+  const d = 1e-4;
+  return (routeDistance(m + d) - routeDistance(m - d)) / (2 * d);
+}
+// ...and the pace of the shot on screen at p (metres per unit of p): the
+// logo's run up to the end of the cut, the valley camera from there
+export function cameraPace(p) {
+  if (p < CUT_TO()) return runPace(Math.min(p, P.through));
+  const d = 1e-4;
+  return (routeDistance(p + d) - routeDistance(p - d)) / (2 * d);
 }
 export function routeDistance(p) {
   const { p0, p1, s0, cum } = table();

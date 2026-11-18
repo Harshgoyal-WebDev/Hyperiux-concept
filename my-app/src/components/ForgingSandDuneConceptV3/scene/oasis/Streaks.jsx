@@ -8,8 +8,7 @@ import { P, VALLEY_LAYER } from "../../config";
 import { buildStrands } from "../ForgeBeam";
 import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, createSaberCap, saberUniforms, syncSaber } from "../saber";
 import { S_END, S_RIM, TREE, WATER_Y, meander, route } from "../../world/oasis";
-import { CUT_FROM, cameraHeightAt, descentAt, routeDistance } from "../../world/oasisCamera";
-import { ROOTS, rootPoint } from "../../world/yggdrasil";
+import { CUT_FROM, cameraHeightAt, cubeY, descentAt, routeDistance } from "../../world/oasisCamera";
 
 // The energy beam past the mark: the same beam the visitor first sees — the
 // bundle of strands that brought the energy into the logo's core. As the
@@ -46,7 +45,7 @@ const convergeAt = (p) => {
 // the head's place along a streak at p (m along it)
 function headAt(b, i, p, camS) {
   const lead = b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
-  const free = Math.min(camS + lead, b.qRoot > 0 ? b.qRoot : b.qMax - HOLD);
+  const free = Math.min(camS + lead, b.qMax - HOLD);
   const delay = (i / RIBBONS.length) * 0.35;
   const k = THREE.MathUtils.clamp((convergeAt(p) - delay) / (1 - delay), 0, 1);
   return { q: THREE.MathUtils.lerp(free, b.qMax, k * k * (3 - 2 * k)), k };
@@ -161,26 +160,17 @@ export function buildPath(rib, core, terrain) {
   let rootAt = -1;
   const c = TREE.core;
   if (rib.end.root !== undefined) {
-    // low over the lake to a root's end, along it into the foot, up the trunk
-    const root = ROOTS[rib.end.root];
+    // low over the lake, straight on into the cube at its heart (where the
+    // tree will grow): the beam touches it there
     const last = pts.at(-1);
-    const water = rootPoint(root, 1.25);
-    water.y = WATER_Y + 0.8;
-    tail.push(last.clone().lerp(water, 0.5).setY(WATER_Y + 0.8));
-    tail.push(water);
-    rootAt = tail.length - 1; // (where it touches the root: the tree lights from there)
-    // along the top of the root (over the water where it is under it)
-    for (const k of [0.6, 0.35, 0.15]) {
-      const q = rootPoint(root, k);
-      q.y = Math.max(q.y + root.radius * (1 - 0.82 * k) + 0.4, WATER_Y + 0.7);
-      tail.push(q);
-    }
-    const a = root.a;
-    for (let i = 1; i <= 4; i++) {
-      const ang = a + i * 0.9;
-      const r = 6.5 - i * 0.9;
-      tail.push(new THREE.Vector3(c.x + Math.cos(ang) * r, WATER_Y + 6 + ((c.y - WATER_Y - 6) * i) / 5, c.z + Math.sin(ang) * r));
-    }
+    const cube = new THREE.Vector3(TREE.x, cubeY(), TREE.z);
+    const lowY = WATER_Y + 0.8;
+    const toCube = cube.clone().setY(lowY).sub(last.clone().setY(lowY));
+    const len = toCube.length();
+    toCube.normalize();
+    for (const k of [0.3, 0.6, 0.85]) tail.push(last.clone().setY(lowY).addScaledVector(toCube, len * k).setY(THREE.MathUtils.lerp(lowY, cube.y, Math.pow(k, 3))));
+    tail.push(cube);
+    rootAt = tail.length - 1;
   } else {
     // round the crown, spiralling in, and down through it into the core
     const last = pts.at(-1);
@@ -197,8 +187,8 @@ export function buildPath(rib, core, terrain) {
     }
     ang += rib.end.dir * 0.6;
     tail.push(new THREE.Vector3(c.x + Math.cos(ang) * 9, c.y + 14, c.z + Math.sin(ang) * 9));
+    tail.push(c.clone());
   }
-  tail.push(c.clone());
   let q = qs.at(-1);
   let prev = pts.at(-1);
   let qRoot = -1;
@@ -294,7 +284,11 @@ export default function Streaks({ J, forge, terrain, shared }) {
       // light climbs from the roots with it (Yggdrasil.jsx)
       if (i === 0) J.beamInTree = b.qRoot > 0 ? THREE.MathUtils.clamp((q - b.qRoot) / (b.qMax - b.qRoot), 0, 1) : k;
       // (from the cut on the camera is in the valley: nothing behind it)
-      const back = J.progress >= CUT_FROM() ? camS - 4 : 0;
+      // ...until the camera turns away round the tree: then the beam fills
+      // back in behind, all the way up the way it came
+      const span = Math.max(T.tlOrbitEnd - T.tlOrbitStart, 0.002);
+      const unwind = THREE.MathUtils.smoothstep(J.progress, T.tlOrbitStart, T.tlOrbitStart + span * 0.3);
+      const back = J.progress >= CUT_FROM() ? (camS - 4) * (1 - unwind) : 0;
       let jt = 0;
       while (jt < b.qs.length - 2 && b.qs[jt + 1] < back) jt++;
       const ft = THREE.MathUtils.clamp((back - b.qs[jt]) / Math.max(b.qs[jt + 1] - b.qs[jt], 1e-3), 0, 1);

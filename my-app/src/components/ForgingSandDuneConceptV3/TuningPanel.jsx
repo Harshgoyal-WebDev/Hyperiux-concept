@@ -156,12 +156,46 @@ const OASIS_SCHEMA = {
     tlBeamToTreeStart: [0, 1, 0.0005],
     tlBeamToTreeEnd: [0, 1, 0.0005],
     tlTreeLightEnd: [0, 1, 0.0005],
+    tlOrbitStart: [0, 1, 0.0005],
+    tlOrbitEnd: [0, 1, 0.0005],
+    treeDrawLength: [0.01, 0.4, 0.005],
   },
   "Cut & reveal": {
     cutGlass: [0, 3, 0.01],
     cutChroma: [0, 0.6, 0.005],
-    revealRing: [0, 3, 0.01],
-    rivuletColor: "color",
+  },
+  "Sweep reveal": {
+    sweepGlow: [0, 4, 0.01],
+    sweepColor: "color",
+    sweepWidth: [1, 40, 0.1],
+    sweepSplit: [0, 10, 0.1],
+    sweepWaver: [0, 30, 0.1],
+  },
+  "Cube (where the tree grows)": {
+    cubeSize: [0.5, 10, 0.05],
+    cubeHover: [0, 6, 0.05],
+    cubeGlow: [0, 5, 0.01],
+    cubeColor: "color",
+    cubeTilt: [0, 45, 0.5],
+  },
+  "Scroll pace": {
+    scrollDuration: [0.3, 3, 0.05],
+    scrollStep: [20, 400, 5],
+    scrollLead: [0.2, 3, 0.05],
+    scrollBoost: [1, 2, 0.01],
+  },
+  "Tree & cursor": {
+    strandPush: [0, 6, 0.05],
+    strandPushRadius: [1, 40, 0.5],
+  },
+  "Camera round the tree": {
+    orbitSweep: [-360, 360, 1],
+    orbitDrift: [-180, 180, 1],
+    orbitRadius: [40, 220, 1],
+    orbitIn: [0, 90, 1],
+    orbitRise: [2, 80, 0.5],
+    orbitLookTop: [10, 100, 0.5],
+    orbitFov: [40, 80, 0.5],
   },
   Camera: {
     eyePassage: [1.5, 12, 0.1],
@@ -184,6 +218,7 @@ const OASIS_SCHEMA = {
   },
   Water: {
     oasisStreamWidth: [0.4, 4, 0.01],
+    valleyWidth: [0.5, 1.5, 0.01],
     waterShallow: "color",
     waterDeep: "color",
     waterShore: "color",
@@ -299,7 +334,7 @@ function buildControls(schema) {
         // (values the scroll timeline is built from: rebuild it)
         if (RETIME.has(key)) window.dispatchEvent(new Event(RETIME_EVENT));
         // (the land itself: the terrain, its water and plants are rebuilt)
-        if (key === "oasisStreamWidth") window.dispatchEvent(new Event("forging-sand-dune-concept-v3:reshape"));
+        if (key === "oasisStreamWidth" || key === "valleyWidth") window.dispatchEvent(new Event("forging-sand-dune-concept-v3:reshape"));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };

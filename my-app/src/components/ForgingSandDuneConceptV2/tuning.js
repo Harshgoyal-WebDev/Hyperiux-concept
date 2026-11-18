@@ -85,9 +85,9 @@ export const T = {
   // the dev HUD and the panel's scrubber show p): when things start and end
   tlCutStart: 0.4506, // the glass-hexagon cut from the logo to the valley: starts
   tlCutEnd: 0.6758, // ...ends (the valley camera takes over)
-  tlRevealStart: 0.7555, // the oasis starts rising, from the tree outwards (the camera turning to it)
-  tlRevealEnd: 0.85, // ...has spread over all of it
-  tlTreeGrowStart: 0.7585, // the Yggdrasil starts growing out of the lake, strand by strand
+  tlRevealStart: 0.7, // the oasis starts rising, from the tree outwards (the camera turning to it)
+  tlRevealEnd: 1.0, // ...has spread over all of it
+  tlTreeGrowStart: 0.75, // the Yggdrasil starts growing out of the lake, strand by strand
   tlTreeGrowEnd: 0.81, // ...fully grown
   treeLeafGlow: 1.0, // the Yggdrasil's (cosmic) leaves: their brightness before the tree's light reaches them
   treeLeafLit: 1.2, // ...and the extra glow once it has climbed to them
@@ -254,8 +254,13 @@ export const T = {
   streamLoose: 0.06, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
-  forgeDuration: 8.0,
-  forgeReverse: 5.0,
+  forgeDuration: 6.5,
+  forgeReverse: 4.0,
+  // from the rock ground into sand to the new scene, the camera keeps one
+  // pace per scroll: this × the oasis's cruising pace (metres per scroll).
+  // 1 = the same metres; more, as the logo's scenery is further off and
+  // reads slower on screen at the same speed
+  forgedPace: 1.6,
 };
 
 // Day / night switch shared by the header toggle and the panel: writes T

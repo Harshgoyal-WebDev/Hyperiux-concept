@@ -57,6 +57,19 @@ export const SCROLL_VH = {
   canopy: 120, // the beam runs into its core; the tree fills with light ("Growth you can see")
   outro: 100, // the camera rises as the light opens onto the site
 };
+// The scroll's pace on this page: set on the site's Lenis while the page is
+// mounted (ForgingSandDuneConceptV2.jsx) and put back when it leaves, so no
+// wheel, trackpad or mouse makes the journey run too fast or drag.
+export const SCROLL_PACE = {
+  duration: 1.2, // s: every wheel step glides to where it is going in this time, on a fixed ease
+  maxSpeed: 90, // vh per second: the fastest the page moves, however hard the wheel is spun
+  follow: 55, // ms: the timeline's ease after the scroll (the "scrub")
+  // from the rock ground into sand to the new scene each scroll goes
+  // further, so the camera keeps one pace (tuning.js forgedPace); it eases
+  // in and out over this much p at either end
+  forgedBoostEase: 0.012,
+};
+
 const TOTAL_VH = Object.values(SCROLL_VH).reduce((a, b) => a + b, 0);
 // + one screen: the pinned viewport itself
 export const JOURNEY_VH = TOTAL_VH + 100;

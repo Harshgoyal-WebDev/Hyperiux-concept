@@ -38,7 +38,7 @@ const KINDS = {
   // (by the stream, broadleaf and rounded shade trees; the palms stand back
   // from the water, towards the dunes, and ring the lake)
   palms: { n: 0, at: (o) => (o.s > 220 || o.basin ? 1 : 0) * Math.pow(o.life, 1.3) * bump(o.w, o.basin ? 4 : 16, o.basin ? 7 : 22, 40, 60) * (o.e < 2 ? 1 : 0) * (o.d > 9 ? 1 : 0) * (o.r > BASIN.island + 12 ? 1 : 0) },
-  broadleaf: { n: 300, at: (o) => (o.s > 160 || o.basin ? 1 : 0) * smooth(0.15, 0.6, o.life) * bump(o.w, 2.5, 5, o.basin ? 30 : 16, o.basin ? 50 : 30) * (o.e < 0 ? 1 : 0) * (o.d > 8 ? 1 : 0) * (o.r > BASIN.island + 16 ? 1 : 0) },
+  broadleaf: { n: 300, at: (o) => (o.s > 160 || o.basin ? 1 : 0) * smooth(0.15, 0.6, o.life) * bump(o.w, 2.5, 5, o.basin ? 18 : 16, o.basin ? 34 : 30) * (o.e < 0 ? 1 : 0) * (o.d > 13 ? 1 : 0) * (o.r > BASIN.island + 16 ? 1 : 0) },
   rocks: { n: 170, at: (o) => (o.s > 90 ? 1 : 0) * bump(o.e, -60, -30, 10, 26) * (0.35 + 0.65 * (1 - o.life * 0.7)) * (o.w > -1.4 ? 1 : 0) * (o.d > 4 ? 1 : 0) * 0.6 },
 };
 
@@ -91,7 +91,7 @@ export function scatter(terrain, veg) {
       const odds = KINDS[k].n / 20000;
       if (rng() < KINDS[k].at(o) * odds) {
         const y = terrain.height(p.x, p.z);
-        lists[k].push({ x: p.x, y: Math.max(y, k === "reeds" ? WATER_Y - 0.6 : -Infinity), z: p.z, chunk: chunkOf(o, p.x, p.z), life: o.life, w: o.w, r: rng(), r2: rng(), r3: rng() });
+        lists[k].push({ x: p.x, y: Math.max(y, k === "reeds" ? WATER_Y - 0.6 : -Infinity), z: p.z, chunk: chunkOf(o, p.x, p.z), life: o.life, w: o.w, basin: o.basin ? 1 : 0, r: rng(), r2: rng(), r3: rng() });
         break;
       }
     }
@@ -330,7 +330,9 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       const place = (it, p, qq, ss) => {
         p.set(it.x, it.y, it.z);
         turn(it, qq);
-        ss.setScalar(0.9 + it.r3 * 0.5);
+        // (trees, not bushes: sized at random, and bigger still round the
+        // lake, the oasis's wide heart, than along the stream)
+        ss.setScalar((it.basin ? T.oasisTreeSize * 1.35 : T.oasisTreeSize) * (0.7 + Math.pow(it.r3, 1.3) * 0.95));
       };
       add(bv.trunk, mats.bark, items, place, { shadow: true });
       add(bv.crown, mats.leaf, items, place, { shadow: true, tint: (it, c) => c.setRGB(0.3 + it.r * 0.1, 0.55 + it.r2 * 0.12, 0.2) });

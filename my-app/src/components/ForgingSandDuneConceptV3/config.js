@@ -54,7 +54,8 @@ export const SCROLL_VH = {
   passage: 70, // straight out of the cut: the oasis rises out of the desert ("What we bring")
   glow: 90, // on along the stream, an amber glow ahead ("From concept to conversion")
   reveal: 110, // the last curve: the tree ("Potential deserves a place to grow")
-  canopy: 120, // the beam runs into its core; the tree fills with light ("Growth you can see")
+  canopy: 120, // over the lake: the beam runs on into the cube at its heart
+  grow: 180, // the cube turns out; the Yggdrasil grows out of it, the camera round it ("Growth you can see")
   outro: 100, // the camera rises as the light opens onto the site
 };
 const TOTAL_VH = Object.values(SCROLL_VH).reduce((a, b) => a + b, 0);
@@ -78,13 +79,14 @@ export const P = {
   glow: ends.glow,
   reveal: ends.reveal,
   canopy: ends.canopy,
+  grow: ends.grow,
 };
 // p of a point (0..1) inside the event
 export const eventAt = (e) => P.core + e * (P.forged - P.core);
 // p of a point (0..1) inside the orbit / hold stretch
 export const afterAt = (e) => P.forged + e * (P.held - P.forged);
 // p of a point (0..1) inside one of the zones past the mark
-const ZONES_PAST = ["passage", "glow", "reveal", "canopy", "outro"];
+const ZONES_PAST = ["passage", "glow", "reveal", "canopy", "grow", "outro"];
 const ZONE_START = Object.fromEntries(ZONES_PAST.map((z, i) => [z, i ? P[ZONES_PAST[i - 1]] : P.out]));
 const ZONE_END = Object.fromEntries(ZONES_PAST.map((z) => [z, z === "outro" ? 1 : P[z]]));
 export const zoneAt = (name, e) => ZONE_START[name] + e * (ZONE_END[name] - ZONE_START[name]);
@@ -138,8 +140,9 @@ export const STATES = [
   { id: "o-rise", n: "15", label: "The oasis rises", start: P.out, end: P.passage },
   { id: "o-stream", n: "16", label: "Along the stream", start: P.passage, end: P.glow },
   { id: "o-tree", n: "17", label: "The tree", start: P.glow, end: P.reveal },
-  { id: "o-growth", n: "18", label: "Growth", start: P.reveal, end: P.canopy },
-  { id: "o-outro", n: "19", label: "Into the light", start: P.canopy, end: 1 },
+  { id: "o-cube", n: "18", label: "The cube", start: P.reveal, end: P.canopy },
+  { id: "o-growth", n: "19", label: "Growth", start: P.canopy, end: P.grow },
+  { id: "o-outro", n: "20", label: "Into the light", start: P.grow, end: 1 },
 ];
 
 

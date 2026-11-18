@@ -321,9 +321,12 @@ export function buildMasterTimeline(J, dom) {
     [P.held, 1.1],
     [P.through, 1.5, "sine.in"],
   ]);
-  // ----- the oasis rises out of the bare desert: a front spreads out across
-  // the sand from just ahead in the valley; behind it the water, the green
-  // and the tree come up (world/oasis.js REVEAL_ORIGIN)
+  // ----- the oasis rises out of the bare desert: a line of light sweeps out
+  // from the glowing cube at the lake's heart across the whole desert, the
+  // water and the green behind it (world/revealMap.js); then the beam runs
+  // on into the cube, which turns out, and the Yggdrasil grows out of it —
+  // roots first, then up — the camera going round it as it does
+  // (scene/oasis/SeedCube.jsx, Yggdrasil.jsx, world/oasisCamera.js)
   // (J.revealR is set with the scroll: world/oasisCamera.js revealRadiusAt)
 
   // ----- the tree: its amber glow first seen beyond the dunes, then its

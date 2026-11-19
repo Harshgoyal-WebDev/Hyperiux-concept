@@ -151,8 +151,15 @@ export function syncSequence() {
   T.breakGrindStart = share(T.seqGrindStart);
   T.breakGrindEnd = Math.max(share(T.seqGrindEnd), T.breakGrindStart + 0.01);
   T.breakSandFlow = Math.min(Math.max(T.seqSandFlow / (b - a), 0.01), 1);
+  // (where the broken rock stops changing with the scroll)
+  T.breakHold = T.breakHoldOn ? Math.max(share(T.seqHold), 0.005) : 1;
 }
 syncSequence();
+
+// The p at which the hero's beam reaches the slab's foot (and the Spine's
+// climb starts): T.beamFootAt of the way to the climb — its head running on
+// well ahead of the camera, which gathers pace towards the slab.
+export const beamFootP = () => 0.02 + (P.climb - 0.02) * Math.min(Math.max(T.beamFootAt, 0.05), 1);
 
 export function deriveBreak(J) {
   syncSequence();
@@ -214,10 +221,7 @@ export function buildMasterTimeline(J, dom) {
   // page does; up the Spine a touch quicker as it nears the core.
   {
     const t0 = 0;
-    // (it reaches the slab's foot T.beamFootAt of the way to the climb, so
-    // its head runs on well ahead of the camera, which gathers pace towards
-    // the slab; then the Spine's climb to the core)
-    const foot = t0 + 0.02 + (P.climb - t0 - 0.02) * Math.min(Math.max(T.beamFootAt, 0.05), 1);
+    const foot = beamFootP();
     track(tl, J, "beam", [
       [t0, 0],
       [foot, 0.5, "none"],
@@ -281,9 +285,11 @@ export function buildMasterTimeline(J, dom) {
   // the Spine lights as the beam goes into the slab's foot, stays lit while
   // its front climbs to the core, then cools with the rest of the excess
   // rock's cracks (most of it is on chunks that break away)
+  // (lit from the moment the beam reaches the foot — when its front starts
+  // up — so what it has climbed glows all the way, never dark behind it)
   track(tl, J, "spineGlow", [
-    [P.climb - 0.002, 0],
-    [P.climb + 0.004, 1, "power2.out"],
+    [beamFootP() - 0.002, 0],
+    [beamFootP() + 0.004, 1, "power2.out"],
     [P.core, 1.1],
     [e(0.5), 1.15],
     [e(0.8), 0.6],
@@ -332,9 +338,12 @@ export function buildMasterTimeline(J, dom) {
   ]);
   // the forged mark's cube outline lit from within: as the logo is forged
   // its openings fill with warm light, brightening as the camera closes on it
+  // (fully lit the moment the slab breaks, and on from there)
+  const breaks = e(T.breakStart);
   track(tl, J, "innerGlow", [
-    [Math.min(brokenAt(), P.forged) - 0.002, 0],
-    [P.forged, 1, "sine.out"],
+    [breaks - 0.0015, 0],
+    [breaks + 0.004, 1, "power2.out"],
+    [P.forged, 1],
     [P.held, 1.1],
     [P.through, 1.5, "sine.in"],
   ]);

@@ -22,6 +22,7 @@ import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
 import { getAudio } from "../audio";
 import { Q, QUALITY_EVENT } from "../quality";
 import Governor from "./Governor";
+import Precompile from "./Precompile";
 
 // Everything of the forge's world, on its own render layer (config.js
 // FORGE_LAYER): things arrive in it later (the forge's model loads), so it
@@ -31,7 +32,11 @@ function ForgeLayer({ children }) {
   const tick = useRef(0);
   useFrame(() => {
     if (!group.current || tick.current++ % 20) return;
-    group.current.traverse((o) => o.layers.set(FORGE_LAYER));
+    // (not its lights: on every camera's layer, so the number of lights a
+    // material is drawn with never changes — that would recompile them all)
+    group.current.traverse((o) => {
+      if (!o.isLight) o.layers.set(FORGE_LAYER);
+    });
   });
   return <group ref={group}>{children}</group>;
 }
@@ -46,7 +51,7 @@ function ValleyLayer({ children }) {
   useFrame(() => {
     if (!group.current || tick.current++ % 20) return;
     group.current.traverse((o) => {
-      if (o.layers.mask !== 1 << NO_MIRROR_LAYER) o.layers.set(VALLEY_LAYER);
+      if (!o.isLight && o.layers.mask !== 1 << NO_MIRROR_LAYER) o.layers.set(VALLEY_LAYER);
     });
   });
   return <group ref={group}>{children}</group>;
@@ -140,7 +145,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         <ForgeLayer>
         {withForge && (
           <Suspense fallback={null}>
-            <Forge J={J} shared={shared} groundY={groundY} onReady={onReady} />
+            <Forge J={J} shared={shared} groundY={groundY} terrain={terrain} onReady={onReady} />
           </Suspense>
         )}
         {forge && (
@@ -165,6 +170,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
       <UniformSync J={J} shared={shared} shockCenter={forge?.world.origin} />
       <SoundDriver J={J} />
       <Governor />
+      <Precompile post={!!(tier.post && post)} />
       <CameraRig J={J} opening={forge?.world.opening} />
 
       {tier.post && post && <Post J={J} tier={tier} />}

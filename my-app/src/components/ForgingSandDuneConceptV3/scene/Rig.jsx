@@ -408,8 +408,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float chroma = uChroma * (a > 0.0005 ? 1.0 : 0.0) + rv * uRevealChroma * 0.9;
   vec3 acc = vec3(0.0);
   float w = 0.0;
-  for (int i = 0; i < 10; i++) {
-    float t = float(i) / 9.0;
+  // (6 taps: through the forging most of the frame runs this)
+  for (int i = 0; i < 6; i++) {
+    float t = float(i) / 5.0;
     vec2 o = dir * t * len;
     float k = 1.0 - t * 0.6;
     // (kept on the screen: past its edge the image would smear)
@@ -499,6 +500,32 @@ export function Post({ J, tier }) {
     },
     [outro]
   );
+  // the cut's and the outro's shaders built ahead (behind the loader): drawn
+  // once off screen, so the cut and the end don't stall on their first frame
+  // (they are only used deep into the scroll)
+  const warm = useRef(0);
+  useFrame(({ gl }) => {
+    if (warm.current > 20) return;
+    if (++warm.current !== 20) return;
+    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+    quad.frustumCulled = false;
+    const tmp = new THREE.Scene();
+    tmp.add(quad);
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const prev = gl.getRenderTarget();
+    try {
+      for (const m of [cut.material, outro.material]) {
+        quad.material = m;
+        gl.setRenderTarget(target);
+        gl.render(tmp, cam);
+      }
+    } finally {
+      gl.setRenderTarget(prev);
+      quad.geometry.dispose();
+      target.dispose();
+    }
+  });
   useFrame(() => {
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;

@@ -58,7 +58,53 @@ export const FLOW_UNIFORMS = {
   uStreamWidth: { value: 6 },
   uStreamLoose: { value: 0.15 },
   uGrind: { value: new THREE.Vector3(0.4, 0.84, 0.16) }, // grind start, end, sand flow
+  // the dunes round the mark (a height map): nothing that broke off goes
+  // into the sand — the loops that dip below it roll along over it instead
+  uGround: { value: null },
+  uGroundRect: { value: new THREE.Vector4(0, 0, 1, 1) },
+  uGroundOn: { value: 0 },
 };
+
+// The ground round the mark, for the broken rock to stay over (the sand and
+// gravel on the GPU from a height map; the pieces on the CPU from the
+// terrain itself: groundAt).
+let groundSampler = null;
+export function setFlowGround(terrain, centre, half = 130, cell = 2) {
+  groundSampler = terrain;
+  const n = Math.round((half * 2) / cell);
+  const data = new Float32Array(n * n);
+  const x0 = centre.x - half;
+  const z0 = centre.z - half;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) data[j * n + i] = terrain.height(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell);
+  const t = new THREE.DataTexture(data, n, n, THREE.RedFormat, THREE.FloatType);
+  t.minFilter = t.magFilter = THREE.LinearFilter;
+  t.needsUpdate = true;
+  const u = FLOW_UNIFORMS;
+  u.uGround.value?.dispose();
+  u.uGround.value = t;
+  u.uGroundRect.value.set(x0, z0, 1 / (half * 2), 1 / (half * 2));
+  u.uGroundOn.value = 1;
+  return () => {
+    if (u.uGround.value === t) {
+      u.uGround.value = null;
+      u.uGroundOn.value = 0;
+      groundSampler = null;
+    }
+    t.dispose();
+  };
+}
+// a height y, kept over the ground at x, z by lift (m): softly — a loop that
+// dips into the sand rolls along over it
+const softAbove = (y, floor) => {
+  const k = 1.2;
+  const d = (y - floor) / k;
+  return d > 8 ? y : floor + k * Math.log1p(Math.exp(d));
+};
+export function keepAboveGround(p, lift) {
+  if (!groundSampler) return p;
+  p.y = softAbove(p.y, groundSampler.height(p.x, p.z) + lift);
+  return p;
+}
 export function syncFlow(dt, f) {
   const u = FLOW_UNIFORMS;
   u.uFlowTime.value += dt;
@@ -150,6 +196,18 @@ function placeOf(forge, c) {
 // its turn and size into out.quaternion / out.scale (the mesh's asset space
 // is the caller's); returns how far it has ground away into sand (0..1).
 // Its stream, place on it and size go to forge.pieceStream for the sand.
+// a piece big enough to shatter (T.breakSolid), and how long it takes
+export const isBigPiece = (c) => (c.vol ?? 1) >= T.breakBigVolume;
+const shatterSpan = () => Math.max(T.breakBlastEnd * T.breakShatter, 0.005);
+// the progress its sand and gravel run on: a piece's own (u), or — solid
+// stone — none for a small piece (its grains stay part of it) and, for a
+// big one, its grind brought into its shatter (over the blast)
+export function grainProgress(c, u) {
+  if (!T.breakSolid) return u;
+  if (!isBigPiece(c)) return 0;
+  return T.breakGrindStart + (u / shatterSpan()) * Math.max(T.breakGrindEnd - T.breakGrindStart, 0.01);
+}
+
 export function pieceFlight(forge, c, u, out) {
   const L = forge.world.logo;
   const { spread, j, lag, off } = placeOf(forge, c);
@@ -172,6 +230,12 @@ export function pieceFlight(forge, c, u, out) {
   // (the blast throws it there from the slab)
   out.position.lerpVectors(rest, onStream, b);
   out.quaternion.setFromAxisAngle(c.axis, c.spin * (5 * b + U.uBreakAngle.value * 2 * T.breakTumble) * Math.max(T.breakTumble, 0.2));
+  // (never into the sand: a loop dipping below the dunes rolls along over them)
+  keepAboveGround(out.position, c.dim * forge.scale * size * 0.45);
+  // solid stone (T.breakSolid): the small pieces never wear away; the big
+  // ones shatter into gravel and sand as the blast throws them (their grains
+  // fly off: Forge.jsx grainProgress)
+  if (T.breakSolid) return isBigPiece(c) ? THREE.MathUtils.clamp(u / shatterSpan(), 0, 1) : 0;
   // (only so much of it grinds away — each piece its own share round
   // T.breakSandShare — the rest rides on round the mark as a ragged chunk)
   const ground = THREE.MathUtils.clamp((u - T.breakGrindStart) / Math.max(T.breakGrindEnd - T.breakGrindStart, 0.01), 0, 1);
@@ -276,6 +340,20 @@ uniform vec4 uPiece[${pieces}]; // world position + erosion
 uniform vec4 uPieceQ[${pieces}]; // orientation
 uniform vec4 uPieceU[${Math.ceil(pieces / 4)}]; // each piece's own progress, four to a vec4
 uniform vec4 uPieceStream[${pieces}]; // its stream, how far back along it, its size, how much wider than the stream its loop is
+uniform sampler2D uGround;
+uniform vec4 uGroundRect;
+uniform float uGroundOn;
+// kept over the dunes (softly: a loop dipping into the sand rolls along over it)
+vec3 bkAbove(vec3 p, float lift) {
+  if (uGroundOn < 0.5) return p;
+  vec2 uv = (p.xz - uGroundRect.xy) * uGroundRect.zw;
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return p;
+  float floorY = texture2D(uGround, uv).r + lift;
+  float d = (p.y - floorY) / 1.2;
+  if (d > 8.0) return p;
+  p.y = floorY + 1.2 * log(1.0 + exp(d));
+  return p;
+}
 uniform float uS; // asset → world scale
 uniform sampler2D uStir; // the pointer's stir over the screen: push (screen uv) in rg, heat in b
 uniform float uStirOn;
@@ -337,7 +415,7 @@ float breakupFlow(int i, vec3 local, float threshold, vec4 drift, out vec3 pos) 
   vec3 rockOnLoop = uCenter + streamPath(PS.x, streamHead(PS.x) - PS.y * 6.2832) * PS.w;
   // flung off with a little puff that settles as it finds its place
   vec3 puff = drift.xyz * (1.0 + 2.0 * drift.w) * sin(3.14159 * min(g * 2.0, 1.0));
-  pos = from + (onLoop - rockOnLoop) + puff;
+  pos = bkAbove(from + (onLoop - rockOnLoop) + puff, 0.3);
   return g;
 }
 `;

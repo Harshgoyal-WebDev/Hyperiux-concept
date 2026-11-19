@@ -359,6 +359,7 @@ export function prepareForge(gltfScene, groundY) {
       dir,
       // it comes loose and floats off: a gentle drift (smaller pieces a
       // little more) and a slow turn
+      vol,
       drift: 0.35 + 0.7 * (1 - Math.min(vol / 6, 1)) + rng() * 0.3,
       spin: (0.25 + 0.7 * (1 - Math.min(vol / 6, 1))) * (rng() < 0.5 ? -1 : 1),
       axis,

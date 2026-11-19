@@ -81,7 +81,12 @@ export const T = {
   revealChroma: 1.4, // ...and split into its colours
 
   // The scroll's pace (wheel): one fixed feel, whoever is scrolling
-  scrollDuration: 1.1, // seconds each wheel step eases in over
+  scrollFixedPace: true, // one steady scroll speed the whole way (the wheel / trackpad only says which way)
+  scrollPace: 70, // ...that speed (screen heights per second × 100: vh/s)
+  scrollHold: 0.14, // ...seconds it keeps going after the last wheel input (wheel notches come this far apart)
+  scrollRampIn: 0.16, // ...seconds it takes to get up to speed
+  scrollRampOut: 0.3, // ...and to ease to a stop
+  scrollDuration: 1.1, // (fixed pace off) seconds each wheel step eases in over
   scrollStep: 110, // the most one wheel step moves (px)
   scrollLead: 0.9, // the most it can run ahead of where it is (× the window's height)
   scrollBoost: 1.3, // how much quicker it goes from the rock breaking off the logo until the cut lands in the valley
@@ -100,9 +105,9 @@ export const T = {
   syncFallReveal: false, // the reveal and the tree start the moment the orb's poured threads land (overrides tlRevealStart / tlTreeGrowStart and their ends)
   revealSpan: 0.075, // ...the reveal's length then (share of the scroll)
   treeGrowSpan: 0.12, // ...the tree's growth's length then
-  tlRevealStart: 0.80, // the oasis's reveal (threads of light running out, V2) sets off from under the core
+  tlRevealStart: 0.795, // the oasis's reveal (threads of light running out, V2) sets off from under the core
   tlRevealEnd: 1.0, // ...has spread over all of it
-  tlTreeGrowStart: 0.82, // the Yggdrasil starts growing, from the bottom up, strand by strand
+  tlTreeGrowStart: 0.8, // the Yggdrasil starts growing, from the bottom up, strand by strand
   tlTreeGrowEnd: 0.9294, // ...fully grown, to the top of its crown
   tlTreeLightEnd: 0.95, // the tree's light has climbed to the top of its crown
   tlOrbitStart: 0.79, // the camera starts round the tree (at one steady pace, on to the end of the page)
@@ -192,11 +197,11 @@ export const T = {
   cubeGlow: 1.6, // ...how brightly it glows
   cubeColor: "#ff7a2a",
   cubeTilt: 24, // ...how far it is turned (degrees)
-  cubeFadeFrom: 0.25, // ...it melts into the tree from this share of the tree's growth (it has grown past the cube)
-  cubeFadeTo: 0.55, // ...all melted by this share (its last threads still on their way up)
+  cubeFadeFrom: 0.0, // ...it melts into the tree from this share of the tree's growth (0 = as the tree starts growing)
+  cubeFadeTo: 0.14, // ...all melted by this share (its last threads still on their way up)
   cubeMelt: true, // melt into threads that spiral up onto the tree's strands (off: it just fades)
-  cubeMeltTravel: 0.14, // share of the growth each thread takes to get from the cube to its strand
-  cubeMeltGlow: 2.0, // ...their brightness
+  cubeMeltTravel: 0.26, // share of the growth each thread takes to get from the cube to its strand
+  cubeMeltGlow: 3.76, // ...their brightness
   // the camera: following the beam in to the core, then round the tree as it grows
   camCoreDist: 70, // how far from the core it comes to as the beam touches it (m)
   camCoreLift: 4, // ...its height above the core's centre (m)
@@ -212,10 +217,10 @@ export const T = {
   rivuletColor: "#ff7a1f", // ...their colour
   outroGlass: 1.0, // the glass hexagons of the change to the white site: how much they bend the image
   outroChroma: 0.12, // ...and split its colours
-  outroCell: 0.13, // ...a hexagon's size (screen heights)
+  outroCell: 0.091, // ...a hexagon's size (screen heights)
   outroGlassCover: 0.4, // share of the change by which the glass has covered the whole screen (from the centre out)
   outroWhiteFrom: 0.22, // share of the change at which the white starts filling the hexagons (overlapping the glass)
-  outroWhiteFill: 0.3, // share of the change each hexagon takes to fill white (soft, from its middle)
+  outroWhiteFill: 0.3, // share of the change each hexagon takes to fade in to white (the whole hexagon at once)
   outroRandom: 0.55, // 0 = the white fills in rings from the centre … 1 = hexagons at random
   cutGlass: 1.0, // the glass tiles of the cut from the logo: how much they bend the image
   cutChroma: 0.12, // ...and split its colours
@@ -273,6 +278,7 @@ export const T = {
   seqGrindEnd: 108.2, // ...and are all sand: the auto-scroll hands back to the visitor here
   seqSandFlow: 108, // how long (vh) a grain takes to find its place in its stream
   seqBreakEnd: 200, // the breakup is over
+  seqHold: 60, // from here on the broken rock stays as it is — it keeps revolving, but scrolling on no longer changes it (breakHoldOn)
 
   // The beam's run to the core
   beamAccel: 0.35, // how much it speeds up into the core (0 = an even pace all the way; 0.9 = it rushes the last stretch)
@@ -300,6 +306,10 @@ export const T = {
   breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
   breakSandShare: 0.55, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
   breakShrink: 0.43, // the pieces' size once broken off
+  breakHoldOn: true, // the broken rock, sand and gravel stay as they are after the break (seqHold): no drawing in or grinding away on the scroll
+  breakSolid: true, // the pieces stay solid stone (no hollow wearing away); the big ones shatter into gravel and sand as the blast throws them
+  breakBigVolume: 3.0, // ...how big a piece is to shatter (m³, the model's own; up to ~10)
+  breakShatter: 1.0, // ...how soon they are gone (× the blast's length)
   breakSpin: 0.26, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)

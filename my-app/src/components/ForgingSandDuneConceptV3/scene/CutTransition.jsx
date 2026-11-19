@@ -201,8 +201,8 @@ export function CutPass({ J, cut }) {
 // The change from the scene to the white site at the end: first the glass —
 // hexagonal tiles spreading out from the centre until the whole screen is
 // glass, the scene (the camera still going round the tree) bent and split
-// through it — and, overlapping it a little, the white: each hexagon filling
-// softly from its middle, the centre's first and on outwards, mixed with
+// through it — and, overlapping it a little, the white: each whole hexagon
+// fading in to white, the centre's first and on outwards, mixed with
 // chance (T.outroRandom), until it is all white — HDR white, so through the
 // tone mapping it comes out as the site's own white — and staying white.
 // (tuning.js outroGlassCover / outroWhiteFrom / outroWhiteFill / outroCell)
@@ -217,7 +217,7 @@ uniform float uChroma;
 uniform float uCell; // a tile's size (screen heights)
 uniform float uCover; // the share of the change by which the glass covers the screen
 uniform float uWhiteFrom; // ...at which the white starts
-uniform float uWhiteFill; // ...each tile takes to fill
+uniform float uWhiteFill; // ...each tile takes to fade in to white
 uniform float uRandom; // 0 in rings from the centre … 1 at random
 uniform vec3 uWhite;
 ${FRAGMENT.slice(FRAGMENT.indexOf("// pointy-top"), FRAGMENT.indexOf("uniform float uHold"))}
@@ -253,14 +253,13 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec3 col = cutGlass(inputBuffer, uv, off, split);
   col *= 1.0 - g * (0.18 * bevel + 0.06 * (l.y + 0.5));
   col += g * 0.04 * pow(max(dot(dirL, vec2(-0.55, 0.83)), 0.0), 3.0) * bevel * col;
-  // the white filling the tile from its middle out, its edge soft
-  float reach = w * 1.6;
-  float mask = smoothstep(1.0 - reach, 1.0 - reach + 0.6, edge) * smoothstep(0.0, 0.4, w);
+  // the white: the whole tile fading in to white, evenly (no growing out
+  // from its middle)
   // (HDR white: blended where the tone mapping's own curve is — x / (1 + x) —
-  // so the fill reads evenly, soft at its edge, not white at its first touch)
+  // so the fade reads evenly, not white at its first touch)
   vec3 cy = col / (1.0 + col);
   vec3 wy = uWhite / (1.0 + uWhite);
-  vec3 y = mix(cy, wy, mask * mask);
+  vec3 y = mix(cy, wy, w);
   outputColor = vec4(y / max(1.0 - y, 1e-3), inputColor.a);
 }
 `;

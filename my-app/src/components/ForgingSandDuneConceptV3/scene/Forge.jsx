@@ -11,7 +11,7 @@ import { T } from "../tuning";
 import { magnet } from "../world/magnet";
 import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
-import { pieceFlight, syncFlow } from "../world/breakup";
+import { grainProgress, pieceFlight, setFlowGround, syncFlow } from "../world/breakup";
 
 // The forging monolith: the authored slab (logo core + excess chunks), its
 // crack network and the core sphere, all from the GLB. The logo core keeps
@@ -214,9 +214,11 @@ function glowTexture() {
   return t;
 }
 
-export default function Forge({ J, shared, groundY, onReady }) {
+export default function Forge({ J, shared, groundY, terrain, onReady }) {
   const gltf = useGLTF(ASSETS.forgeGlb, ASSETS.draco);
   const forge = useMemo(() => prepareForge(gltf.scene, groundY), [gltf, groundY]);
+  // the dunes round the mark: what breaks off stays over them (world/breakup.js)
+  useEffect(() => (terrain && !forge.missing ? setFlowGround(terrain, forge.world.logo) : undefined), [terrain, forge]);
 
   const built = useMemo(() => {
     if (forge.missing) return null;
@@ -493,7 +495,9 @@ export default function Forge({ J, shared, groundY, onReady }) {
     const lit = 1;
     // the light filling the cube outline's openings (from the forging on)
     const fillK = J.innerGlow * T.innerGlow * (0.35 + 0.65 * lit);
-    built.fill.visible = fillK > 0.001;
+    // (drawn from the start, at nothing until it glows: hidden, its shader
+    // compiled the frame it first showed — a two-second stall at the break)
+    built.fill.visible = true;
     built.fill.material.color.set(T.innerGlowColor).multiplyScalar(0.6 + 1.0 * fillK);
     built.fill.material.opacity = Math.min(fillK, 1) * 0.96;
     const tilt = J.logoTilt * T.logoParallax;
@@ -550,7 +554,10 @@ export default function Forge({ J, shared, groundY, onReady }) {
     const f = J.fracture;
     // the streams the broken rock is carried round in: their clock (picking
     // up speed after the blast) and the panel's values
-    syncFlow(Math.min(delta, 0.1), f);
+    // (held after the break, T.breakHoldOn: from T.breakHold on, scrolling
+    // no longer changes the broken rock — it keeps revolving as it was)
+    const hold = T.breakHold ?? 1;
+    syncFlow(Math.min(delta, 0.1), Math.min(f, hold));
     if (f !== lastFracture.current || f > 0) {
       lastFracture.current = f;
       const src = forge.swirlSource;
@@ -558,8 +565,8 @@ export default function Forge({ J, shared, groundY, onReady }) {
       const o = forge.object.position;
       const S = forge.scale;
       forge.chunks.forEach((c, i) => {
-        const u = pieceProgress(c, f);
-        forge.pieceProgress[i] = u;
+        const u = Math.min(pieceProgress(c, f), hold);
+        forge.pieceProgress[i] = grainProgress(c, u);
         const erode = pieceFlight(forge, c, u, pose);
         const m = c.mesh;
         // (world → the asset space the mesh lives in)

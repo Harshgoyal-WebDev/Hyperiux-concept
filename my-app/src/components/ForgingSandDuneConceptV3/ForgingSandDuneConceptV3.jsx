@@ -92,29 +92,73 @@ function getClientEnv() {
   return clientEnv;
 }
 
-// The page's set scroll pace on the site's (shared) Lenis: each wheel step
-// eases in over T.scrollDuration, is capped at T.scrollStep, never runs more
-// than T.scrollLead screens ahead, and goes T.scrollBoost quicker from the
-// rock breaking off the logo until the cut lands in the valley. Returns the
-// undo (the site's own settings back).
+// The page's set scroll pace on the site's (shared) Lenis, the whole way
+// through. By default (T.scrollFixedPace) the wheel only says which way: as
+// long as it keeps turning (or the trackpad keeps sending), the page moves
+// at one steady speed — T.scrollPace vh per second — easing up
+// to it and gently to a stop after the last input; a hard flick goes no
+// faster, a light touch no slower. T.scrollBoost quicker from the rock
+// breaking off the logo until the cut lands in the valley. (Off: each wheel
+// step eases in over T.scrollDuration, capped at T.scrollStep, never more
+// than T.scrollLead screens ahead.) Touch scrolling is left as it is.
+// Returns the undo (the site's own settings back).
 function paceScroll(lenis, J) {
   const o = lenis.options;
   const saved = { duration: o.duration, easing: o.easing, virtualScroll: o.virtualScroll };
   o.duration = T.scrollDuration;
   o.easing = (t) => 1 - Math.pow(1 - t, 3);
+  const s = { dir: 0, last: -1e9, v: 0, raf: 0, prev: 0, y: 0 };
+  const boost = () => (J.progress >= brokenAt() && J.progress < CUT_TO() ? T.scrollBoost : 1);
+  // the steady drive: one speed while input keeps coming, eased in and out
+  const tick = (now) => {
+    // (real time, so the pace holds even when frames come slower)
+    const dt = Math.min((now - s.prev) / 1000, 0.15);
+    s.prev = now;
+    const held = now - s.last < T.scrollHold * 1000;
+    const want = held ? s.dir * T.scrollPace * boost() * (window.innerHeight / 100) : 0;
+    const tau = Math.max(held ? T.scrollRampIn : T.scrollRampOut, 0.01);
+    s.v += (want - s.v) * (1 - Math.exp(-dt / tau));
+    if (!held && Math.abs(s.v) < 4) {
+      s.v = 0;
+      s.raf = 0;
+      return;
+    }
+    s.y = Math.max(0, Math.min(lenis.limit, s.y + s.v * dt));
+    if (!lenis.isStopped) lenis.scrollTo(s.y, { immediate: true });
+    s.raf = requestAnimationFrame(tick);
+  };
   o.virtualScroll = (data) => {
     if (!data.event.type.includes("wheel")) return true;
+    if (T.scrollFixedPace) {
+      // (stopped — the loader, a skip — Lenis holds the page itself)
+      if (lenis.isStopped || lenis.isLocked || data.event.ctrlKey) return true;
+      // (taken over here: the page doesn't scroll by itself as well)
+      if (data.event.cancelable) data.event.preventDefault();
+      if (Math.abs(data.deltaY) < 0.5) return false;
+      const dir = Math.sign(data.deltaY);
+      s.last = performance.now();
+      // (a turn the other way: it eases through to it)
+      s.dir = dir;
+      if (!s.raf) {
+        s.prev = performance.now();
+        s.y = lenis.animatedScroll;
+        s.raf = requestAnimationFrame(tick);
+      }
+      return false;
+    }
     o.duration = T.scrollDuration;
     let d = Math.max(-T.scrollStep, Math.min(T.scrollStep, data.deltaY));
-    const p = J.progress;
-    if (p >= brokenAt() && p < CUT_TO()) d *= T.scrollBoost;
+    d *= boost();
     const ahead = lenis.targetScroll - lenis.animatedScroll;
     const max = window.innerHeight * T.scrollLead;
     if (Math.abs(ahead + d) > max) d = Math.sign(ahead + d) * max - ahead;
     data.deltaY = d;
     return true;
   };
-  return () => Object.assign(o, saved);
+  return () => {
+    cancelAnimationFrame(s.raf);
+    Object.assign(o, saved);
+  };
 }
 
 export default function ForgingSandDuneConceptV3() {

@@ -227,6 +227,11 @@ const OASIS_SCHEMA = {
     outroRandom: [0, 1, 0.01],
   },
   "Scroll pace": {
+    scrollFixedPace: "bool",
+    scrollPace: [10, 300, 1],
+    scrollHold: [0.04, 0.6, 0.01],
+    scrollRampIn: [0.02, 1, 0.01],
+    scrollRampOut: [0.02, 1.5, 0.01],
     scrollDuration: [0.3, 3, 0.05],
     scrollStep: [20, 400, 5],
     scrollLead: [0.2, 3, 0.05],
@@ -309,6 +314,8 @@ const BREAK_SCHEMA = {
     seqGrindEnd: [0, 200, 0.5],
     seqSandFlow: [2, 200, 0.5],
     seqBreakEnd: [10, 200, 0.5],
+    seqHold: [0, 200, 0.5],
+    breakHoldOn: "bool",
     breakGather: [0, 1, 0.01],
   },
   Impact: {
@@ -317,6 +324,9 @@ const BREAK_SCHEMA = {
     breakSandShare: [0.05, 1, 0.01],
     breakShrink: [0.2, 1, 0.01],
     breakTumble: [0, 3, 0.01],
+    breakSolid: "bool",
+    breakBigVolume: [0, 11, 0.05],
+    breakShatter: [0.1, 3, 0.01],
   },
   Streams: {
     breakSpin: [0, 4, 0.01],

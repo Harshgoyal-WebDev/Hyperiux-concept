@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { ASSETS, P, SUN_DIR, zoneAt } from "../../config";
+import { ASSETS, NO_MIRROR_LAYER, P, SUN_DIR, zoneAt } from "../../config";
 import { T } from "../../tuning";
 import { TREE, WATER_Y, revealAt } from "../../world/oasis";
 import { buildCrown, buildWood } from "../../world/yggdrasil";
@@ -410,6 +410,9 @@ function StrandTree({ J, tier, uniforms, onReady }) {
         const copy = node.clone(true);
         copy.rotation.y += turn;
         copy.scale.multiplyScalar(scale);
+        // (not in the water's mirror: half a million triangles drawn again
+        // for a reflection the original crown already gives)
+        copy.traverse((o) => o.layers.set(NO_MIRROR_LAYER));
         node.parent.add(copy);
       }
     }

@@ -397,7 +397,7 @@ export default function Forge({ J, shared, groundY, onReady }) {
     [built]
   );
 
-  // The slab whole: until the rock breaks, its ~66 chunks and their crack
+  // The slab whole: until the rock breaks, its ~80 chunks and their crack
   // strips are drawn as one mesh per material (merged in the forge's own
   // space, with the same per-vertex aRest / aPiece the stone shader reads),
   // not one draw each; the pieces themselves take over as it fractures.
@@ -528,6 +528,15 @@ export default function Forge({ J, shared, groundY, onReady }) {
     for (const name of CRACK_STAGES) {
       const s = stages[name];
       if (!s) continue;
+      if (name === "Spine") {
+        // the energy enters at the slab's foot and climbs the Spine to the
+        // core while the beam holds there (J.beam 0.5 → 1); it is lit first
+        const k = THREE.MathUtils.clamp((J.beam - 0.5) / 0.5, 0, 1);
+        s.uSpread.value = k;
+        s.uHead.value = (k > 0 && k < 1 ? 1 : 0) * T.crackGlow;
+        s.uStageGlow.value = J.spineGlow * T.crackGlow;
+        continue;
+      }
       s.uSpread.value = J.crackSpread * 1.25;
       s.uHead.value = head * T.crackGlow;
       s.uStageGlow.value = (name === "LogoCore" ? J.logoCrackGlow : J.crackGlow) * T.crackGlow;

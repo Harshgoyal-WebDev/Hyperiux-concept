@@ -11,7 +11,6 @@ import { SplitText } from "gsap/SplitText";
 import Scene from "./scene/Scene";
 import { AssetBadge, HeroOverlay, OasisCopy } from "./Overlays";
 import WhiteWebsite from "./WhiteWebsite";
-import InkOverlay from "./InkOverlay";
 import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
@@ -294,7 +293,6 @@ function Journey({ env }) {
   const sectionRef = useRef(null);
   const heroRef = useRef(null);
   const hudRef = useRef(null);
-  const outroRef = useRef(null);
   const copyRefs = useRef([]);
   const copyAnims = useRef([]); // each line's text animation (below)
   const heroAnim = useRef(null); // ...and the hero's
@@ -449,6 +447,7 @@ function Journey({ env }) {
     gsap.delayedCall(T.arriveDuration * 0.6, () => setSettled(true));
   }, [J]);
 
+  const fadeRef = useRef(null);
   const lenisRef = useRef(null);
   useEffect(() => {
     lenisRef.current = lenis;
@@ -597,10 +596,12 @@ function Journey({ env }) {
           else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
         }
         apply(current);
-        // the light at the end: white ink spreading from the centre over the
-        // whole screen, onto the white site (InkOverlay: all white a little
-        // before the end)
-        if (outroRef.current) outroRef.current.set(Math.min(Math.max(J.outro, 0) * 1.12, 1));
+        // (no post passes on the lowest tier: the change to the white site
+        // is a plain fade there instead of the glass hexagons)
+        if (fadeRef.current) {
+          const w = Math.min(Math.max(J.outro, 0), 1);
+          fadeRef.current.style.opacity = String(w * w * (3 - 2 * w));
+        }
         // the hero's words: in after the loader, out (and back) with the
         // first of the scroll
         if (heroAnim.current) {
@@ -736,13 +737,13 @@ function Journey({ env }) {
         </div>
 
         {/* the light at the end: white, onto the site */}
-        <InkOverlay ref={outroRef} />
 
         {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
         <HeroOverlay ref={heroRef} />
         <OasisCopy lineRefs={copyRefs} />
         <AssetBadge problem={asset?.problem} />
         {env?.stats && <TuningPanel onScrub={jump} />}
+        {!tier?.post && <div ref={fadeRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 bg-white opacity-0" />}
         {env?.debug && (
           <div ref={hudRef} className="pointer-events-none absolute right-3 top-24 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">
             p 0

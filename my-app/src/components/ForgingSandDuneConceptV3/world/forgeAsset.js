@@ -21,7 +21,10 @@ export const REQUIRED_NODES = [
 ];
 
 // Order the crack network lights up in (metadata energyCracks.revealOrder).
-export const CRACK_STAGES = ["Core", "Inner", "Middle", "Outer", "LogoCore"];
+// The Spine comes first: one fracture from the slab's foot (CrackRootAnchor,
+// where the beam arrives) up to the core, on its own uv.x run (0 at the foot
+// → 1 at BeamTarget). The others spread out from the core after it.
+export const CRACK_STAGES = ["Spine", "Core", "Inner", "Middle", "Outer", "LogoCore"];
 
 export const FRONT_Z = 1.2; // engraved face, asset space
 
@@ -313,6 +316,10 @@ export function prepareForge(gltfScene, groundY) {
     target: assetPos(root.getObjectByName("BeamTarget")),
     origin: assetPos(root.getObjectByName("BeamOrigin")),
   };
+  // the Spine's start: bottom centre of the engraved face (an older asset
+  // without the anchor: straight above BeamOrigin, on the face)
+  const crackRoot = root.getObjectByName("CrackRootAnchor");
+  anchors.root = crackRoot ? assetPos(crackRoot) : new THREE.Vector3(anchors.origin.x, 0.05, FRONT_Z);
 
   const coreMeshes = [];
   const chunks = [];
@@ -423,6 +430,7 @@ export function prepareForge(gltfScene, groundY) {
       core: toWorld(anchors.core),
       target: toWorld(anchors.target),
       origin: toWorld(anchors.origin),
+      root: toWorld(anchors.root),
       logo: toWorld(anchors.logo),
       frontZ: FRONT_Z * S + object.position.z,
       opening: toWorld(new THREE.Vector3((OPENING_SVG[0] - SVG_CX) * SVG_SCALE, SVG_Y0 - (OPENING_SVG[1] - SVG_CY) * SVG_SCALE, FRONT_Z)),

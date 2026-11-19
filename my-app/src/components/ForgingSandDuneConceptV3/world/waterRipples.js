@@ -99,8 +99,10 @@ export function createWaterRipples(rect, size = 768) {
     idle() {
       return performance.now() - lastDrop > 7000;
     },
-    // move the square (only when idle: the rings would jump with it)
-    recentre(x, z) {
+    // move the square (only when idle: the rings would jump with it), and
+    // size it (m: the same grid over more water when the camera is far off)
+    recentre(x, z, size = rect.z) {
+      rect.z = rect.w = size;
       rect.x = x - rect.z / 2;
       rect.y = z - rect.w / 2;
       cleared = false;

@@ -67,14 +67,33 @@ export function createSharedUniforms() {
     // (world/revealMap.js; until it is built: never)
     uRevealMap: { value: emptyRevealMap() },
     uRevealRect: { value: new THREE.Vector4(0, 0, 1, 1) },
-    // the sweep's look (world/revealMap.js ncSweep): glow width (m), colour
-    // split (m), intensity, waver (m); and its colour
-    uSweep: { value: new THREE.Vector4(10, 2.5, 1, 6) },
-    uSweepColor: { value: new THREE.Color("#ff6a1a") },
+    // the sand's wind ripples: a photoscanned normal map (ambientCG
+    // Ground055L, CC0 — public/textures/sand), laid over the dunes at its
+    // real size (uSandTex.x m a tile), its strength (y), on once loaded (z)
+    uSandNormal: { value: sandNormalMap() },
+    uSandTex: { value: new THREE.Vector4(3, 1, 0, 0) },
   };
 }
 
 export const STIR_SLOTS = 48;
+
+// (loaded once for the page; uSandTex.z turns it on when it has arrived)
+let sandNormal = null;
+const sandWaiting = [];
+function sandNormalMap() {
+  if (!sandNormal && typeof window !== "undefined") {
+    sandNormal = new THREE.TextureLoader().load("/textures/sand/ground055l_normal.jpg", () => sandWaiting.forEach((u) => (u.value.z = 1)));
+    sandNormal.wrapS = sandNormal.wrapT = THREE.RepeatWrapping;
+    sandNormal.anisotropy = 8;
+    sandNormal.colorSpace = THREE.NoColorSpace;
+  }
+  return sandNormal;
+}
+// (call with the shared uniforms: their uSandTex goes on once the map is in)
+export function watchSandMap(shared) {
+  if (sandNormal?.image) shared.uSandTex.value.z = 1;
+  else sandWaiting.push(shared.uSandTex);
+}
 
 const WORLD_VARYINGS = /* glsl */ `
 varying vec3 vNcWorld;
@@ -123,6 +142,8 @@ uniform float uOasisOn;
 uniform vec3 uOasisGrass;
 uniform vec3 uOasisSoil;
 uniform float uOasisRing;
+uniform sampler2D uSandNormal;
+uniform vec4 uSandTex;
 ${REVEAL_GLSL}
 // how white the world is at p: inside the spreading wave, or everywhere
 float ncWhiteAt(vec3 p) {
@@ -285,6 +306,41 @@ export function createSandMaterial(shared) {
           float sy = s.z / (s.z + s.w);
           return mix(mix(s3, s2, sx), mix(s1, s0, sx), sy);
         }
+        // The photoscanned ripples at p (world x, z) at a size (× the tile):
+        // the crests turned across the wind; the tiling broken up (each
+        // stretch of a few tiles takes the map at its own offset, blended
+        // where they meet, so its repeat never shows) and gently bent, so the
+        // crests wander. Returns the slope it gives the ground (world x, z).
+        vec2 ncSandSlope(vec2 p, float size, float o) {
+          vec2 across = vec2(-uWind.y, uWind.x);
+          vec2 uv = vec2(dot(p, across), dot(p, uWind)) / (uSandTex.x * size);
+          uv += (vec2(ncNoise(vec3(uv * 0.21, 41.0 + o)), ncNoise(vec3(uv * 0.21, 43.0 + o))) - 0.5) * 0.35;
+          float k = ncNoise(vec3(uv * 0.33, 47.0 + o)) * 8.0;
+          float ia = floor(k);
+          float f = fract(k);
+          // (sampled a touch blurred: soft crests, not sharp grooves)
+          vec2 dx = dFdx(uv) * 1.8;
+          vec2 dy = dFdy(uv) * 1.8;
+          vec2 na = textureGrad(uSandNormal, uv + sin(vec2(3.0, 7.0) * ia), dx, dy).xy * 2.0 - 1.0;
+          vec2 nb = textureGrad(uSandNormal, uv + sin(vec2(3.0, 7.0) * (ia + 1.0)), dx, dy).xy * 2.0 - 1.0;
+          vec2 t = mix(na, nb, smoothstep(0.2, 0.8, f));
+          return t.x * across + t.y * uWind;
+        }
+        // ...at three sizes, so the ripples carry on into the distance: the
+        // real ones close by (a fine map seen from far flattens out under its
+        // mipmaps), and the same pattern 6× and 30× larger taking over as it
+        // does — near, the fine sand; far, ripples right across the dunes
+        vec2 ncSandRipples(vec2 p) {
+          vec2 uv = p / uSandTex.x;
+          float lod = log2(max(length(fwidth(uv)) * 1024.0, 1e-4));
+          vec2 s = ncSandSlope(p, 1.0, 0.0);
+          float w2 = smoothstep(1.5, 4.0, lod);
+          float w3 = smoothstep(1.5, 4.0, lod - log2(6.0));
+          // (the larger ones gentler still: far off the dunes stay calm)
+          if (w2 > 0.001) s = s * (1.0 - w2 * 0.5) + ncSandSlope(p, 6.0, 10.0) * w2 * 0.55;
+          if (w3 > 0.001) s = s * (1.0 - w3 * 0.5) + ncSandSlope(p, 30.0, 20.0) * w3 * 0.3;
+          return s;
+        }
         vec3 ncStirLine(vec2 p) {
           vec2 uv = (p - uTrailRect.xy) / uTrailRect.z + 0.5;
           if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec3(0.0);
@@ -306,9 +362,9 @@ export function createSandMaterial(shared) {
         float ncF1 = 1.0 - smoothstep(18.0, 110.0, ncCam);
         float ncF2 = 1.0 - smoothstep(60.0, 420.0, ncCam);
         float ncPh = ncU * 3.0 + ncNoise(vec3(ncP * 0.06, 0.0)) * 7.0 + sin(ncV * 0.21) * 1.4;
-        float ncRip = pow(0.5 + 0.5 * sin(ncPh), 1.8) * 0.05 * ncF1 * uRipple;
+        float ncRip = pow(0.5 + 0.5 * sin(ncPh), 1.8) * 0.05 * ncF1 * uRipple * (1.0 - uSandTex.z);
         float ncPh2 = ncU * 0.55 + ncNoise(vec3(ncP * 0.011, 4.0)) * 9.0 + sin(ncV * 0.045) * 2.0;
-        float ncRip2 = pow(0.5 + 0.5 * sin(ncPh2), 2.4) * 0.36 * ncF2 * uRipple;
+        float ncRip2 = pow(0.5 + 0.5 * sin(ncPh2), 2.4) * 0.36 * ncF2 * uRipple * (1.0 - uSandTex.z);
         float ncGrain = ncF1 > 0.0 ? ncFbm(vNcWorld * 0.85) : 0.5;
         // (anti-aliased: each layer of ripples fades out just where it gets
         // finer than the screen can show — looking down the valley, at a
@@ -330,9 +386,8 @@ export function createSandMaterial(shared) {
         // (none of it until the oasis has come up here)
         float ncRev = ncReveal(ncP);
         ncOasis.rgb *= ncRev;
-        // the sweep: a line of light running out across the desert, the
-        // oasis behind it (its edge wavering slowly)
-        vec3 ncFront = uOasisReveal.z > 0.5 ? ncSweep(ncP, uTime, ncNoise(vec3(ncP * 0.015, uTime * 0.15)) - 0.5) : vec3(0.0);
+        // (the light running out ahead of it is drawn apart: scene/oasis/Rivulets.jsx)
+        vec3 ncFront = vec3(0.0);
         // (the ripples settle where it is wet or grown over)
         ncRip *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.8;
         ncRip2 *= 1.0 - max(ncOasis.r, ncOasis.g) * 0.85;
@@ -380,7 +435,16 @@ export function createSandMaterial(shared) {
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
-        normal = ncBump(-vViewPosition, normal, ncRip + ncRip2 + ncGrain * 0.03 * ncF1 + ncDraw.x, faceDirection);`
+        normal = ncBump(-vViewPosition, normal, ncRip + ncRip2 + ncGrain * 0.03 * ncF1 + ncDraw.x, faceDirection);
+        // the photoscanned ripples: the ground tilted by them (in world space,
+        // then turned into the view's), settling where it is wet or grown over
+        if (uSandTex.z > 0.5) {
+          // (and smoothed away inside the line the cursor draws in the sand)
+          vec2 ncS = ncSandRipples(ncP) * uSandTex.y * uRipple * (1.0 - max(ncOasis.r, ncOasis.g) * 0.8) * (1.0 - ncDraw.y * 0.85);
+          vec3 ncN0 = normalize(vNcNormal);
+          vec3 ncN1 = normalize(ncN0 + vec3(ncS.x, 0.0, ncS.y));
+          normal = normalize(normal + (viewMatrix * vec4(ncN1 - ncN0, 0.0)).xyz);
+        }`
       )
       .replace(
         "#include <emissivemap_fragment>",

@@ -9,7 +9,7 @@ import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
 import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
 import { CUT_TO, oasisCamera, runOnPast } from "../world/oasisCamera";
 import { REVEAL_BAND, REVEAL_ORIGIN, WATER_Y } from "../world/oasis";
-import { CutPass, createCutPass } from "./CutTransition";
+import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
 import { T } from "../tuning";
 import { attachPointer } from "../pointer";
 import { applyMagnet, stepMagnet } from "../world/magnet";
@@ -136,6 +136,9 @@ export function UniformSync({ J, shared, shockCenter }) {
       shared.uCrackColor.userData = T.crackColor;
     }
     shared.uRipple.value = T.rippleStrength;
+    // the photoscanned ripples: their tile's size (m) and strength
+    shared.uSandTex.value.x = T.sandRippleSize;
+    shared.uSandTex.value.y = T.sandRippleDepth;
     // shockwave: out to ~380 m, fading as it spreads (nothing before the merge)
     shared.uShockR.value = J.shock * 380;
     shared.uShockAmp.value = J.shock > 0 ? Math.pow(1 - J.shock, 1.4) * T.shockStrength : 0;
@@ -144,13 +147,7 @@ export function UniformSync({ J, shared, shockCenter }) {
     shared.uLineDepth.value = T.lineDepth;
     // the oasis rising out of the desert (world/oasis.js REVEAL_ORIGIN)
     shared.uOasisReveal.value.set(REVEAL_ORIGIN.x, REVEAL_ORIGIN.y, J.revealR, REVEAL_BAND);
-    shared.uOasisRing.value = T.sweepGlow;
-    // the sweep's look (world/revealMap.js ncSweep)
-    shared.uSweep.value.set(T.sweepWidth, T.sweepSplit, T.sweepGlow, T.sweepWaver);
-    if (shared.uSweepColor.userData !== T.sweepColor) {
-      shared.uSweepColor.value.set(T.sweepColor);
-      shared.uSweepColor.userData = T.sweepColor;
-    }
+    shared.uOasisRing.value = T.revealRing;
     // (the whiteout's uniforms stay at rest: shared.uWhite etc.)
     fog.color.copy(HAZE).lerp(NIGHT_HAZE, night);
     fog.density = T.fogDensity;
@@ -493,6 +490,15 @@ export function Post({ J, tier }) {
     },
     [cut]
   );
+  // the change to the white site at the end (CutTransition.jsx)
+  const outro = useMemo(() => createOutroPass(), []);
+  useEffect(
+    () => () => {
+      outro.pass.dispose();
+      outro.material.dispose();
+    },
+    [outro]
+  );
   useFrame(() => {
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
@@ -511,16 +517,19 @@ export function Post({ J, tier }) {
       bloom.current.luminanceMaterial.threshold = T.bloomThreshold;
       if (bloom.current.mipmapBlurPass) bloom.current.mipmapBlurPass.radius = T.bloomRadius;
     }
-    if (vignette.current) vignette.current.darkness = J.vignette * T.vignette;
+    // (none on the white at the end)
+    if (vignette.current) vignette.current.darkness = J.vignette * T.vignette * (1 - J.outro);
   });
   return (
     <>
     <CutPass J={J} cut={cut} />
+    <OutroPass J={J} outro={outro} />
     <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
       <primitive object={sanitize} dispose={null} />
       <primitive object={edgeFx} dispose={null} />
       <primitive object={cut.pass} dispose={null} />
       <Bloom ref={bloom} mipmapBlur intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
+      <primitive object={outro.pass} dispose={null} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette ref={vignette} offset={0.32} darkness={0.6} />
     </EffectComposer>

@@ -155,3 +155,115 @@ export function createSaberCap(beamUniforms) {
   mesh.renderOrder = 4;
   return mesh;
 }
+
+// The streaks (T.beamStreaks): the beam as it first was — a bundle
+// of fine strands of light along the same path, bright dashes streaming
+// along them, away from the logo and on towards the core (the original
+// concept's look; the same head and tail as the single beam).
+export const STRAND_VERTEX = /* glsl */ `
+attribute vec3 aTangent;
+attribute float aSide;
+attribute float aU;
+attribute vec4 aStrand; // width (m), brightness, phase, hot
+attribute vec3 aOffset;
+uniform float uPixel;
+uniform float uSpread;
+uniform float uWidthMul;
+varying float vU;
+varying float vSide;
+varying vec4 vStrand;
+varying float vWidthFix;
+#include <common>
+#include <fog_pars_vertex>
+void main() {
+  vec3 p = position + aOffset * uSpread;
+  vec3 toCam = cameraPosition - p;
+  vec3 side = normalize(cross(aTangent, toCam));
+  float sw = aStrand.x * uWidthMul;
+  float w = max(sw, length(toCam) * uPixel * 1.3);
+  vWidthFix = sw / w;
+  p += side * aSide * w * 0.5;
+  vU = aU;
+  vSide = aSide;
+  vStrand = aStrand;
+  vec4 mvPosition = viewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}
+`;
+
+export const STRAND_FRAGMENT = /* glsl */ `
+uniform float uHead;
+uniform float uTail;
+uniform float uLength;
+uniform float uTime;
+uniform float uIntensity;
+uniform float uFlow;
+uniform float uDashFreq;
+uniform float uDashLength;
+uniform float uBase;
+uniform float uArrive; // the last metres into the core flare as the streaks meet
+uniform vec3 uColor;
+uniform vec3 uHot;
+varying float vU;
+varying float vSide;
+varying vec4 vStrand;
+varying float vWidthFix;
+#include <common>
+#include <fog_pars_fragment>
+void main() {
+  if (vU > uHead || vU < uTail) discard;
+  float across = 1.0 - smoothstep(0.2, 1.0, abs(vSide));
+  float metres = vU * uLength;
+  // dashes streaming away from the logo, on towards the tree
+  float dash = smoothstep(1.0 - uDashLength, 1.0 - uDashLength * 0.3, fract(-metres * uDashFreq + uTime * uFlow + vStrand.z));
+  float head = (1.0 - smoothstep(0.0, 10.0, (uHead - vU) * uLength)) * (1.0 - step(0.9995, uHead));
+  // out of the core it grows in over its first metres
+  float start = smoothstep(0.0, 6.0, metres);
+  float arrive = uArrive * (1.0 - smoothstep(0.0, 24.0, (1.0 - vU) * uLength));
+  float I = vStrand.y * (uBase + dash * 2.2 + head * 3.0 + arrive * 3.0) * across * start * vWidthFix * uIntensity;
+  if (I < 0.002) discard;
+  vec3 col = mix(uColor, uHot, clamp(vStrand.w * across * 0.7 + head * 0.6 + dash * 0.3 + arrive * 0.5, 0.0, 1.0));
+  gl_FragColor = vec4(col * 2.4, clamp(I, 0.0, 1.0));
+  #ifdef USE_FOG
+    float fogF = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
+    // (far streaks thin into the haze rather than turning to its colour)
+    gl_FragColor.a *= 1.0 - fogF * 0.85;
+  #endif
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+export function streakUniforms(length) {
+  return {
+    uHead: { value: 0 },
+    uTail: { value: 0 },
+    uLength: { value: length },
+    uTime: { value: 0 },
+    uIntensity: { value: 1 },
+    uFlow: { value: 1 },
+    uSpread: { value: 1 },
+    uWidthMul: { value: 1 },
+    uDashFreq: { value: 0.045 },
+    uDashLength: { value: 0.1 },
+    uBase: { value: 0.45 },
+    uPixel: { value: 0.001 },
+    uArrive: { value: 0 },
+    uColor: { value: new THREE.Color("#ff5f00") },
+    uHot: { value: new THREE.Color("#ffc890") },
+  };
+}
+// the panel's values, each frame (k: the part's own brightness, × T.streakIntensity)
+export function syncStreaks(u, k, pixel) {
+  u.uIntensity.value = T.streakIntensity * k;
+  u.uFlow.value = T.streakFlow;
+  u.uSpread.value = T.streakSpread;
+  u.uWidthMul.value = T.streakWidth;
+  u.uDashFreq.value = 1 / Math.max(T.streakDashSpacing, 0.5);
+  u.uDashLength.value = T.streakDashLength;
+  u.uBase.value = T.streakBase;
+  u.uPixel.value = pixel;
+  u.uColor.value.set(T.streakColor);
+  u.uHot.value.set(T.streakHotColor);
+}

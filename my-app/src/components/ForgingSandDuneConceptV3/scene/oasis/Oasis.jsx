@@ -7,7 +7,8 @@ import * as THREE from "three";
 import { T } from "../../tuning";
 import { buildGroundMap } from "./groundMap";
 import { buildRevealMap } from "../../world/revealMap";
-import SeedCube from "./SeedCube";
+import Rivulets, { pathTexture } from "./Rivulets";
+import CoreOrb from "./CoreOrb";
 import Rocks, { buildRockSet } from "../Rocks";
 import { mulberry32 } from "../../world/layout";
 import { S_RIM, TREE, floorHalfWidth, oasisAt, route } from "../../world/oasis";
@@ -57,8 +58,13 @@ function valleyRocks(terrain, count = 70) {
 export default function Oasis({ J, tier, shared, terrain, forge }) {
   const ground = useMemo(() => buildGroundMap(terrain), [terrain]);
   const rocks = useMemo(() => valleyRocks(terrain), [terrain]);
-  // when each spot comes up: the sweep out from the cube (world/revealMap.js)
-  const reveal = useMemo(() => buildRevealMap(), []);
+  // when each spot comes up, and the light running out ahead of it
+  // (world/revealMap.js: the reference's rivulets of light)
+  const reveal = useMemo(() => buildRevealMap(terrain), [terrain]);
+  // (its rivulets' lines: the threads run along them, and the orb's poured
+  // light runs out along them — one and the same)
+  const paths = useMemo(() => pathTexture(reveal.rivulets, terrain), [reveal, terrain]);
+  useEffect(() => () => paths.dispose(), [paths]);
   useEffect(() => {
     shared.uRevealMap.value = reveal.texture;
     shared.uRevealRect.value.copy(reveal.rect);
@@ -103,7 +109,8 @@ export default function Oasis({ J, tier, shared, terrain, forge }) {
   return (
     <>
       <Water J={J} tier={tier} shared={shared} ground={ground} treePos={TREE.core} />
-      <SeedCube J={J} />
+      <Rivulets J={J} reveal={reveal} paths={paths} terrain={terrain} shared={shared} tier={tier} />
+      <CoreOrb J={J} shared={shared} tier={tier} paths={paths} rivulets={reveal.rivulets.length} />
       <Rocks rockSet={rocks} shared={shared} />
       <Vegetation J={J} tier={tier} shared={shared} terrain={terrain} />
       <Yggdrasil J={J} tier={tier} onReady={onTree} />

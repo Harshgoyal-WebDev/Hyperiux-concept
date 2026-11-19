@@ -264,7 +264,7 @@ export function oasisHeight(base, x, z) {
 // turns to it after the last curve (world/oasisCamera.js revealRadiusAt).
 // The band behind the front over which things come up is REVEAL_BAND m wide.
 export const REVEAL_ORIGIN = new THREE.Vector2(TREE.x, TREE.z);
-export const REVEAL_BAND = 20;
+export const REVEAL_BAND = 45;
 // how far the oasis has come up at (x, z) by the reveal's clock R (0..1):
 // when each spot comes up is world/revealMap.js's (set here once built;
 // until then, a ring out from the tree)

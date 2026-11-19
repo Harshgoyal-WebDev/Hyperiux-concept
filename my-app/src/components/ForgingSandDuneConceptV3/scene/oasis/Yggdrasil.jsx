@@ -10,7 +10,7 @@ import { T } from "../../tuning";
 import { TREE, WATER_Y, revealAt } from "../../world/oasis";
 import { buildCrown, buildWood } from "../../world/yggdrasil";
 import { attachPointer, pointer } from "../../pointer";
-import { cubeY } from "../../world/oasisCamera";
+import { sampleTree, setTreeSamples } from "../../world/treeSamples";
 
 // The Yggdrasil, at the heart of the oasis: public/models/yggdrasil.glb when
 // it is there (fitted to TREE's height on its island), and until then a
@@ -273,7 +273,7 @@ function strandMaterial(material, uniforms) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute float _flow;\nattribute float _seed;\nuniform float uTime;\nuniform float uGrow;\nuniform float uGrowJitter;\nuniform float uDrawLen;\nuniform vec3 uCubeC;\nuniform float uCubeH;\nuniform vec3 uRayO;\nuniform vec3 uRayD;\nuniform float uPush;\nuniform float uPushR;\nvarying float vFlow;\nvarying float vSeed;\nvarying float vClimb;")
+      .replace("#include <common>", "#include <common>\nattribute float _flow;\nattribute float _seed;\nuniform float uTime;\nuniform vec3 uRayO;\nuniform vec3 uRayD;\nuniform float uPush;\nuniform float uPushR;\nvarying float vFlow;\nvarying float vSeed;\nvarying float vClimb;")
       // how far up the tree a point is, for the light's climb: its height in
       // the model (−4.5 m, the deepest root, to 42.9 m, the crown's top) with
       // a little of its flow, so the roots' ends light just before their foot.
@@ -291,24 +291,7 @@ function strandMaterial(material, uniforms) {
       // turned back into the strand's own space (rotation × uniform scale)
       .replace(
         "#include <project_vertex>",
-        `// the roots spun out of the cube: the newest stretch of each root
-        // filament (just behind its growing tip) is drawn from the cube's
-        // outline — the point of it facing this vertex — and eases out into
-        // its place, so the roots stream out of the cube's lines; the trunk,
-        // limbs and crown simply draw up from the bottom, on the same front
-        if (uGrow < 0.999 && _flow < 0.5) {
-          float grownV = uGrow * (1.0 + uGrowJitter) - _seed * uGrowJitter;
-          float settle = clamp((grownV - vClimb) / uDrawLen, 0.0, 1.0);
-          settle = 1.0 - pow(1.0 - settle, 3.0);
-          vec3 pw0 = (modelMatrix * vec4(transformed, 1.0)).xyz;
-          vec3 dir = pw0 - uCubeC;
-          vec3 ad = abs(dir);
-          vec3 onCube = uCubeC + dir * (uCubeH / max(max(ad.x, max(ad.y, ad.z)), 1e-3));
-          vec3 dw0 = (onCube - pw0) * (1.0 - settle);
-          float s20 = dot(modelMatrix[0].xyz, modelMatrix[0].xyz);
-          transformed += transpose(mat3(modelMatrix)) * dw0 / s20;
-        }
-        if (uPush > 0.0001) {
+        `if (uPush > 0.0001) {
           vec3 pw = (modelMatrix * vec4(transformed, 1.0)).xyz;
           vec3 rel = pw - uRayO;
           vec3 off = rel - uRayD * dot(rel, uRayD);
@@ -446,6 +429,11 @@ function StrandTree({ J, tier, uniforms, onReady }) {
     return root;
   }, [gltf, tier, uniforms]);
   useEffect(() => onReady?.(), [object, onReady]);
+  // (points on its strands, for the cube's threads to run to: CoreOrb.jsx)
+  useEffect(() => {
+    setTreeSamples(sampleTree(object));
+    return () => setTreeSamples(null);
+  }, [object]);
   const push = useMemo(() => ({ ndc: new THREE.Vector2(), on: 0, ray: new THREE.Raycaster() }), []);
   useEffect(() => attachPointer(), []);
   // it grows out of the lake, strand by strand from the bottom up (not
@@ -455,9 +443,6 @@ function StrandTree({ J, tier, uniforms, onReady }) {
     const x = THREE.MathUtils.clamp((J.progress - from) / Math.max(T.tlTreeGrowEnd - from, 0.002), 0, 1);
     uniforms.uGrow.value = x;
     uniforms.uGrowJitter.value = T.treeGrowJitter;
-    uniforms.uCubeC.value.set(TREE.x, cubeY(), TREE.z);
-    uniforms.uCubeH.value = T.cubeSize * 0.5;
-    uniforms.uDrawLen.value = T.treeDrawLength;
     object.visible = x > 0.0005 || J.warmup > 0;
     // the cursor's line through the scene (eased after the cursor: the
     // strands drift aside and settle back, never snap)
@@ -493,12 +478,6 @@ export default function Yggdrasil({ J, tier, onReady }) {
       uFill: { value: 0 },
       uGrow: { value: 0 },
       uGrowJitter: { value: 0.25 },
-      // the cube the strands stream out of (world centre, half its edge),
-      // and how much of the growth each filament's newest stretch takes to
-      // ease out of it into place
-      uCubeC: { value: new THREE.Vector3() },
-      uCubeH: { value: 2 },
-      uDrawLen: { value: 0.1 },
       // the cursor's line through the scene (origin, direction), how far
       // the strands round it move aside (m) and its reach (m)
       uRayO: { value: new THREE.Vector3() },

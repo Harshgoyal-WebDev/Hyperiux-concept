@@ -57,9 +57,14 @@ vec3 cutGlass(sampler2D tex, vec2 uv, vec2 off, float split) {
   return c;
 }
 
+uniform float uHold; // 1: once turned over, it stays the next shot (the change to the white site)
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  if (uT <= 0.0005 || uT >= 0.9995) {
+  if (uT <= 0.0005) {
     outputColor = inputColor;
+    return;
+  }
+  if (uT >= 0.9995) {
+    outputColor = uHold > 0.5 ? vec4(texture2D(tB, uv).rgb, inputColor.a) : inputColor;
     return;
   }
   vec2 sp = (uv - 0.5) * vec2(uAspect, 1.0);
@@ -114,6 +119,7 @@ export function createCutPass() {
     uTime: { value: 0 },
     uGlass: { value: 1 },
     uChroma: { value: 0.12 },
+    uHold: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -188,6 +194,129 @@ export function CutPass({ J, cut }) {
     gl.render(scene, cam);
     gl.setRenderTarget(prev);
     u.tB.value = res.target.texture;
+  });
+  return null;
+}
+
+// The change from the scene to the white site at the end: first the glass —
+// hexagonal tiles spreading out from the centre until the whole screen is
+// glass, the scene (the camera still going round the tree) bent and split
+// through it — and, overlapping it a little, the white: each hexagon filling
+// softly from its middle, the centre's first and on outwards, mixed with
+// chance (T.outroRandom), until it is all white — HDR white, so through the
+// tone mapping it comes out as the site's own white — and staying white.
+// (tuning.js outroGlassCover / outroWhiteFrom / outroWhiteFill / outroCell)
+const OUTRO_FRAGMENT = /* glsl */ `
+uniform sampler2D inputBuffer;
+varying vec2 vUv;
+uniform float uT; // 0..1
+uniform float uAspect;
+uniform float uTime;
+uniform float uGlass;
+uniform float uChroma;
+uniform float uCell; // a tile's size (screen heights)
+uniform float uCover; // the share of the change by which the glass covers the screen
+uniform float uWhiteFrom; // ...at which the white starts
+uniform float uWhiteFill; // ...each tile takes to fill
+uniform float uRandom; // 0 in rings from the centre … 1 at random
+uniform vec3 uWhite;
+${FRAGMENT.slice(FRAGMENT.indexOf("// pointy-top"), FRAGMENT.indexOf("uniform float uHold"))}
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  if (uT <= 0.0005) { outputColor = inputColor; return; }
+  if (uT >= 0.9995) { outputColor = vec4(uWhite, inputColor.a); return; }
+  vec2 sp = (uv - 0.5) * vec2(uAspect, 1.0);
+  vec4 hx = cutHex(sp / uCell);
+  vec2 l = hx.xy;
+  vec2 id = hx.zw;
+  vec2 centre = id * vec2(1.0, 1.7320508);
+  float far = min(length(centre * uCell) / length(vec2(0.5 * uAspect, 0.5)), 1.0);
+  float rnd = cutHash(id);
+  float rnd2 = cutHash(id + vec2(17.31, -4.7));
+  // the glass: tile by tile from the centre out, the whole screen by uCover
+  const float RAMP = 0.12;
+  float gd = (far * 0.85 + rnd * 0.15) * max(uCover - RAMP, 0.0);
+  float gIn = smoothstep(gd, gd + RAMP, uT);
+  // the white: each tile its own moment, from the centre out mixed with chance
+  float order = mix(far, rnd2, uRandom);
+  float wd = uWhiteFrom + order * max(1.0 - uWhiteFrom - uWhiteFill, 0.0);
+  float w = clamp((uT - wd) / max(uWhiteFill, 0.01), 0.0, 1.0);
+  w = w * w * (3.0 - 2.0 * w);
+  float g = gIn * uGlass;
+  // a bevelled lens, as the cut's, breathing a little (alive while the scroll rests)
+  float edge = clamp(cutInHex(l) / 0.5, 0.0, 1.0);
+  vec2 dirL = l / max(length(l), 1e-4);
+  float bevel = pow(1.0 - edge, 2.2);
+  float ph = rnd * 6.28 + uTime * 0.35;
+  vec2 lens = -l * 0.32 + dirL * bevel * 0.55 + vec2(cos(ph), sin(ph)) * 0.05;
+  vec2 off = lens * uCell / vec2(uAspect, 1.0) * g;
+  float split = uChroma * (0.35 + bevel * 1.4) * g;
+  vec3 col = cutGlass(inputBuffer, uv, off, split);
+  col *= 1.0 - g * (0.18 * bevel + 0.06 * (l.y + 0.5));
+  col += g * 0.04 * pow(max(dot(dirL, vec2(-0.55, 0.83)), 0.0), 3.0) * bevel * col;
+  // the white filling the tile from its middle out, its edge soft
+  float reach = w * 1.6;
+  float mask = smoothstep(1.0 - reach, 1.0 - reach + 0.6, edge) * smoothstep(0.0, 0.4, w);
+  // (HDR white: blended where the tone mapping's own curve is — x / (1 + x) —
+  // so the fill reads evenly, soft at its edge, not white at its first touch)
+  vec3 cy = col / (1.0 + col);
+  vec3 wy = uWhite / (1.0 + uWhite);
+  vec3 y = mix(cy, wy, mask * mask);
+  outputColor = vec4(y / max(1.0 - y, 1e-3), inputColor.a);
+}
+`;
+
+export function createOutroPass() {
+  const uniforms = {
+    inputBuffer: { value: null },
+    uT: { value: 0 },
+    uAspect: { value: 1.6 },
+    uTime: { value: 0 },
+    uGlass: { value: 1 },
+    uChroma: { value: 0.12 },
+    uCell: { value: 0.13 },
+    uCover: { value: 0.4 },
+    uWhiteFrom: { value: 0.22 },
+    uWhiteFill: { value: 0.3 },
+    uRandom: { value: 0.55 },
+    uWhite: { value: new THREE.Vector3(24, 24, 24) },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = position.xy * 0.5 + 0.5;
+        gl_Position = vec4(position.xy, 1.0, 1.0);
+      }`,
+    fragmentShader: OUTRO_FRAGMENT + /* glsl */ `
+      void main() {
+        vec4 c = texture2D(inputBuffer, vUv);
+        vec4 o;
+        mainImage(c, vUv, o);
+        gl_FragColor = o;
+      }`,
+    depthTest: false,
+    depthWrite: false,
+  });
+  return { pass: new ShaderPass(material, "inputBuffer"), uniforms, material };
+}
+export function OutroPass({ J, outro }) {
+  const { size } = useThree();
+  useFrame((state) => {
+    const u = outro.uniforms;
+    const t = J.outro;
+    u.uT.value = t;
+    u.uAspect.value = size.width / Math.max(size.height, 1);
+    u.uTime.value = state.clock.elapsedTime;
+    u.uGlass.value = T.outroGlass;
+    u.uChroma.value = T.outroChroma;
+    u.uCell.value = Math.max(T.outroCell, 0.02);
+    u.uCover.value = T.outroGlassCover;
+    u.uWhiteFrom.value = T.outroWhiteFrom;
+    u.uWhiteFill.value = T.outroWhiteFill;
+    u.uRandom.value = T.outroRandom;
+    // (off until it starts; on from then, white once over)
+    outro.pass.enabled = t > 0.0005;
   });
   return null;
 }

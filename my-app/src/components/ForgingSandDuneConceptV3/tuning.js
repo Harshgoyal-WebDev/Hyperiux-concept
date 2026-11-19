@@ -67,6 +67,8 @@ export const T = {
 
   // Sand
   sandColor: "#2c1000",
+  sandRippleSize: 4, // the photoscanned sand ripples: metres one tile of them covers (smaller = finer ripples)
+  sandRippleDepth: 0.5, // ...how deep they read (their light and shade)
   rippleStrength: 1.5,
 
   // Entering (after the loader)
@@ -86,21 +88,27 @@ export const T = {
 
   // Beam
   trailIntensity: 2.98,
-  beamStart: 0.58, // how far along its path the beam is already drawn at the hero (0..1)
+  beamFootAt: 0.55, // in the hero: when the beam reaches the slab's foot, as a share of the way from its start to the climb (lower = it runs on further ahead of the camera)
+  beamStart: 0.6, // how far along its path the beam is already drawn at the hero (0..1)
   // Timeline points (scroll position p, 0 = top of the page, 1 = the end;
   // the dev HUD and the panel's scrubber show p): when things start and end
   tlCutStart: 0.3945, // the glass-hexagon cut from the logo to the valley: starts
   tlCutEnd: 0.5917, // ...ends (the valley camera takes over)
-  tlRevealStart: 0.58, // the sweep sets off from the cube, across the desert (the camera turning to it)
-  tlRevealEnd: 0.8, // ...has swept over all of it
-  tlBeamToTreeStart: 0.752, // the beam leaves the stream for the cube
-  tlBeamToTreeEnd: 0.795, // ...touches it (the cube turns out: the tree starts)
-  tlTreeGrowStart: 0.797, // the Yggdrasil's strands start streaming out of the cube: the whole tree drawing up, bottom to top, in one
-  tlTreeGrowEnd: 0.915, // ...fully grown, to the top of its crown
-  tlTreeLightEnd: 0.94, // the tree's light has climbed to the top of its crown
-  tlOrbitStart: 0.797, // the camera starts round the tree as it draws up
-  tlOrbitEnd: 0.93, // ...and settles
-  treeDrawLength: 0.1, // how long (share of the growth) each strand's newest stretch takes to ease out of the cube into place
+  tlOrbShow: 0.66, // the core (the orb with our cube in it) is there at the lake's heart, as the camera turns to it
+  tlBeamToTreeStart: 0.752, // the beam runs on in to the core, the camera following it; the orb gathers itself
+  tlBeamToTreeEnd: 0.79, // ...the beam touches the core: the orb bursts (over orbBurstSpan)
+  syncFallReveal: false, // the reveal and the tree start the moment the orb's poured threads land (overrides tlRevealStart / tlTreeGrowStart and their ends)
+  revealSpan: 0.075, // ...the reveal's length then (share of the scroll)
+  treeGrowSpan: 0.12, // ...the tree's growth's length then
+  tlRevealStart: 0.80, // the oasis's reveal (threads of light running out, V2) sets off from under the core
+  tlRevealEnd: 1.0, // ...has spread over all of it
+  tlTreeGrowStart: 0.82, // the Yggdrasil starts growing, from the bottom up, strand by strand
+  tlTreeGrowEnd: 0.9294, // ...fully grown, to the top of its crown
+  tlTreeLightEnd: 0.95, // the tree's light has climbed to the top of its crown
+  tlOrbitStart: 0.79, // the camera starts round the tree (at one steady pace, on to the end of the page)
+  tlOrbitEnd: 0.935, // ...has drawn back to its farthest (orbitSweep degrees round by then)
+  tlOutroStart: 0.935, // the glass-hexagon change from the scene to the white site: starts
+  tlOutroEnd: 0.995, // ...all white
   treeLeafGlow: 1.0, // the Yggdrasil's (cosmic) leaves: their brightness before the tree's light reaches them
   treeLeafLit: 2.0, // ...and the extra glow once it has climbed to them
   treeLeafColor: "#ffffff", // ...a tint over their own colours (white: as made)
@@ -151,32 +159,64 @@ export const T = {
   strandPushRadius: 7, // ...how far round the cursor (m)
   embers: 1.0, // motes of light drifting up round the trunk
   oasisBeam: 1.0, // the beam past the mark (x trailIntensity)
+  beamStreaks: true, // the beam, all the way: off = one beam of light (the lightsaber); on = a bundle of streaks (as at first)
+  streakIntensity: 1.62, // the streaks: overall
+  streakWidth: 0.88, // ...each strand's width (x)
+  streakFlow: 0.69, // ...pace of the dashes streaming along them
+  streakSpread: 0.22, // ...how wide the bundle opens (the gaps between strands)
+  streakDashSpacing: 54.0, // ...metres between the bright dashes on a strand
+  streakDashLength: 0.57, // ...share of that spacing each dash fills
+  streakBase: 1.09, // ...glow of the strands between dashes
+  streakColor: "#ff5f00", // ...their colour
+  streakHotColor: "#ffd3a6", // ...where brightest
   oasisBeamLead: 0.31, // how far ahead of the camera it runs (x 150 m)
   innerGlow: 1.8, // the forged logo's cube outline lit from within (the light in its openings)
   innerGlowColor: "#ff7a2a", // ...its colour (orange)
   logoParallax: 2.5, // the forged logo turning towards the cursor (0 = still)
   logoYaw: 10, // ...degrees left/right at the screen's edge
   logoPitch: 6, // ...degrees up/down
-  // the sweep: the oasis revealed by a line of light racing out from the cube across the desert
-  sweepGlow: 1.6, // its brightness (0 = none)
-  sweepColor: "#ff6a1a", // its glow's colour (the line itself is white-hot)
-  sweepWidth: 16, // its glow's width far out (m; finer near the cube)
-  sweepSplit: 2.5, // its colours split at the edge (m: red leading, blue trailing)
-  sweepWaver: 6, // its edge wavering as it goes (m)
-  // the cube at the lake's heart, where the tree will grow
-  cubeSize: 4, // its edge (m)
-  cubeHover: 1.2, // how far over the island it floats (m)
-  cubeGlow: 1.6, // how brightly it glows
+  // the core at the lake's heart: the orb (after hyperiux-concepts V6) with our cube in it
+  orbRadius: 6, // the orb's radius (m)
+  orbHeight: 9, // its centre's height over the water (m)
+  orbGlow: 1.0, // its threads' brightness
+  orbHalo: 0.5, // the glow round it and in its heart
+  orbColor: "#ff2a00", // its threads' colour where thin
+  orbHotColor: "#ff8a30", // ...and where bright
+  orbBurstSpan: 0.045, // how long its burst lasts, from the beam's touch (share of the scroll; its threads land on the ground at ~40% of it)
+  orbRingSize: 1.0, // how far its thrown threads go out (x)
+  orbPourSpread: 1.0, // how long the poured threads trail behind the rivulets' fronts, and their splash (x)
+  orbPourReach: 220, // m along its rivulet the poured light runs before the rivulet's own threads carry on
+  orbFlash: 0, // the flash as it bursts (0 = none)
+  orbWave: 0, // the wave of light out across the horizon as it bursts (0 = none)
+  cubeSize: 4, // our cube in it: its edge (m)
+  cubeGlow: 1.6, // ...how brightly it glows
   cubeColor: "#ff7a2a",
-  cubeTilt: 24, // how far it is turned (degrees)
-  // the camera round the tree as it grows
-  orbitSweep: 270, // degrees it goes round (+ anticlockwise from above)
-  orbitDrift: 35, // degrees it drifts on round the tree after, as the white ink spreads at the end
-  orbitRadius: 138, // its distance from the trunk at the end (m)
-  orbitIn: 35, // how much closer it comes on the way round (m)
-  orbitRise: 44, // its height over the water at the end (m)
-  orbitFov: 64, // its lens at the end, wide enough for the whole tree (degrees)
+  cubeTilt: 24, // ...how far it is turned (degrees)
+  cubeFadeFrom: 0.25, // ...it melts into the tree from this share of the tree's growth (it has grown past the cube)
+  cubeFadeTo: 0.55, // ...all melted by this share (its last threads still on their way up)
+  cubeMelt: true, // melt into threads that spiral up onto the tree's strands (off: it just fades)
+  cubeMeltTravel: 0.14, // share of the growth each thread takes to get from the cube to its strand
+  cubeMeltGlow: 2.0, // ...their brightness
+  // the camera: following the beam in to the core, then round the tree as it grows
+  camCoreDist: 70, // how far from the core it comes to as the beam touches it (m)
+  camCoreLift: 4, // ...its height above the core's centre (m)
+  orbitSweep: 270, // degrees it goes round between tlOrbitStart and tlOrbitEnd (and on at that pace; - turns the other way)
+  orbitRadius: 138, // its farthest from the trunk, once the tree is complete (m; the lake is 150)
+  orbitRise: 44, // ...its height over the water then (m)
+  orbitFov: 64, // ...its lens then, wide enough for the whole tree (degrees)
   orbitLookTop: 50, // the height it looks up to as the tree tops out (m over the water)
+  // the reveal: threads of light running and swirling out from under the core (V2)
+  revealRing: 1.0, // their brightness (0 = none)
+  revealRivulets: true, // the threads running out from the core over the land
+  revealSwirls: false, // the circling threads round the tree
+  rivuletColor: "#ff7a1f", // ...their colour
+  outroGlass: 1.0, // the glass hexagons of the change to the white site: how much they bend the image
+  outroChroma: 0.12, // ...and split its colours
+  outroCell: 0.13, // ...a hexagon's size (screen heights)
+  outroGlassCover: 0.4, // share of the change by which the glass has covered the whole screen (from the centre out)
+  outroWhiteFrom: 0.22, // share of the change at which the white starts filling the hexagons (overlapping the glass)
+  outroWhiteFill: 0.3, // share of the change each hexagon takes to fill white (soft, from its middle)
+  outroRandom: 0.55, // 0 = the white fills in rings from the centre … 1 = hexagons at random
   cutGlass: 1.0, // the glass tiles of the cut from the logo: how much they bend the image
   cutChroma: 0.12, // ...and split its colours
   oasisTreeSize: 1.9, // the oasis's trees (x; bigger still round the lake)

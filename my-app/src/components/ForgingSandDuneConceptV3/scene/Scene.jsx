@@ -3,13 +3,14 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
-import { createSharedUniforms } from "../world/materials";
+import { createSharedUniforms, watchSandMap } from "../world/materials";
 import { buildScatter, buildShards, createTerrainSampler } from "../world/layout";
 import { RESHAPE_EVENT } from "../world/oasis";
 import * as THREE from "three";
 import { FORGE, FORGE_LAYER, NO_MIRROR_LAYER, VALLEY_LAYER } from "../config";
 import Sky from "./Sky";
-import Terrain, { buildTerrainGeometry } from "./Terrain";
+import Terrain, { buildHeightField, buildTerrainGeometry } from "./Terrain";
+import SandField from "./SandField";
 import Forge from "./Forge";
 import ForgeBeam from "./ForgeBeam";
 import Oasis from "./oasis/Oasis";
@@ -71,6 +72,8 @@ function footprintGround(terrain) {
 
 export default function Scene({ J, tier, withForge = true, onMissing }) {
   const shared = useMemo(() => createSharedUniforms(), []);
+  // (the sand's ripple map turns on once it has loaded)
+  useEffect(() => watchSandMap(shared), [shared]);
   // (rebuilt when the oasis is reshaped from the tuning panel: the stream's
   // width is carved into the land, its water map, plants and beam)
   const [shape, setShape] = useState(0);
@@ -95,7 +98,14 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
     const shards = buildShards();
     return buildRockSet(shards, buildScatter(shards), terrain);
   }, [terrain]);
-  useEffect(() => () => terrainGeometry.dispose(), [terrainGeometry]);
+  const heightField = useMemo(() => buildHeightField(terrain, tier.terrainSegments), [terrain, tier]);
+  useEffect(
+    () => () => {
+      terrainGeometry.dispose();
+      heightField.texture.dispose();
+    },
+    [terrainGeometry, heightField],
+  );
 
   const [forge, setForge] = useState(null);
   // the post passes, while the live quality keeps them (quality.js)
@@ -148,6 +158,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         <ValleyLayer>
           <Oasis J={J} tier={tier} shared={shared} terrain={terrain} forge={forge} />
         </ValleyLayer>
+        {tier.sandGrains > 0 && <SandField J={J} tier={tier} shared={shared} heightField={heightField} />}
         <Dust J={J} tier={tier} shared={shared} />
       </group>
 

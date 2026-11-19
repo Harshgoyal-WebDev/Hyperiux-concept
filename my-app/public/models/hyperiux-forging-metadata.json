@@ -9,7 +9,11 @@
       "blender/forging/02_core_activated.png",
       "blender/forging/03_logo_revealing.png",
       "blender/forging/04_logo_forged.png",
-      "blender/forging/check_core_front.png"
+      "blender/forging/check_core_front.png",
+      "blender/forging/check_seams_front.png",
+      "blender/forging/check_seams_back.png",
+      "blender/forging/check_cubeframe_depth.png",
+      "blender/forging/check_spine_crack.png"
     ]
   },
   "units": "metres",
@@ -36,21 +40,21 @@
       "yMax": 10.2738
     }
   },
-  "hierarchy": "MonolithRoot > { BeamOrigin, LogoRoot > { HyperiuxLogoCore > LogoCore_*, CoreSphereAnchor > CoreSphere_Preview, BeamTarget }, SlabExcessChunks > BreakGroup_0N_* > SlabChunk_### } ; every Cracks_* mesh is a child of the stone piece it lies on",
+  "hierarchy": "MonolithRoot > { BeamOrigin, CrackRootAnchor, LogoRoot > { HyperiuxLogoCore > LogoCore_*, CoreSphereAnchor > CoreSphere_Preview, BeamTarget }, SlabExcessChunks > BreakGroup_0N_* > SlabChunk_### } ; every Cracks_* mesh is a child of the stone piece it lies on",
   "anchors": {
     "MonolithRoot": {
       "world": [
-        0,
-        0,
-        0
+        0.0,
+        0.0,
+        -0.0
       ],
       "path": "MonolithRoot"
     },
     "LogoRoot": {
       "world": [
-        0,
-        6,
-        0
+        0.0,
+        6.0,
+        -0.0
       ],
       "path": "MonolithRoot/LogoRoot"
     },
@@ -73,10 +77,19 @@
     "BeamOrigin": {
       "world": [
         -0.0286,
-        0,
+        0.0,
         1.55
       ],
       "path": "MonolithRoot/BeamOrigin"
+    },
+    "CrackRootAnchor": {
+      "world": [
+        -0.0286,
+        0.05,
+        1.2
+      ],
+      "path": "MonolithRoot/CrackRootAnchor",
+      "note": "start of the Spine crack: bottom centre of the front face (z = 1.2), directly above BeamOrigin; Cracks_Spine uv.x = 0 here"
     }
   },
   "logoCore": {
@@ -84,14 +97,14 @@
     "pieces": {
       "LogoCore_CubeFrame": {
         "localPivot": [
-          -0.0594,
-          -0.14,
-          0.7044
+          -0.0596,
+          -0.1402,
+          -0.0343
         ],
         "world": [
-          -0.0594,
-          5.86,
-          0.7044
+          -0.0596,
+          5.8598,
+          -0.0343
         ]
       },
       "LogoCore_Path1_TopLeft": {
@@ -121,40 +134,37 @@
       "LogoCore_Path3_LowerLeft": {
         "localPivot": [
           -2.3642,
-          -1.8984,
+          -1.8976,
           -0.0489
         ],
         "world": [
           -2.3642,
-          4.1016,
+          4.1024,
           -0.0489
         ]
       },
       "LogoCore_Path4_UpperRight": {
         "localPivot": [
           2.2673,
-          1.7728,
+          1.7719,
           -0.0379
         ],
         "world": [
           2.2673,
-          7.7728,
+          7.7719,
           -0.0379
         ]
       }
     },
-    "notes": "Path1..4 are the four filled SVG paths at full slab depth, flush with the front face. LogoCore_CubeFrame is the 7-unit stroke of the cube-outline path: outer ring 1.0 m deep, inner Y strokes 0.3 m deep, trimmed where it meets Path3/Path4."
+    "notes": "Path1..4 are the four filled SVG paths at full slab depth, flush with the front face. LogoCore_CubeFrame is the 7-unit (0.126 m) stroke of the cube-outline path (outer hexagon ring + inner Y strokes) at full slab depth (z = -1.2 .. +1.2), flush with the front face and trimmed where it meets Path3/Path4. Its three compartments are a 1.0 m recessed pocket in the assembled slab (the cube cutout, as before): open from the front face to z = 0.2, where the BreakGroup_05 chunks behind them form the pocket floor; once those chunks break away the compartments are open front to back (top compartment about 32 x 85 SVG units clear). The paths' engraved grooves (2.2 cm x 4 cm) are filled: the logo outline on the face is a closed seam (draw the engraving in the shader, e.g. the logo-mask seam). Every LogoCore piece is grown ~4 mm into its neighbours behind its outer faces (hidden overlap); front/back faces and the front silhouette are unchanged."
   },
   "coreSphere": {
     "anchor": "CoreSphereAnchor",
     "radius": 0.3,
     "previewMesh": "CoreSphere_Preview",
-    "pocketDepthFromFront": 1.0,
-    "clearance_m": {
-      "toCubeFrame": 0.02,
-      "toPocketWalls": 0.09
-    },
-    "svgCentre": "hexagon centre of the cube-outline path (rounded top corner reconstructed): (248.86, 256.88)"
+    "svgCentre": "hexagon centre of the cube-outline path (rounded top corner reconstructed): (248.86, 256.88)",
+    "note": "The core sits in the 1.0 m recessed cube pocket, 0.62 m behind the front face, on the cube outline's full-depth vertical inner stroke, so CoreSphere_Preview intersects the CubeFrame. Preview mesh only (the site hides it and draws the core as a point light at the anchor).",
+    "pocketDepthFromFront": 1.0
   },
   "beam": {
     "origin": "BeamOrigin (ground, 0.35 m in front of the face, directly below the core)",
@@ -174,16 +184,16 @@
             -0.0704
           ],
           "break_order": 1,
-          "volume_m3": 4.0135,
+          "volume_m3": 4.0211,
           "explode_dir_gltf": [
             -0.4698,
             0.7657,
             0.4393
           ],
           "centroid_gltf": [
-            -3.9984,
-            11.3413,
-            -0.4894
+            -4.0008,
+            11.2494,
+            -0.4769
           ]
         },
         {
@@ -194,16 +204,16 @@
             -0.0313
           ],
           "break_order": 2,
-          "volume_m3": 6.4452,
+          "volume_m3": 6.4551,
           "explode_dir_gltf": [
             0.527,
             0.7262,
             0.4416
           ],
           "centroid_gltf": [
-            4.3081,
-            10.869,
-            -0.1112
+            4.2668,
+            10.9081,
+            -0.1226
           ]
         },
         {
@@ -214,96 +224,96 @@
             -0.0523
           ],
           "break_order": 3,
-          "volume_m3": 7.1451,
+          "volume_m3": 7.1521,
           "explode_dir_gltf": [
             0.6104,
             -0.5924,
             0.5258
           ],
           "centroid_gltf": [
-            4.1833,
-            0.8063,
-            -0.0418
+            4.1971,
+            0.8394,
+            -0.0435
           ]
         },
         {
           "name": "SlabChunk_004",
           "pivot": [
-            -4.2606,
+            -4.2595,
             1.4452,
             -0.0325
           ],
           "break_order": 4,
-          "volume_m3": 6.4871,
+          "volume_m3": 6.5001,
           "explode_dir_gltf": [
             -0.6644,
             -0.535,
             0.5218
           ],
           "centroid_gltf": [
-            -4.4857,
-            1.3402,
-            -0.098
+            -4.4289,
+            1.315,
+            -0.1558
           ]
         },
         {
           "name": "SlabChunk_005",
           "pivot": [
             -2.8707,
-            0.5642,
+            0.5652,
             0.3801
           ],
           "break_order": 5,
-          "volume_m3": 3.1061,
+          "volume_m3": 3.1146,
           "explode_dir_gltf": [
             -0.446,
             -0.7178,
             0.5346
           ],
           "centroid_gltf": [
-            -2.8944,
-            0.3346,
-            0.6249
+            -2.9362,
+            0.4569,
+            0.5528
           ]
         },
         {
           "name": "SlabChunk_006",
           "pivot": [
             -3.315,
-            10.9521,
-            0.0506
+            10.9503,
+            0.0488
           ],
           "break_order": 6,
-          "volume_m3": 5.1488,
+          "volume_m3": 5.1649,
           "explode_dir_gltf": [
             -0.3926,
             0.8094,
             0.4368
           ],
           "centroid_gltf": [
-            -3.0849,
-            11.2572,
-            0.5435
+            -3.0062,
+            11.1424,
+            0.4617
           ]
         },
         {
           "name": "SlabChunk_007",
           "pivot": [
-            -4.0861,
-            9.7216,
+            -4.0837,
+            9.7205,
             0.2925
           ],
           "break_order": 7,
-          "volume_m3": 3.678,
+          "volume_m3": 3.6908,
           "explode_dir_gltf": [
             -0.6087,
             0.6564,
             0.4457
           ],
           "centroid_gltf": [
-            -4.4168,
-            9.7397,
-            0.5395
+            -4.3922,
+            9.7009,
+            0.4925
           ]
         },
         {
@@ -311,79 +321,79 @@
           "pivot": [
             -2.5125,
             1.0885,
-            -0.5317
+            -0.5305
           ],
           "break_order": 8,
-          "volume_m3": 4.083,
+          "volume_m3": 4.0952,
           "explode_dir_gltf": [
             -0.4212,
             -0.7319,
             0.5356
           ],
           "centroid_gltf": [
-            -2.4917,
-            0.7502,
-            -0.8115
+            -2.5425,
+            0.753,
+            -0.6806
           ]
         },
         {
           "name": "SlabChunk_009",
           "pivot": [
             -0.7789,
-            11.2704,
+            11.2698,
             -0.0532
           ],
           "break_order": 9,
-          "volume_m3": 6.5428,
+          "volume_m3": 6.5592,
           "explode_dir_gltf": [
             -0.122,
             0.8936,
             0.4319
           ],
           "centroid_gltf": [
-            -0.9128,
-            11.5057,
-            -0.1867
+            -0.9912,
+            11.3759,
+            -0.1618
           ]
         },
         {
           "name": "SlabChunk_010",
           "pivot": [
             2.106,
-            10.8364,
+            10.8352,
             -0.0208
           ],
           "break_order": 10,
-          "volume_m3": 10.0529,
+          "volume_m3": 10.0748,
           "explode_dir_gltf": [
             0.3175,
             0.8427,
             0.4348
           ],
           "centroid_gltf": [
-            2.2526,
-            11.086,
-            -0.1012
+            2.2625,
+            11.0448,
+            -0.0434
           ]
         },
         {
           "name": "SlabChunk_011",
           "pivot": [
-            3.9054,
-            9.9003,
+            3.9032,
+            9.8987,
             -0.0224
           ],
           "break_order": 11,
-          "volume_m3": 2.494,
+          "volume_m3": 2.511,
           "explode_dir_gltf": [
             0.58,
             0.6829,
             0.4441
           ],
           "centroid_gltf": [
-            4.0217,
-            9.8074,
-            0.2769
+            4.0813,
+            9.7278,
+            0.2918
           ]
         },
         {
@@ -394,136 +404,136 @@
             -0.0538
           ],
           "break_order": 12,
-          "volume_m3": 5.3073,
+          "volume_m3": 5.3202,
           "explode_dir_gltf": [
             0.0825,
             -0.8357,
             0.543
           ],
           "centroid_gltf": [
-            0.4291,
-            0.4284,
-            0.2715
+            0.4279,
+            0.5597,
+            0.3251
           ]
         },
         {
           "name": "SlabChunk_013",
           "pivot": [
-            2.4291,
-            1.2229,
+            2.4279,
+            1.2245,
             -0.056
           ],
           "break_order": 13,
-          "volume_m3": 9.8912,
+          "volume_m3": 9.9204,
           "explode_dir_gltf": [
             0.4443,
             -0.7188,
             0.5347
           ],
           "centroid_gltf": [
-            2.4507,
-            1.0588,
-            0.0455
+            2.3279,
+            1.039,
+            -0.0896
           ]
         },
         {
           "name": "SlabChunk_014",
           "pivot": [
-            4.3918,
-            3.3735,
+            4.3908,
+            3.3744,
             -0.0164
           ],
           "break_order": 14,
-          "volume_m3": 7.5216,
+          "volume_m3": 7.5425,
           "explode_dir_gltf": [
             0.7983,
             -0.3243,
             0.5075
           ],
           "centroid_gltf": [
-            4.4249,
-            3.3028,
-            -0.0496
+            4.3856,
+            3.3098,
+            0.0693
           ]
         },
         {
           "name": "SlabChunk_015",
           "pivot": [
-            -4.3495,
+            -4.3485,
             8.0843,
-            -0.2995
+            -0.298
           ],
           "break_order": 15,
-          "volume_m3": 2.1772,
+          "volume_m3": 2.185,
           "explode_dir_gltf": [
             -0.7374,
             0.4992,
             0.455
           ],
           "centroid_gltf": [
-            -4.4968,
-            8.1567,
-            -0.6074
+            -4.4058,
+            8.1843,
+            -0.5232
           ]
         },
         {
           "name": "SlabChunk_016",
           "pivot": [
-            4.3565,
+            4.3555,
             8.0704,
             0.4104
           ],
           "break_order": 16,
-          "volume_m3": 3.2011,
+          "volume_m3": 3.2125,
           "explode_dir_gltf": [
             0.7443,
             0.4882,
             0.4557
           ],
           "centroid_gltf": [
-            4.4274,
-            8.0626,
-            0.5755
+            4.3523,
+            8.062,
+            0.5494
           ]
         },
         {
           "name": "SlabChunk_017",
           "pivot": [
-            4.3514,
+            4.3504,
             8.0481,
-            -0.5828
+            -0.5815
           ],
           "break_order": 17,
-          "volume_m3": 2.7546,
+          "volume_m3": 2.767,
           "explode_dir_gltf": [
             0.7495,
             0.4797,
             0.4562
           ],
           "centroid_gltf": [
-            4.3797,
-            7.974,
-            -0.8091
+            4.323,
+            7.9614,
+            -0.7041
           ]
         },
         {
           "name": "SlabChunk_018",
           "pivot": [
-            -4.4026,
+            -4.4016,
             4.3608,
             -0.0428
           ],
           "break_order": 18,
-          "volume_m3": 6.5618,
+          "volume_m3": 6.5811,
           "explode_dir_gltf": [
             -0.8522,
             -0.164,
             0.4968
           ],
           "centroid_gltf": [
-            -4.5583,
-            4.2921,
-            -0.0851
+            -4.5057,
+            4.35,
+            -0.1458
           ]
         },
         {
@@ -534,36 +544,36 @@
             -0.012
           ],
           "break_order": 19,
-          "volume_m3": 8.7049,
+          "volume_m3": 8.7325,
           "explode_dir_gltf": [
             0.044,
             0.901,
             0.4315
           ],
           "centroid_gltf": [
-            0.2362,
-            10.597,
-            0.4036
+            0.2026,
+            10.5149,
+            0.2985
           ]
         },
         {
           "name": "SlabChunk_020",
           "pivot": [
-            -4.2029,
-            3.5593,
+            -4.2019,
+            3.5602,
             -0.0453
           ],
           "break_order": 20,
-          "volume_m3": 1.3484,
+          "volume_m3": 1.3636,
           "explode_dir_gltf": [
             -0.786,
             -0.3505,
             0.5092
           ],
           "centroid_gltf": [
-            -4.0224,
-            3.3976,
-            0.017
+            -4.0218,
+            3.3584,
+            0.1367
           ]
         },
         {
@@ -571,19 +581,19 @@
           "pivot": [
             -1.1633,
             1.3893,
-            0.283
+            0.2814
           ],
           "break_order": 21,
-          "volume_m3": 4.4499,
+          "volume_m3": 4.4703,
           "explode_dir_gltf": [
             -0.2709,
             -0.7967,
             0.5402
           ],
           "centroid_gltf": [
-            -1.3072,
-            1.429,
-            0.7552
+            -1.3461,
+            1.3907,
+            0.5942
           ]
         },
         {
@@ -594,36 +604,36 @@
             -0.0087
           ],
           "break_order": 22,
-          "volume_m3": 4.1752,
+          "volume_m3": 4.1864,
           "explode_dir_gltf": [
             0.8687,
             0.1309,
             0.4778
           ],
           "centroid_gltf": [
-            4.5612,
-            5.8874,
-            0.2093
+            4.5108,
+            5.9375,
+            0.252
           ]
         },
         {
           "name": "SlabChunk_023",
           "pivot": [
-            -4.1601,
-            8.166,
-            0.4667
+            -4.1605,
+            8.1661,
+            0.4644
           ],
           "break_order": 23,
-          "volume_m3": 0.5875,
+          "volume_m3": 0.5973,
           "explode_dir_gltf": [
             -0.7054,
             0.5458,
             0.4522
           ],
           "centroid_gltf": [
-            -3.9486,
-            8.2315,
-            0.6333
+            -4.005,
+            8.2333,
+            0.6362
           ]
         },
         {
@@ -631,119 +641,119 @@
           "pivot": [
             -0.5201,
             1.4351,
-            -0.2564
+            -0.2548
           ],
           "break_order": 24,
-          "volume_m3": 6.0438,
+          "volume_m3": 6.0674,
           "explode_dir_gltf": [
             -0.0955,
             -0.8344,
             0.5429
           ],
           "centroid_gltf": [
-            -0.4682,
-            1.3643,
-            -0.8724
+            -0.4485,
+            1.3598,
+            -0.6463
           ]
         },
         {
           "name": "SlabChunk_025",
           "pivot": [
-            -4.273,
+            -4.2716,
             6.8902,
             0.1727
           ],
           "break_order": 25,
-          "volume_m3": 3.1548,
+          "volume_m3": 3.1665,
           "explode_dir_gltf": [
             -0.8345,
             0.2914,
             0.4677
           ],
           "centroid_gltf": [
-            -4.4843,
-            6.7587,
-            0.5504
+            -4.4418,
+            6.7506,
+            0.5593
           ]
         },
         {
           "name": "SlabChunk_026",
           "pivot": [
-            4.0075,
-            4.2223,
-            -0.2817
+            4.0065,
+            4.2241,
+            -0.2802
           ],
           "break_order": 26,
-          "volume_m3": 0.1429,
+          "volume_m3": 0.1469,
           "explode_dir_gltf": [
             0.8431,
             -0.2,
             0.4992
           ],
           "centroid_gltf": [
-            3.8785,
-            4.3262,
-            -0.7186
+            3.886,
+            4.3265,
+            -0.7499
           ]
         },
         {
           "name": "SlabChunk_027",
           "pivot": [
-            -4.091,
-            6.7472,
-            -0.2767
+            -4.0888,
+            6.749,
+            -0.2745
           ],
           "break_order": 27,
-          "volume_m3": 2.2429,
+          "volume_m3": 2.2581,
           "explode_dir_gltf": [
             -0.8358,
             0.2871,
             0.468
           ],
           "centroid_gltf": [
-            -4.07,
-            6.6549,
-            -0.6417
+            -4.1114,
+            6.6309,
+            -0.5571
           ]
         },
         {
           "name": "SlabChunk_028",
           "pivot": [
             3.741,
-            5.5234,
-            -0.0402
+            5.5242,
+            -0.038
           ],
           "break_order": 28,
-          "volume_m3": 3.8046,
+          "volume_m3": 3.8261,
           "explode_dir_gltf": [
             0.8742,
             0.051,
             0.4829
           ],
           "centroid_gltf": [
-            3.8023,
-            5.5304,
-            -0.4449
+            3.8206,
+            5.5685,
+            -0.4764
           ]
         },
         {
           "name": "SlabChunk_029",
           "pivot": [
-            -3.6818,
-            5.175,
-            0.2458
+            -3.6795,
+            5.1752,
+            0.2436
           ],
           "break_order": 29,
-          "volume_m3": 1.0201,
+          "volume_m3": 1.0349,
           "explode_dir_gltf": [
             -0.8737,
             -0.0039,
             0.4864
           ],
           "centroid_gltf": [
-            -3.8107,
-            5.293,
-            0.6007
+            -3.8319,
+            5.3802,
+            0.6049
           ]
         }
       ]
@@ -757,159 +767,159 @@
           "pivot": [
             -3.5943,
             9.658,
-            -0.5137
+            -0.512
           ],
           "break_order": 30,
-          "volume_m3": 2.1701,
+          "volume_m3": 2.1854,
           "explode_dir_gltf": [
             -0.541,
             0.7153,
             0.4422
           ],
           "centroid_gltf": [
-            -3.6493,
-            9.864,
-            -0.8638
+            -3.9032,
+            9.867,
+            -0.7361
           ]
         },
         {
           "name": "SlabChunk_031",
           "pivot": [
-            2.4442,
-            9.537,
-            0.683
+            2.4452,
+            9.5374,
+            0.6806
           ],
           "break_order": 31,
-          "volume_m3": 0.0702,
+          "volume_m3": 0.0728,
           "explode_dir_gltf": [
             0.4584,
             0.7728,
             0.4389
           ],
           "centroid_gltf": [
-            2.507,
-            9.4972,
-            0.8534
+            2.4981,
+            9.4935,
+            0.8768
           ]
         },
         {
           "name": "SlabChunk_032",
           "pivot": [
-            1.3228,
-            9.6452,
+            1.3238,
+            9.6441,
             -0.0355
           ],
           "break_order": 32,
-          "volume_m3": 5.2237,
+          "volume_m3": 5.2519,
           "explode_dir_gltf": [
             0.3012,
             0.8488,
             0.4345
           ],
           "centroid_gltf": [
-            1.4944,
-            9.5768,
-            -0.5133
+            1.5755,
+            9.4826,
+            -0.3048
           ]
         },
         {
           "name": "SlabChunk_033",
           "pivot": [
-            -1.38,
-            9.4407,
+            -1.3813,
+            9.4408,
             -0.0266
           ],
           "break_order": 33,
-          "volume_m3": 9.9768,
+          "volume_m3": 10.0126,
           "explode_dir_gltf": [
             -0.318,
             0.8425,
             0.4349
           ],
           "centroid_gltf": [
-            -1.575,
-            9.4039,
-            -0.2967
+            -1.5857,
+            9.421,
+            -0.181
           ]
         },
         {
           "name": "SlabChunk_034",
           "pivot": [
-            -2.2889,
-            8.4645,
-            0.0085
+            -2.2899,
+            8.466,
+            0.0063
           ],
           "break_order": 34,
-          "volume_m3": 0.7351,
+          "volume_m3": 0.7465,
           "explode_dir_gltf": [
             -0.5761,
             0.6863,
             0.4439
           ],
           "centroid_gltf": [
-            -2.4616,
-            8.2709,
-            0.6169
+            -2.4373,
+            8.3212,
+            0.4865
           ]
         },
         {
           "name": "SlabChunk_035",
           "pivot": [
-            1.9895,
-            8.3271,
+            1.9894,
+            8.3258,
             -0.0247
           ],
           "break_order": 35,
-          "volume_m3": 2.4025,
+          "volume_m3": 2.4234,
           "explode_dir_gltf": [
             0.5539,
             0.7051,
             0.4428
           ],
           "centroid_gltf": [
-            2.2499,
-            8.2875,
-            0.1008
+            2.1613,
+            8.2703,
+            0.2841
           ]
         },
         {
           "name": "SlabChunk_036",
           "pivot": [
-            2.8987,
-            6.1106,
-            0.4451
+            2.8964,
+            6.1123,
+            0.4435
           ],
           "break_order": 36,
-          "volume_m3": 0.7593,
+          "volume_m3": 0.7714,
           "explode_dir_gltf": [
             0.8651,
             0.1582,
             0.476
           ],
           "centroid_gltf": [
-            3.1009,
-            5.9865,
-            0.774
+            3.0116,
+            5.9339,
+            0.7674
           ]
         },
         {
           "name": "SlabChunk_037",
           "pivot": [
-            -2.4352,
-            7.7955,
-            -0.5932
+            -2.4362,
+            7.7947,
+            -0.5909
           ],
           "break_order": 37,
-          "volume_m3": 0.0938,
+          "volume_m3": 0.096,
           "explode_dir_gltf": [
             -0.6524,
             0.611,
             0.4483
           ],
           "centroid_gltf": [
-            -2.5136,
-            7.7458,
-            -0.9029
+            -2.5029,
+            7.7302,
+            -0.8825
           ]
         },
         {
@@ -917,19 +927,19 @@
           "pivot": [
             -2.9343,
             6.4332,
-            -0.4438
+            -0.4424
           ],
           "break_order": 38,
-          "volume_m3": 2.431,
+          "volume_m3": 2.4521,
           "explode_dir_gltf": [
             -0.8417,
             0.2671,
             0.4692
           ],
           "centroid_gltf": [
-            -2.8369,
-            6.3482,
-            -0.7844
+            -2.7633,
+            6.3383,
+            -0.5965
           ]
         },
         {
@@ -940,16 +950,16 @@
             -0.0156
           ],
           "break_order": 39,
-          "volume_m3": 6.0874,
+          "volume_m3": 6.1176,
           "explode_dir_gltf": [
             0.0857,
             0.8979,
             0.4317
           ],
           "centroid_gltf": [
-            0.2721,
-            8.6209,
-            0.2794
+            0.3216,
+            8.5978,
+            0.2905
           ]
         }
       ]
@@ -961,21 +971,21 @@
         {
           "name": "SlabChunk_040",
           "pivot": [
-            -3.4129,
-            1.9829,
+            -3.4118,
+            1.9826,
             -0.0246
           ],
           "break_order": 40,
-          "volume_m3": 3.9808,
+          "volume_m3": 4.0192,
           "explode_dir_gltf": [
             -0.6086,
             -0.5941,
             0.5259
           ],
           "centroid_gltf": [
-            -3.2059,
-            2.034,
-            0.2592
+            -3.1426,
+            1.9596,
+            0.3455
           ]
         },
         {
@@ -983,59 +993,59 @@
           "pivot": [
             2.8337,
             2.6543,
-            -0.408
+            -0.4059
           ],
           "break_order": 41,
-          "volume_m3": 2.4709,
+          "volume_m3": 2.4917,
           "explode_dir_gltf": [
             0.597,
             -0.6052,
             0.5267
           ],
           "centroid_gltf": [
-            2.5888,
-            2.6008,
-            -0.8873
+            2.3073,
+            2.7821,
+            -0.7636
           ]
         },
         {
           "name": "SlabChunk_042",
           "pivot": [
-            1.425,
-            2.6405,
-            0.046
+            1.426,
+            2.6416,
+            0.0439
           ],
           "break_order": 42,
-          "volume_m3": 4.9379,
+          "volume_m3": 4.9667,
           "explode_dir_gltf": [
             0.3796,
             -0.7533,
             0.5371
           ],
           "centroid_gltf": [
-            1.3656,
-            2.5798,
-            0.709
+            1.4111,
+            2.5978,
+            0.4525
           ]
         },
         {
           "name": "SlabChunk_043",
           "pivot": [
-            -2.1778,
-            3.5929,
+            -2.1777,
+            3.5943,
             -0.05
           ],
           "break_order": 43,
-          "volume_m3": 2.0906,
+          "volume_m3": 2.1109,
           "explode_dir_gltf": [
             -0.6663,
             -0.5328,
             0.5217
           ],
           "centroid_gltf": [
-            -2.3003,
-            3.5822,
-            -0.2038
+            -2.2903,
+            3.5934,
+            -0.0103
           ]
         },
         {
@@ -1046,96 +1056,96 @@
             -0.0377
           ],
           "break_order": 44,
-          "volume_m3": 5.4462,
+          "volume_m3": 5.4747,
           "explode_dir_gltf": [
             -0.3953,
             -0.7455,
             0.5366
           ],
           "centroid_gltf": [
-            -1.3022,
-            3.0106,
-            -0.0411
+            -1.3082,
+            2.9604,
+            -0.0305
           ]
         },
         {
           "name": "SlabChunk_045",
           "pivot": [
-            0.3893,
-            2.7109,
+            0.3904,
+            2.7095,
             -0.042
           ],
           "break_order": 45,
-          "volume_m3": 5.6542,
+          "volume_m3": 5.6843,
           "explode_dir_gltf": [
             0.134,
             -0.8293,
             0.5425
           ],
           "centroid_gltf": [
-            0.3931,
-            2.8084,
-            -0.1501
+            0.4114,
+            2.8037,
+            -0.2167
           ]
         },
         {
           "name": "SlabChunk_046",
           "pivot": [
             2.5118,
-            4.0337,
-            0.4118
+            4.0323,
+            0.4104
           ],
           "break_order": 46,
-          "volume_m3": 2.2255,
+          "volume_m3": 2.2468,
           "explode_dir_gltf": [
             0.7349,
             -0.4409,
             0.5154
           ],
           "centroid_gltf": [
-            2.219,
-            4.1057,
-            0.8388
+            2.1037,
+            4.024,
+            0.6519
           ]
         },
         {
           "name": "SlabChunk_047",
           "pivot": [
-            2.0822,
-            4.4038,
-            -0.4792
+            2.0832,
+            4.4033,
+            -0.4775
           ],
           "break_order": 47,
-          "volume_m3": 1.0053,
+          "volume_m3": 1.0159,
           "explode_dir_gltf": [
             0.7788,
             -0.3648,
             0.5102
           ],
           "centroid_gltf": [
-            2.2614,
-            4.4021,
-            -0.8621
+            2.2593,
+            4.3025,
+            -0.6721
           ]
         },
         {
           "name": "SlabChunk_048",
           "pivot": [
-            -2.3563,
-            4.4771,
-            0.3175
+            -2.3573,
+            4.4785,
+            0.3152
           ],
           "break_order": 48,
-          "volume_m3": 0.2998,
+          "volume_m3": 0.3064,
           "explode_dir_gltf": [
             -0.8005,
             -0.3194,
             0.5072
           ],
           "centroid_gltf": [
-            -2.3866,
-            4.5357,
-            0.6315
+            -2.3885,
+            4.5104,
+            0.5601
           ]
         }
       ]
@@ -1147,469 +1157,819 @@
         {
           "name": "SlabChunk_049",
           "pivot": [
-            -2.4375,
-            6.5856,
-            0.5498
+            -2.4365,
+            6.5845,
+            0.5487
           ],
           "break_order": 49,
-          "volume_m3": 1.7027,
+          "volume_m3": 1.721,
           "explode_dir_gltf": [
             -0.8228,
             0.3258,
             0.4656
           ],
           "centroid_gltf": [
-            -2.4097,
-            6.4594,
-            0.7292
+            -2.4324,
+            6.4187,
+            0.704
           ]
         },
         {
           "name": "SlabChunk_050",
           "pivot": [
-            1.8701,
-            7.3009,
-            0.4918
+            1.8711,
+            7.2996,
+            0.4903
           ],
           "break_order": 50,
-          "volume_m3": 0.761,
+          "volume_m3": 0.7712,
           "explode_dir_gltf": [
             0.6545,
             0.6087,
             0.4485
           ],
           "centroid_gltf": [
-            1.9304,
-            7.3397,
-            0.7813
+            1.9101,
+            7.3404,
+            0.7308
           ]
         },
         {
           "name": "SlabChunk_051",
           "pivot": [
-            -1.4871,
-            7.5657,
+            -1.4869,
+            7.5645,
             -0.0148
           ],
           "break_order": 51,
-          "volume_m3": 4.8882,
+          "volume_m3": 4.9165,
           "explode_dir_gltf": [
             -0.5047,
             0.7424,
             0.4406
           ],
           "centroid_gltf": [
-            -1.5332,
-            7.7388,
-            0.1733
+            -1.5399,
+            7.6894,
+            0.189
           ]
         },
         {
           "name": "SlabChunk_052",
           "pivot": [
-            1.0774,
+            1.0784,
             7.9635,
-            -0.3058
+            -0.3043
           ],
           "break_order": 52,
-          "volume_m3": 3.8571,
+          "volume_m3": 3.8792,
           "explode_dir_gltf": [
             0.3751,
             0.8179,
             0.4363
           ],
           "centroid_gltf": [
-            1.0798,
-            7.9491,
-            -0.8953
+            1.0939,
+            7.9069,
+            -0.6988
           ]
         },
         {
           "name": "SlabChunk_053",
           "pivot": [
-            1.75,
-            6.7494,
-            -0.4826
+            1.7507,
+            6.7508,
+            -0.4811
           ],
           "break_order": 53,
-          "volume_m3": 0.824,
+          "volume_m3": 0.8363,
           "explode_dir_gltf": [
             0.7109,
             0.5383,
             0.4527
           ],
           "centroid_gltf": [
-            1.8606,
-            6.9864,
-            -0.8905
+            1.8113,
+            7.123,
+            -0.6333
           ]
         },
         {
           "name": "SlabChunk_054",
           "pivot": [
-            -1.6871,
+            -1.6864,
             4.5819,
-            0.3882
+            0.3868
           ],
           "break_order": 54,
-          "volume_m3": 0.9371,
+          "volume_m3": 0.9496,
           "explode_dir_gltf": [
             -0.7534,
             -0.411,
             0.5133
           ],
           "centroid_gltf": [
-            -1.7849,
-            4.5996,
-            0.5887
+            -1.7971,
+            4.5963,
+            0.4187
           ]
         },
         {
           "name": "SlabChunk_055",
           "pivot": [
-            2.0868,
-            5.3081,
+            2.0878,
+            5.3077,
             -0.0398
           ],
           "break_order": 55,
-          "volume_m3": 2.122,
+          "volume_m3": 2.1408,
           "explode_dir_gltf": [
             0.8671,
             -0.0819,
             0.4914
           ],
           "centroid_gltf": [
-            2.0282,
-            5.3719,
-            -0.1971
+            2.0802,
+            5.3618,
+            -0.1237
           ]
         },
         {
           "name": "SlabChunk_056",
           "pivot": [
-            -0.4802,
+            -0.48,
             4.1687,
             -0.0379
           ],
           "break_order": 56,
-          "volume_m3": 4.5652,
+          "volume_m3": 4.593,
           "explode_dir_gltf": [
             -0.1967,
             -0.8173,
             0.5417
           ],
           "centroid_gltf": [
-            -0.4112,
-            4.007,
-            -0.2028
+            -0.4163,
+            4.0438,
+            -0.2293
           ]
         },
         {
           "name": "SlabChunk_057",
           "pivot": [
-            -1.6303,
+            -1.6313,
             5.0592,
-            -0.6916
+            -0.6897
           ],
           "break_order": 57,
-          "volume_m3": 1.4173,
+          "volume_m3": 1.4021,
           "explode_dir_gltf": [
             -0.7761,
             -0.3701,
             0.5106
           ],
           "centroid_gltf": [
-            -1.6137,
-            4.8437,
-            -0.9172
+            -1.682,
+            4.6613,
+            -0.8266
           ]
         },
         {
           "name": "SlabChunk_058",
           "pivot": [
             -1.2209,
-            4.5084,
-            0.3683
+            4.4956,
+            0.3667
           ],
           "break_order": 58,
-          "volume_m3": 1.4571,
+          "volume_m3": 1.4699,
           "explode_dir_gltf": [
             -0.6059,
             -0.5967,
             0.5261
           ],
           "centroid_gltf": [
-            -1.1456,
-            4.5194,
-            0.7447
+            -1.1418,
+            4.5388,
+            0.6214
           ]
         },
         {
           "name": "SlabChunk_059",
           "pivot": [
-            1.2657,
-            4.6072,
+            1.2658,
+            4.6073,
             -0.033
           ],
           "break_order": 59,
-          "volume_m3": 3.7613,
+          "volume_m3": 3.7848,
           "explode_dir_gltf": [
             0.6804,
             -0.5159,
             0.5205
           ],
           "centroid_gltf": [
-            1.2214,
-            4.6755,
-            -0.1139
+            1.2306,
+            4.6344,
+            -0.1574
           ]
         },
         {
           "name": "SlabChunk_060",
           "pivot": [
-            -0.9741,
-            7.0891,
-            -0.3683
+            -0.9729,
+            7.2554,
+            -0.3661
           ],
           "break_order": 60,
-          "volume_m3": 2.7236,
+          "volume_m3": 2.5169,
           "explode_dir_gltf": [
             -0.5221,
             0.7298,
             0.4414
           ],
           "centroid_gltf": [
-            -1.0229,
-            7.0447,
-            -0.8575
+            -1.028,
+            7.0511,
+            -0.7018
           ]
         },
         {
           "name": "SlabChunk_061",
           "pivot": [
-            -0.159,
-            7.0874,
-            0.1377
+            -0.3043,
+            7.1394,
+            0.1361
           ],
           "break_order": 61,
-          "volume_m3": 2.7903,
+          "volume_m3": 2.7138,
           "explode_dir_gltf": [
             -0.1004,
             0.8964,
             0.4318
           ],
           "centroid_gltf": [
-            -0.1906,
-            7.1404,
-            0.5696
+            -0.1793,
+            7.214,
+            0.4138
           ]
         },
         {
           "name": "SlabChunk_062",
           "pivot": [
-            0.9181,
-            6.7248,
-            0.0401
+            0.9619,
+            7.0376,
+            0.0382
           ],
           "break_order": 62,
-          "volume_m3": 1.2806,
+          "volume_m3": 1.1498,
           "explode_dir_gltf": [
             0.5607,
             0.6995,
             0.4431
           ],
           "centroid_gltf": [
-            0.8494,
-            6.7902,
-            0.2329
+            0.9302,
+            6.9447,
+            0.2601
           ]
         },
         {
           "name": "SlabChunk_063",
           "pivot": [
-            0.1676,
-            4.6587,
-            0.3897
+            0.1667,
+            4.5246,
+            0.3882
           ],
           "break_order": 63,
-          "volume_m3": 1.5857,
+          "volume_m3": 1.4954,
           "explode_dir_gltf": [
             0.1021,
             -0.8336,
             0.5428
           ],
           "centroid_gltf": [
-            0.092,
-            4.7249,
-            0.7615
+            0.1255,
+            4.6204,
+            0.6966
           ]
         }
       ]
     },
     "BreakGroup_05_FinalClearance": {
       "order": 5,
-      "count": 3,
+      "count": 19,
       "chunks": [
         {
           "name": "SlabChunk_064",
           "pivot": [
-            0.4291,
-            5.3471,
-            -0.3152
+            0.369,
+            5.6877,
+            -0.0227
           ],
           "break_order": 64,
-          "volume_m3": 1.1106,
+          "volume_m3": 0.5596,
           "explode_dir_gltf": [
             0.6413,
             -0.5608,
             0.5236
           ],
           "centroid_gltf": [
-            0.4821,
-            5.3237,
-            -0.5767
+            0.4278,
+            5.6407,
+            -0.3196
           ]
         },
         {
           "name": "SlabChunk_065",
           "pivot": [
-            -0.7193,
-            5.8291,
-            0.2124
+            -0.4758,
+            5.7693,
+            0.2711
           ],
           "break_order": 65,
-          "volume_m3": 0.5891,
+          "volume_m3": 0.3102,
           "explode_dir_gltf": [
             -0.8592,
             0.1931,
             0.4738
           ],
           "centroid_gltf": [
-            -0.7616,
-            5.9385,
-            0.0919
+            -0.5653,
+            5.763,
+            -0.11
           ]
         },
         {
           "name": "SlabChunk_066",
           "pivot": [
-            -0.0459,
-            5.9064,
-            -0.5487
+            -0.4758,
+            5.6757,
+            -0.6438
           ],
           "break_order": 66,
-          "volume_m3": 2.2368,
+          "volume_m3": 0.5633,
           "explode_dir_gltf": [
             -0.8594,
             -0.1296,
             0.4946
           ],
           "centroid_gltf": [
-            -0.0623,
-            5.8736,
-            -0.9317
+            -0.432,
+            5.6732,
+            -0.784
+          ]
+        },
+        {
+          "name": "SlabChunk_067",
+          "pivot": [
+            0.4277,
+            4.8942,
+            -0.3121
+          ],
+          "break_order": 67,
+          "volume_m3": 0.4021,
+          "explode_dir_gltf": [
+            0.3544,
+            -0.8211,
+            0.4473
+          ],
+          "centroid_gltf": [
+            0.4493,
+            4.9274,
+            -0.6223
+          ]
+        },
+        {
+          "name": "SlabChunk_068",
+          "pivot": [
+            -0.7999,
+            5.175,
+            -0.2465
+          ],
+          "break_order": 68,
+          "volume_m3": 0.0256,
+          "explode_dir_gltf": [
+            -0.635,
+            -0.6361,
+            0.4383
+          ],
+          "centroid_gltf": [
+            -0.7955,
+            5.1856,
+            -0.2969
+          ]
+        },
+        {
+          "name": "SlabChunk_069",
+          "pivot": [
+            0.2435,
+            6.8546,
+            -0.8173
+          ],
+          "break_order": 69,
+          "volume_m3": 0.1685,
+          "explode_dir_gltf": [
+            0.253,
+            0.8445,
+            0.4721
+          ],
+          "centroid_gltf": [
+            0.2717,
+            6.8471,
+            -0.9782
+          ]
+        },
+        {
+          "name": "SlabChunk_070",
+          "pivot": [
+            -0.1781,
+            4.9265,
+            -0.8068
+          ],
+          "break_order": 70,
+          "volume_m3": 0.1381,
+          "explode_dir_gltf": [
+            -0.3829,
+            -0.7842,
+            0.4884
+          ],
+          "centroid_gltf": [
+            -0.3328,
+            4.9528,
+            -0.9542
+          ]
+        },
+        {
+          "name": "SlabChunk_071",
+          "pivot": [
+            -0.7072,
+            6.1599,
+            -0.7059
+          ],
+          "break_order": 71,
+          "volume_m3": 0.0233,
+          "explode_dir_gltf": [
+            -0.7419,
+            0.4683,
+            0.4799
+          ],
+          "centroid_gltf": [
+            -0.7599,
+            6.2085,
+            -0.7555
+          ]
+        },
+        {
+          "name": "SlabChunk_072",
+          "pivot": [
+            -0.5,
+            6.442,
+            -0.6646
+          ],
+          "break_order": 72,
+          "volume_m3": 0.0299,
+          "explode_dir_gltf": [
+            -0.517,
+            0.734,
+            0.4404
+          ],
+          "centroid_gltf": [
+            -0.5395,
+            6.4338,
+            -0.5973
+          ]
+        },
+        {
+          "name": "SlabChunk_073",
+          "pivot": [
+            0.5487,
+            6.0913,
+            0.2048
+          ],
+          "break_order": 73,
+          "volume_m3": 0.0295,
+          "explode_dir_gltf": [
+            0.8069,
+            0.2705,
+            0.5251
+          ],
+          "centroid_gltf": [
+            0.6469,
+            6.1575,
+            -0.0562
+          ]
+        },
+        {
+          "name": "SlabChunk_074",
+          "pivot": [
+            0.4266,
+            6.4054,
+            0.2405
+          ],
+          "break_order": 74,
+          "volume_m3": 0.037,
+          "explode_dir_gltf": [
+            0.6483,
+            0.61,
+            0.4557
+          ],
+          "centroid_gltf": [
+            0.4158,
+            6.4108,
+            -0.0781
+          ]
+        },
+        {
+          "name": "SlabChunk_075",
+          "pivot": [
+            -0.3788,
+            5.3271,
+            0.45
+          ],
+          "break_order": 75,
+          "volume_m3": 0.0329,
+          "explode_dir_gltf": [
+            -0.3201,
+            -0.7791,
+            0.539
+          ],
+          "centroid_gltf": [
+            -0.271,
+            5.2769,
+            0.0261
+          ]
+        },
+        {
+          "name": "SlabChunk_076",
+          "pivot": [
+            -0.1531,
+            5.3129,
+            -0.1806
+          ],
+          "break_order": 76,
+          "volume_m3": 0.0009,
+          "explode_dir_gltf": [
+            -0.1414,
+            -0.8682,
+            0.4756
+          ],
+          "centroid_gltf": [
+            -0.1437,
+            5.2712,
+            -0.1809
+          ]
+        },
+        {
+          "name": "SlabChunk_077",
+          "pivot": [
+            0.1354,
+            5.3221,
+            0.5205
+          ],
+          "break_order": 77,
+          "volume_m3": 0.0084,
+          "explode_dir_gltf": [
+            0.2964,
+            -0.8501,
+            0.4354
+          ],
+          "centroid_gltf": [
+            0.0645,
+            5.2319,
+            0.1095
+          ]
+        },
+        {
+          "name": "SlabChunk_078",
+          "pivot": [
+            -0.0996,
+            6.4117,
+            0.4098
+          ],
+          "break_order": 78,
+          "volume_m3": 0.0812,
+          "explode_dir_gltf": [
+            -0.1303,
+            0.8766,
+            0.4633
+          ],
+          "centroid_gltf": [
+            -0.0571,
+            6.4854,
+            0.0095
+          ]
+        },
+        {
+          "name": "SlabChunk_079",
+          "pivot": [
+            0.0186,
+            6.383,
+            -0.5471
+          ],
+          "break_order": 79,
+          "volume_m3": 0.4346,
+          "explode_dir_gltf": [
+            0.1516,
+            0.8833,
+            0.4435
+          ],
+          "centroid_gltf": [
+            0.0006,
+            6.3829,
+            -0.7119
+          ]
+        },
+        {
+          "name": "SlabChunk_080",
+          "pivot": [
+            -0.321,
+            6.2895,
+            0.4193
+          ],
+          "break_order": 80,
+          "volume_m3": 0.0353,
+          "explode_dir_gltf": [
+            -0.4522,
+            0.7219,
+            0.5239
+          ],
+          "centroid_gltf": [
+            -0.3599,
+            6.3149,
+            0.0037
+          ]
+        },
+        {
+          "name": "SlabChunk_081",
+          "pivot": [
+            0.369,
+            5.6947,
+            -0.5707
+          ],
+          "break_order": 81,
+          "volume_m3": 0.3929,
+          "explode_dir_gltf": [
+            0.7517,
+            -0.4336,
+            0.4969
+          ],
+          "centroid_gltf": [
+            0.2733,
+            5.7482,
+            -0.8642
+          ]
+        },
+        {
+          "name": "SlabChunk_082",
+          "pivot": [
+            0.019,
+            5.8952,
+            0.6519
+          ],
+          "break_order": 82,
+          "volume_m3": 0.0002,
+          "explode_dir_gltf": [
+            0.5867,
+            0.6574,
+            0.4728
+          ],
+          "centroid_gltf": [
+            0.0068,
+            5.9366,
+            0.1668
           ]
         }
       ]
     }
   },
-  "chunkCount": 66,
-  "chunkExtras": "each SlabChunk node carries extras: break_group, break_order (1 = first to go), volume_m3, explode_dir_gltf (unit vector, outward + toward camera), centroid_gltf. Pivot = bounding-box centre of the chunk.",
+  "chunkCount": 82,
+  "chunkExtras": "each SlabChunk node carries extras: break_group, break_order (1 = first to go), volume_m3, explode_dir_gltf (unit vector, outward + toward camera), centroid_gltf. Pivot = bounding-box centre of the chunk. SlabChunk_067..082 are new (BreakGroup_05): the pieces behind the cube pocket's floor and the ones split off where the full-depth stroke cut through the old chunks.",
   "energyCracks": {
     "stages": {
-      "LogoCore": {
-        "count": 4,
-        "material": "EnergyCrack_LogoCore",
+      "Spine": {
+        "count": 6,
+        "material": "EnergyCrack_Spine",
         "objects": [
           {
-            "name": "Cracks_LogoCore__LogoCore_Path1_TopLeft",
-            "host": "LogoCore_Path1_TopLeft"
+            "name": "Cracks_Spine__LogoCore_CubeFrame",
+            "host": "LogoCore_CubeFrame"
           },
           {
-            "name": "Cracks_LogoCore__LogoCore_Path2_BottomRight",
-            "host": "LogoCore_Path2_BottomRight"
-          },
-          {
-            "name": "Cracks_LogoCore__LogoCore_Path3_LowerLeft",
-            "host": "LogoCore_Path3_LowerLeft"
-          },
-          {
-            "name": "Cracks_LogoCore__LogoCore_Path4_UpperRight",
-            "host": "LogoCore_Path4_UpperRight"
-          }
-        ]
-      },
-      "Outer": {
-        "count": 17,
-        "material": "EnergyCrack_Outer",
-        "objects": [
-          {
-            "name": "Cracks_Outer__SlabChunk_002",
-            "host": "SlabChunk_002"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_003",
-            "host": "SlabChunk_003"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_006",
-            "host": "SlabChunk_006"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_009",
-            "host": "SlabChunk_009"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_010",
-            "host": "SlabChunk_010"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_011",
-            "host": "SlabChunk_011"
-          },
-          {
-            "name": "Cracks_Outer__SlabChunk_012",
+            "name": "Cracks_Spine__SlabChunk_012",
             "host": "SlabChunk_012"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_013",
-            "host": "SlabChunk_013"
+            "name": "Cracks_Spine__SlabChunk_021",
+            "host": "SlabChunk_021"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_014",
-            "host": "SlabChunk_014"
+            "name": "Cracks_Spine__SlabChunk_045",
+            "host": "SlabChunk_045"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_016",
-            "host": "SlabChunk_016"
+            "name": "Cracks_Spine__SlabChunk_056",
+            "host": "SlabChunk_056"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_018",
-            "host": "SlabChunk_018"
+            "name": "Cracks_Spine__SlabChunk_063",
+            "host": "SlabChunk_063"
+          }
+        ]
+      },
+      "Core": {
+        "count": 5,
+        "material": "EnergyCrack_Core",
+        "objects": [
+          {
+            "name": "Cracks_Core__SlabChunk_058",
+            "host": "SlabChunk_058"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_019",
-            "host": "SlabChunk_019"
+            "name": "Cracks_Core__SlabChunk_059",
+            "host": "SlabChunk_059"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_020",
-            "host": "SlabChunk_020"
+            "name": "Cracks_Core__SlabChunk_061",
+            "host": "SlabChunk_061"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_022",
-            "host": "SlabChunk_022"
+            "name": "Cracks_Core__SlabChunk_062",
+            "host": "SlabChunk_062"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_025",
-            "host": "SlabChunk_025"
+            "name": "Cracks_Core__SlabChunk_063",
+            "host": "SlabChunk_063"
+          }
+        ]
+      },
+      "Inner": {
+        "count": 16,
+        "material": "EnergyCrack_Inner",
+        "objects": [
+          {
+            "name": "Cracks_Inner__SlabChunk_035",
+            "host": "SlabChunk_035"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_033",
-            "host": "SlabChunk_033"
+            "name": "Cracks_Inner__SlabChunk_036",
+            "host": "SlabChunk_036"
           },
           {
-            "name": "Cracks_Outer__SlabChunk_040",
-            "host": "SlabChunk_040"
+            "name": "Cracks_Inner__SlabChunk_039",
+            "host": "SlabChunk_039"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_042",
+            "host": "SlabChunk_042"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_043",
+            "host": "SlabChunk_043"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_044",
+            "host": "SlabChunk_044"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_046",
+            "host": "SlabChunk_046"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_048",
+            "host": "SlabChunk_048"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_049",
+            "host": "SlabChunk_049"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_050",
+            "host": "SlabChunk_050"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_051",
+            "host": "SlabChunk_051"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_058",
+            "host": "SlabChunk_058"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_059",
+            "host": "SlabChunk_059"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_061",
+            "host": "SlabChunk_061"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_062",
+            "host": "SlabChunk_062"
+          },
+          {
+            "name": "Cracks_Inner__SlabChunk_063",
+            "host": "SlabChunk_063"
           }
         ]
       },
@@ -1695,113 +2055,128 @@
           }
         ]
       },
-      "Inner": {
-        "count": 16,
-        "material": "EnergyCrack_Inner",
+      "Outer": {
+        "count": 17,
+        "material": "EnergyCrack_Outer",
         "objects": [
           {
-            "name": "Cracks_Inner__SlabChunk_035",
-            "host": "SlabChunk_035"
+            "name": "Cracks_Outer__SlabChunk_002",
+            "host": "SlabChunk_002"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_036",
-            "host": "SlabChunk_036"
+            "name": "Cracks_Outer__SlabChunk_003",
+            "host": "SlabChunk_003"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_039",
-            "host": "SlabChunk_039"
+            "name": "Cracks_Outer__SlabChunk_006",
+            "host": "SlabChunk_006"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_042",
-            "host": "SlabChunk_042"
+            "name": "Cracks_Outer__SlabChunk_009",
+            "host": "SlabChunk_009"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_043",
-            "host": "SlabChunk_043"
+            "name": "Cracks_Outer__SlabChunk_010",
+            "host": "SlabChunk_010"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_044",
-            "host": "SlabChunk_044"
+            "name": "Cracks_Outer__SlabChunk_011",
+            "host": "SlabChunk_011"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_046",
-            "host": "SlabChunk_046"
+            "name": "Cracks_Outer__SlabChunk_012",
+            "host": "SlabChunk_012"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_048",
-            "host": "SlabChunk_048"
+            "name": "Cracks_Outer__SlabChunk_013",
+            "host": "SlabChunk_013"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_049",
-            "host": "SlabChunk_049"
+            "name": "Cracks_Outer__SlabChunk_014",
+            "host": "SlabChunk_014"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_050",
-            "host": "SlabChunk_050"
+            "name": "Cracks_Outer__SlabChunk_016",
+            "host": "SlabChunk_016"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_051",
-            "host": "SlabChunk_051"
+            "name": "Cracks_Outer__SlabChunk_018",
+            "host": "SlabChunk_018"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_058",
-            "host": "SlabChunk_058"
+            "name": "Cracks_Outer__SlabChunk_019",
+            "host": "SlabChunk_019"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_059",
-            "host": "SlabChunk_059"
+            "name": "Cracks_Outer__SlabChunk_020",
+            "host": "SlabChunk_020"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_061",
-            "host": "SlabChunk_061"
+            "name": "Cracks_Outer__SlabChunk_022",
+            "host": "SlabChunk_022"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_062",
-            "host": "SlabChunk_062"
+            "name": "Cracks_Outer__SlabChunk_025",
+            "host": "SlabChunk_025"
           },
           {
-            "name": "Cracks_Inner__SlabChunk_063",
-            "host": "SlabChunk_063"
+            "name": "Cracks_Outer__SlabChunk_033",
+            "host": "SlabChunk_033"
+          },
+          {
+            "name": "Cracks_Outer__SlabChunk_040",
+            "host": "SlabChunk_040"
           }
         ]
       },
-      "Core": {
-        "count": 5,
-        "material": "EnergyCrack_Core",
+      "LogoCore": {
+        "count": 4,
+        "material": "EnergyCrack_LogoCore",
         "objects": [
           {
-            "name": "Cracks_Core__SlabChunk_058",
-            "host": "SlabChunk_058"
+            "name": "Cracks_LogoCore__LogoCore_Path1_TopLeft",
+            "host": "LogoCore_Path1_TopLeft"
           },
           {
-            "name": "Cracks_Core__SlabChunk_059",
-            "host": "SlabChunk_059"
+            "name": "Cracks_LogoCore__LogoCore_Path2_BottomRight",
+            "host": "LogoCore_Path2_BottomRight"
           },
           {
-            "name": "Cracks_Core__SlabChunk_061",
-            "host": "SlabChunk_061"
+            "name": "Cracks_LogoCore__LogoCore_Path3_LowerLeft",
+            "host": "LogoCore_Path3_LowerLeft"
           },
           {
-            "name": "Cracks_Core__SlabChunk_062",
-            "host": "SlabChunk_062"
-          },
-          {
-            "name": "Cracks_Core__SlabChunk_063",
-            "host": "SlabChunk_063"
+            "name": "Cracks_LogoCore__LogoCore_Path4_UpperRight",
+            "host": "LogoCore_Path4_UpperRight"
           }
         ]
       }
     },
     "revealOrder": [
+      "Spine",
       "Core",
       "Inner",
       "Middle",
       "Outer",
       "LogoCore"
     ],
-    "uv": "uv.x = distance along the crack network from the core, normalised 0..1 (max path 7.10 m); uv.y = 0..1 across the strip. Grow cracks with a shader/alphaTest that keeps fragments where uv.x < progress.",
-    "materials": "one material per stage (EnergyCrack_Core \u2026 EnergyCrack_LogoCore), emissiveFactor orange. Set emissiveIntensity = 0 for the dormant slab and animate it per stage; add Bloom.",
-    "attachment": "cracks on excess rock are children of their chunk, so they fly away with it; Cracks_LogoCore_* stay with the logo and are trimmed 1 SVG unit inside each path outline."
+    "uv": "uv.x = distance along the crack network, normalised 0..1; uv.y = 0..1 across the strip. Grow cracks with a shader/alphaTest that keeps fragments where uv.x < progress. Core..LogoCore share one run: distance from the core outward (max path 7.10 m). Spine has its own run: uv.x = 0 at CrackRootAnchor (bottom centre) -> 1 at BeamTarget (main line 6.32 m), continuous across its six host pieces; its four side twigs continue the value from their branch point (0.26-0.31, 0.52-0.58, 0.79-0.87, 0.80-0.89), the two upper ones ending on the start of the Core strands, so the Spine reaches the Core network just before it reaches the core.",
+    "materials": "one material per stage (EnergyCrack_Spine, EnergyCrack_Core ... EnergyCrack_LogoCore), emissiveFactor orange. Set emissiveIntensity = 0 for the dormant slab and animate it per stage in revealOrder (Spine first, from the slab's foot); add Bloom.",
+    "attachment": "cracks on excess rock are children of their chunk, so they fly away with it; Cracks_LogoCore_* and Cracks_Spine__LogoCore_CubeFrame stay with the logo; Cracks_LogoCore_* are trimmed 1 SVG unit inside each path outline.",
+    "spine": {
+      "path": "single meandering fracture, max 0.22 m sideways, from (x -0.029, y 0.05) on the front face up the slab's centre, over the cube's bottom tip and along the vertical inner stroke to BeamTarget",
+      "width_m": "0.075 at the foot tapering to 0.045 at the cube, 0.028 at the tip (twigs 0.6 x main -> 0.012)",
+      "twigs": 4,
+      "offset_from_stone_m": 0.0025,
+      "hosts": [
+        "LogoCore_CubeFrame",
+        "SlabChunk_012",
+        "SlabChunk_021",
+        "SlabChunk_045",
+        "SlabChunk_056",
+        "SlabChunk_063"
+      ]
+    }
   },
   "materials": {
     "Basalt_LogoCore": "baked 2048 basecolor/roughness/normal (own atlas)",
@@ -1816,10 +2191,90 @@
     "D_forged": "all SlabExcessChunks hidden/removed; LogoCore + Cracks_LogoCore + sphere remain"
   },
   "validation": {
-    "coreSilhouetteVsSvgArea": "22.724 m\u00b2 reimported vs 22.872 m\u00b2 exact (-0.65%, 2 cm ray grid)",
-    "assembledFrontCoverage": "10848/10848 rays hit stone; only the 1.0 m centre pocket is recessed",
-    "volumeCheck": "chunks 228.957 m\u00b3 vs excess 228.961 m\u00b3 (no gaps or overlaps between fragments)",
-    "coreChunkOverlap": "none by construction (chunks = slab minus exact path prisms)",
-    "reimport": "145 nodes, 66 chunks, 61 crack meshes, all anchors present"
+    "rayCoverage": {
+      "method": "re-imported GLB (Draco-decoded). Grid: rays every 1 cm from outside each side through the whole slab, counted where they are >=3 mm inside the slab outline; pass-through = no stone hit; culled = no FRONT-facing stone hit (as with single-sided materials). Seam: rays aimed at every seam line on the outer surface (3482 edges, 754.65 m), every 1 cm, offsets 0 / +-0.1 / +-0.5 mm across the line, tilts 0 / +-30 / +-60 deg.",
+      "grid": {
+        "front": {
+          "rays": 1186922,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        },
+        "back": {
+          "rays": 1186922,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        },
+        "left": {
+          "rays": 298480,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        },
+        "right": {
+          "rays": 298480,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        },
+        "top": {
+          "rays": 250654,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        },
+        "bottom": {
+          "rays": 250654,
+          "passThrough": 0,
+          "passThroughBackfaceCulled": 0
+        }
+      },
+      "seams": {
+        "rays": 1847422,
+        "seamEdges": 3482,
+        "seamLength_m": 754.65,
+        "passThrough": 0,
+        "passThroughBackfaceCulled_seams": 16,
+        "passThroughBackfaceCulled_outerSurface": 0,
+        "degenerateExactEdgeRays": 73,
+        "note": "0 rays pass through. The 16 seam rays without a front-facing hit (SlabChunk_046 at Path2's right edge, SlabChunk_061 at Path3's top corner) start inside the stone and point outward (audit artifact where a groove-fill piece touches its chunk); a 2 mm straight-on scan around them hits stone everywhere. The rest are aimed exactly at an edge line (zero offset)."
+      },
+      "before": {
+        "asset": "previous GLB, same audit",
+        "seamPassThrough": 247,
+        "seamPassThroughBackfaceCulled": 8824,
+        "worstPieces": {
+          "SlabChunk_012": 2111,
+          "SlabChunk_060": 1366,
+          "SlabChunk_066": 952,
+          "SlabChunk_005": 781,
+          "SlabChunk_056": 604,
+          "SlabChunk_006": 552,
+          "SlabChunk_042": 552,
+          "SlabChunk_038": 494,
+          "SlabChunk_021": 487,
+          "SlabChunk_033": 410,
+          "SlabChunk_039": 367,
+          "SlabChunk_028": 108,
+          "SlabChunk_047": 39,
+          "SlabChunk_045": 1
+        }
+      }
+    },
+    "seamOverlap": "each piece's inner (seam) faces are pushed into its neighbour: LogoCore_* by 4 mm, SlabChunk_* by 2 mm (2+2 mm chunk-chunk, 4+2 mm core-chunk). Vertices on the slab's outer surface are pinned, so front/back/perimeter faces and silhouettes do not move; the overlap ramps in over the first ~5 cm behind the front and back faces. Pieces triangulated, merged by distance, degenerate faces removed, all manifold with outward normals.",
+    "coreFrontAreaVsSvg": {
+      "svg_m2": 23.7737,
+      "svg_parts": "4 filled paths 22.8716 + cube stroke outside them 0.9021",
+      "frontFace_m2": 23.7814,
+      "frontFace_delta_pct": 0.03,
+      "paths_delta_pct": 0.04,
+      "cubeFrame_delta_pct": -0.28,
+      "withGrooveWalls_m2": 23.9463,
+      "withGrooveWalls_delta_pct": 0.73,
+      "method": "1 cm ray grid on the re-imported GLB; 'withGrooveWalls' also counts the 3-4 mm of grown core wall visible inside the 4 cm path grooves"
+    },
+    "volumeCheck": {
+      "exactPartition": "before the seam overlap: chunks 229.357 m3 vs excess (slab - grooves - core) 229.358 m3, gap 0.001 m3",
+      "afterOverlap": "chunks 228.779 m3, core 58.863 m3 on re-import (includes the hidden overlap; grooves filled, 1.0 m cube pocket open)"
+    },
+    "reimport": "168 nodes, 155 meshes, 82 chunks, 67 crack meshes (Spine 6), all anchors present incl. CrackRootAnchor, every node translation-only",
+    "grooves": "the 4 cm path grooves were ~1 px wide on screen and their walls flickered as bright lines along the logo edges (same on the previous asset); they are filled into the adjacent chunks (17 by boolean union, 15 as a second solid inside the same chunk overlapping the groove floor by 0.5 mm). Front rays on a 1 cm grid: no recess deeper than 5 mm anywhere on the face except the cube pocket and the chipped outer rim.",
+    "textures": "atlas space outside the UV islands is filled with the map's mean (basecolor, roughness) and flat normal, so distant mip levels don't blend in roughness 0 (mirror-like glints on thin faces)."
   }
 }

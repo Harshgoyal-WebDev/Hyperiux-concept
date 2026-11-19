@@ -29,6 +29,7 @@ export function createJourneyState() {
     beamFade: 0, // the line on the stone goes as the stone breaks away
     sphere: 0.3, // the core's glow (ember → blazing)
     pulse: 0, // the flash as the beam merges into the core
+    spineGlow: 0, // the Spine crack, foot → core, lit first (its climb is J.beam 0.5 → 1)
     crackSpread: 0, // glow growing out from the core through the slab's cracks
     crackGlow: 0, // brightness of the lit cracks on the excess rock
     logoCrackGlow: 0, // ...on the logo core (they stay lit)
@@ -205,16 +206,21 @@ export function buildMasterTimeline(J, dom) {
     [P.out, 0],
   ]);
 
-  // ----- 02–03: the beam runs along the sand to the slab's foot, then
-  // climbs its face into the core (scene/ForgeBeam.jsx: J.beam 0 → 0.5 on
-  // the sand, 0.5 → 1 up the face). A short ease-in, then steady with the
-  // scroll; up the face a touch quicker as it nears the core.
+  // ----- 02–03: the beam runs along the sand into the slab's foot, then
+  // the energy climbs the Spine crack inside the stone up to the core
+  // (scene/ForgeBeam.jsx: J.beam 0 → 0.5 on the sand; scene/Forge.jsx:
+  // 0.5 → 1 the Spine's lit front, foot → core). From the very first scroll,
+  // at one pace with it — no wait, no ease-in: the beam moves the moment the
+  // page does; up the Spine a touch quicker as it nears the core.
   {
-    const t0 = P.hero * 0.6;
+    const t0 = 0;
+    // (it reaches the slab's foot T.beamFootAt of the way to the climb, so
+    // its head runs on well ahead of the camera, which gathers pace towards
+    // the slab; then the Spine's climb to the core)
+    const foot = t0 + 0.02 + (P.climb - t0 - 0.02) * Math.min(Math.max(T.beamFootAt, 0.05), 1);
     track(tl, J, "beam", [
       [t0, 0],
-      [t0 + 0.015, 0.02, "sine.in"],
-      [P.climb, 0.5, "none"],
+      [foot, 0.5, "none"],
       [P.core, 1, "power1.in"],
     ]);
   }
@@ -268,6 +274,17 @@ export function buildMasterTimeline(J, dom) {
   track(tl, J, "crackGlow", [
     [P.core, 0],
     [e(0.04), 1, "power2.out"],
+    [e(0.5), 1.15],
+    [e(0.8), 0.6],
+    [P.forged, 0.2],
+  ]);
+  // the Spine lights as the beam goes into the slab's foot, stays lit while
+  // its front climbs to the core, then cools with the rest of the excess
+  // rock's cracks (most of it is on chunks that break away)
+  track(tl, J, "spineGlow", [
+    [P.climb - 0.002, 0],
+    [P.climb + 0.004, 1, "power2.out"],
+    [P.core, 1.1],
     [e(0.5), 1.15],
     [e(0.8), 0.6],
     [P.forged, 0.2],
@@ -326,7 +343,7 @@ export function buildMasterTimeline(J, dom) {
   // water and the green behind it (world/revealMap.js); then the beam runs
   // on into the cube, which turns out, and the Yggdrasil grows out of it —
   // roots first, then up — the camera going round it as it does
-  // (scene/oasis/SeedCube.jsx, Yggdrasil.jsx, world/oasisCamera.js)
+  // (scene/oasis/CoreOrb.jsx, Rivulets.jsx, Yggdrasil.jsx, world/oasisCamera.js)
   // (J.revealR is set with the scroll: world/oasisCamera.js revealRadiusAt)
 
   // ----- the tree: its amber glow first seen beyond the dunes, then its
@@ -361,7 +378,9 @@ export function buildMasterTimeline(J, dom) {
   ]);
 
   // at the end: the light opens onto the site
-  seg(tl, J, "outro", 0, 1, zoneAt("outro", 0.3), 1, "sine.in");
+  // the glass hexagons turning the scene over to the white site
+  // (scene/CutTransition.jsx: its tiles have their own stagger and ease)
+  seg(tl, J, "outro", 0, 1, T.tlOutroStart, Math.max(T.tlOutroEnd, T.tlOutroStart + 0.002), "none");
 
   track(tl, J, "dust", [
     [0, 1],

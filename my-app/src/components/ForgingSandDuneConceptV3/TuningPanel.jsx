@@ -43,17 +43,34 @@ const OBJECT_SCHEMA = {
   "Beam to the core": {
     cameraSettle: [0.01, 0.6, 0.01],
   },
-  Beam: {
+  "Beam — single or streaks": {
+    beamStreaks: "bool",
     beamStart: [0, 0.98, 0.001],
-    beamIntensity: [0, 4, 0.01],
-    beamWidth: [0.1, 4, 0.01],
-    oasisBeamWidth: [0.1, 4, 0.01],
-    beamCoreRatio: [0.05, 0.8, 0.005],
-    beamCoreBright: [0, 6, 0.01],
-    beamGlowBright: [0, 6, 0.01],
-    beamFlicker: [0, 3, 0.01],
-    beamCoreColor: "color",
-    beamGlowColor: "color",
+    beamFootAt: [0.05, 1, 0.01],
+    oasisBeam: [0, 3, 0.01],
+    oasisBeamLead: [0.2, 3, 0.01],
+    "Single beam": {
+      beamIntensity: [0, 4, 0.01],
+      beamWidth: [0.1, 4, 0.01],
+      oasisBeamWidth: [0.1, 4, 0.01],
+      beamCoreRatio: [0.05, 0.8, 0.005],
+      beamCoreBright: [0, 6, 0.01],
+      beamGlowBright: [0, 6, 0.01],
+      beamFlicker: [0, 3, 0.01],
+      beamCoreColor: "color",
+      beamGlowColor: "color",
+    },
+    Streaks: {
+      streakIntensity: [0, 8, 0.01],
+      streakWidth: [0.1, 5, 0.01],
+      streakFlow: [0, 4, 0.01],
+      streakSpread: [0, 3, 0.01],
+      streakDashSpacing: [1, 150, 0.1],
+      streakDashLength: [0.01, 1, 0.01],
+      streakBase: [0, 2, 0.01],
+      streakColor: "color",
+      streakHotColor: "color",
+    },
   },
   "Breakup sand": {
     sandBrightness: [0, 3, 0.01],
@@ -117,6 +134,8 @@ const WORLD_SCHEMA = {
   Sand: {
     sandColor: "color",
     rippleStrength: [0, 3, 0.01],
+    sandRippleSize: [0.5, 12, 0.05],
+    sandRippleDepth: [0, 3, 0.01],
   },
   Impact: {
     shockStrength: [0, 3, 0.01],
@@ -145,38 +164,67 @@ const OASIS_SCHEMA = {
   "Timeline points (p)": {
     tlCutStart: [0, 1, 0.0005],
     tlCutEnd: [0, 1, 0.0005],
+    tlOrbShow: [0, 1, 0.0005],
+    tlBeamToTreeStart: [0, 1, 0.0005],
+    tlBeamToTreeEnd: [0, 1, 0.0005],
+    orbBurstSpan: [0.002, 0.1, 0.0005],
+    syncFallReveal: "bool",
+    revealSpan: [0.005, 0.3, 0.0005],
+    treeGrowSpan: [0.005, 0.3, 0.0005],
     tlRevealStart: [0, 1, 0.0005],
     tlRevealEnd: [0, 1, 0.0005],
     tlTreeGrowStart: [0, 1, 0.0005],
     tlTreeGrowEnd: [0, 1, 0.0005],
+    tlTreeLightEnd: [0, 1, 0.0005],
+    tlOrbitStart: [0, 1, 0.0005],
+    tlOrbitEnd: [0, 1, 0.0005],
+    tlOutroStart: [0, 1, 0.0005],
+    tlOutroEnd: [0, 1, 0.0005],
+  },
+  "Core orb & cube": {
+    orbRadius: [1, 20, 0.1],
+    orbHeight: [2, 40, 0.1],
+    orbGlow: [0, 4, 0.01],
+    orbHalo: [0, 4, 0.01],
+    orbColor: "color",
+    orbHotColor: "color",
+    orbRingSize: [0.2, 4, 0.01],
+    orbPourSpread: [0.1, 5, 0.01],
+    orbPourReach: [20, 600, 1],
+    orbFlash: [0, 4, 0.01],
+    orbWave: [0, 4, 0.01],
+    cubeSize: [0.5, 10, 0.05],
+    cubeGlow: [0, 5, 0.01],
+    cubeColor: "color",
+    cubeTilt: [0, 45, 0.5],
+    cubeFadeFrom: [0, 1, 0.01],
+    cubeFadeTo: [0, 1, 0.01],
+    cubeMelt: "bool",
+    cubeMeltTravel: [0.02, 0.5, 0.005],
+    cubeMeltGlow: [0, 5, 0.01],
+  },
+  "Reveal threads (V2)": {
+    revealRing: [0, 3, 0.01],
+    revealRivulets: "bool",
+    revealSwirls: "bool",
+    rivuletColor: "color",
+  },
+  "Tree": {
     treeGrowJitter: [0, 1, 0.01],
     treeLeafGlow: [0, 4, 0.01],
     treeLeafLit: [0, 6, 0.01],
     treeLeafColor: "color",
-    tlBeamToTreeStart: [0, 1, 0.0005],
-    tlBeamToTreeEnd: [0, 1, 0.0005],
-    tlTreeLightEnd: [0, 1, 0.0005],
-    tlOrbitStart: [0, 1, 0.0005],
-    tlOrbitEnd: [0, 1, 0.0005],
-    treeDrawLength: [0.01, 0.4, 0.005],
   },
-  "Cut & reveal": {
+  "Cut & outro glass": {
     cutGlass: [0, 3, 0.01],
     cutChroma: [0, 0.6, 0.005],
-  },
-  "Sweep reveal": {
-    sweepGlow: [0, 4, 0.01],
-    sweepColor: "color",
-    sweepWidth: [1, 40, 0.1],
-    sweepSplit: [0, 10, 0.1],
-    sweepWaver: [0, 30, 0.1],
-  },
-  "Cube (where the tree grows)": {
-    cubeSize: [0.5, 10, 0.05],
-    cubeHover: [0, 6, 0.05],
-    cubeGlow: [0, 5, 0.01],
-    cubeColor: "color",
-    cubeTilt: [0, 45, 0.5],
+    outroGlass: [0, 3, 0.01],
+    outroChroma: [0, 0.6, 0.005],
+    outroCell: [0.04, 0.4, 0.005],
+    outroGlassCover: [0.05, 1, 0.01],
+    outroWhiteFrom: [0, 0.9, 0.01],
+    outroWhiteFill: [0.05, 0.9, 0.01],
+    outroRandom: [0, 1, 0.01],
   },
   "Scroll pace": {
     scrollDuration: [0.3, 3, 0.05],
@@ -188,11 +236,11 @@ const OASIS_SCHEMA = {
     strandPush: [0, 6, 0.05],
     strandPushRadius: [1, 40, 0.5],
   },
-  "Camera round the tree": {
-    orbitSweep: [-360, 360, 1],
-    orbitDrift: [-180, 180, 1],
-    orbitRadius: [40, 220, 1],
-    orbitIn: [0, 90, 1],
+  "Camera to the core & round the tree": {
+    camCoreDist: [5, 150, 0.5],
+    camCoreLift: [-10, 30, 0.1],
+    orbitSweep: [-720, 720, 1],
+    orbitRadius: [20, 220, 1],
     orbitRise: [2, 80, 0.5],
     orbitLookTop: [10, 100, 0.5],
     orbitFov: [40, 80, 0.5],
@@ -211,10 +259,6 @@ const OASIS_SCHEMA = {
     magnetDamping: [0.5, 12, 0.1],
     magnetReach: [10, 200, 1],
     magnetDip: [0, 6, 0.05],
-  },
-  "Beam past the mark": {
-    oasisBeam: [0, 3, 0.01],
-    oasisBeamLead: [0.2, 3, 0.01],
   },
   Water: {
     oasisStreamWidth: [0.4, 4, 0.01],
@@ -313,11 +357,14 @@ const BREAK_SCHEMA = {
 // values the master timeline is built from (the beam's run, the camera's
 // keyframes): changing one rebuilds it (ForgingConcept)
 export const RETIME_EVENT = "forging-sand-dune-concept-v3:retime";
-const RETIME = new Set(["tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+const RETIME = new Set(["beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
 
 // half as wide again as Leva's default (280 px), the extra all for the labels
 const PANEL_WIDTH = 420;
 const THEME = { sizes: { rootWidth: `${PANEL_WIDTH}px`, controlWidth: "190px" } };
+
+// (folders shown open)
+const OPEN = new Set(["Beam — single or streaks", "Single beam", "Streaks"]);
 
 function buildControls(schema) {
   const out = {};
@@ -337,10 +384,11 @@ function buildControls(schema) {
         if (key === "oasisStreamWidth" || key === "valleyWidth") window.dispatchEvent(new Event("forging-sand-dune-concept-v3:reshape"));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
+      else if (typeof spec === "string" && spec.startsWith("select:")) items[key] = { value: T[key], options: spec.slice(7).split(","), onChange };
       else if (spec === "bool") items[key] = { value: T[key], onChange: key === "night" ? setNight : onChange };
       else items[key] = { value: T[key], min: spec[0], max: spec[1], step: spec[2], onChange };
     }
-    out[name] = folder(items, { collapsed: true });
+    out[name] = folder(items, { collapsed: !OPEN.has(name) });
   }
   return out;
 }

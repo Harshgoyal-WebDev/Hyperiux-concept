@@ -6,9 +6,9 @@ import * as THREE from "three";
 import { T } from "../../tuning";
 import { P, VALLEY_LAYER } from "../../config";
 import { buildStrands } from "../ForgeBeam";
-import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, createSaberCap, saberUniforms, syncSaber } from "../saber";
+import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, STRAND_FRAGMENT, STRAND_VERTEX, createSaberCap, saberUniforms, streakUniforms, syncSaber, syncStreaks } from "../saber";
 import { S_END, S_RIM, TREE, WATER_Y, meander, route } from "../../world/oasis";
-import { CUT_FROM, cameraHeightAt, cubeY, descentAt, routeDistance } from "../../world/oasisCamera";
+import { CUT_FROM, CUT_TO, cameraHeightAt, cubeY, descentAt, routeDistance } from "../../world/oasisCamera";
 
 // The energy beam past the mark: the same beam the visitor first sees — the
 // bundle of strands that brought the energy into the logo's core. As the
@@ -30,25 +30,61 @@ export const RIBBONS = [
   // the beam out of the core, low along the way and then the stream
   { count: 1, width: 1, spacing: 1.2, seed: 5, bright: 1, h: () => 0.75, lat: (s) => meander(s), lead: 150, end: { root: 0 } },
 ];
-const HOLD = 70; // until they converge, heads stop this far (m) short of the core
-
-// The run into the tree (converging on its core), a pure function of the
-// scroll — the same as timeline.js's "converge": eased from 90% of the way
-// through the tree's moment to halfway through the next — so where the beam
-// is, and when it first touches a root, are known for any p.
-const convergeAt = (p) => {
-  const a = T.tlBeamToTreeStart;
-  const b = Math.max(T.tlBeamToTreeEnd, a + 0.002);
-  const x = THREE.MathUtils.clamp((p - a) / (b - a), 0, 1);
-  return 0.5 - 0.5 * Math.cos(Math.PI * x);
-};
-// the head's place along a streak at p (m along it)
+// how many strands the streaks are (T.beamStreaks; fixed: built once)
+const STREAK_COUNT = 18;
+// The head's run, a pure function of the scroll (so where the beam is, and
+// when it touches the core, are known for any p): it runs its lead ahead of
+// the camera; then — from the moment carrying on at its own pace would bring
+// it to the core just as it touches (tlBeamToTreeEnd) — on into the core at
+// that pace (a cubic matched to its place and pace at both ends). No hold
+// short of the lake, no stop and start: one continuous run.
+const freeAt = (b, p, camS = routeDistance(p)) => camS + b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
+let runKey = "";
+let run = null;
+function runIn(b) {
+  const pb = T.tlBeamToTreeEnd;
+  const key = `${T.oasisBeamLead}:${pb}:${T.tlCutStart}:${T.tlCutEnd}:${b.qMax}:${P.canopy}`;
+  if (run && key === runKey) return run;
+  const dp = 0.0005;
+  const pace = (p) => (freeAt(b, p + dp) - freeAt(b, p - dp)) / (2 * dp);
+  let pa = -1;
+  let fastest = CUT_TO();
+  let fastestV = 0;
+  for (let p = CUT_TO() + 0.01; p < pb - 0.003; p += dp) {
+    const v = pace(p);
+    if (v > fastestV) {
+      fastestV = v;
+      fastest = p;
+    }
+    if (freeAt(b, p) + v * (pb - p) >= b.qMax) {
+      pa = p;
+      break;
+    }
+  }
+  // (never quick enough to make it: it speeds up from its fastest instead)
+  const found = pa >= 0;
+  if (!found) pa = Math.min(fastest, pb - 0.003);
+  const q0 = freeAt(b, pa);
+  const span = pb - pa;
+  const avg = Math.max((b.qMax - q0) / span, 1);
+  // (paces kept under 3× the average: the cubic never runs backwards)
+  const v0 = Math.min(Math.max(pace(pa), 0), 2.8 * avg);
+  const v1 = found ? Math.min(v0, 2.8 * avg) : avg;
+  run = { pa, pb, q0, q1: b.qMax, m0: v0 * span, m1: v1 * span };
+  runKey = key;
+  return run;
+}
+// the head's place along a streak at p (m along it), and how far through
+// its run into the core it is (k: 1 once it touches)
 function headAt(b, i, p, camS) {
-  const lead = b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
-  const free = Math.min(camS + lead, b.qMax - HOLD);
-  const delay = (i / RIBBONS.length) * 0.35;
-  const k = THREE.MathUtils.clamp((convergeAt(p) - delay) / (1 - delay), 0, 1);
-  return { q: THREE.MathUtils.lerp(free, b.qMax, k * k * (3 - 2 * k)), k };
+  const r = runIn(b);
+  if (p >= r.pb) return { q: b.qMax, k: 1 };
+  if (p <= r.pa) return { q: Math.min(freeAt(b, p, camS), b.qMax), k: 0 };
+  const x = (p - r.pa) / (r.pb - r.pa);
+  const x2 = x * x;
+  const x3 = x2 * x;
+  const q = (2 * x3 - 3 * x2 + 1) * r.q0 + (x3 - 2 * x2 + x) * r.m0 + (-2 * x3 + 3 * x2) * r.q1 + (x3 - x2) * r.m1;
+  return { q: Math.min(q, b.qMax), k: x };
 }
 // the p at which the beam's head first reaches a root's tip (the tree's
 // light starts climbing from there: Yggdrasil.jsx)
@@ -244,7 +280,30 @@ export default function Streaks({ J, forge, terrain, shared }) {
       // its round head (scene/saber.js), on the valley's layer with it
       const cap = createSaberCap(material.uniforms);
       cap.layers.set(VALLEY_LAYER);
-      return { rib, curve, geometry, material, cap, qs, us, qMax: qs.at(-1), qRoot };
+      // ...and the same path as a bundle of streaks (T.beamStreaks)
+      const bundle = buildStrands(curve, {
+        spreadAt: (u) => THREE.MathUtils.lerp(0.15, 1, THREE.MathUtils.smoothstep(u, 0, 0.04)) * (1 - 0.9 * THREE.MathUtils.smoothstep(u, 0.97, 1)),
+        spacing: rib.spacing,
+        count: STREAK_COUNT,
+        seed: rib.seed,
+        width: rib.width,
+      });
+      const streakMaterial = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, streakUniforms(bundle.length)]),
+        vertexShader: STRAND_VERTEX,
+        fragmentShader: STRAND_FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        fog: true,
+      });
+      streakMaterial.uniforms.uTime = shared.uTime;
+      const streaks = new THREE.Mesh(bundle.geometry, streakMaterial);
+      streaks.frustumCulled = false;
+      streaks.renderOrder = 3;
+      streaks.visible = false;
+      streaks.layers.set(VALLEY_LAYER);
+      return { rib, curve, geometry, material, cap, streaks, qs, us, qMax: qs.at(-1), qRoot };
     });
   }, [forge, terrain, shared]);
 
@@ -254,6 +313,8 @@ export default function Streaks({ J, forge, terrain, shared }) {
         b.geometry.dispose();
         b.material.dispose();
         b.cap.material.dispose();
+        b.streaks.geometry.dispose();
+        b.streaks.material.dispose();
       });
     },
     [built]
@@ -263,10 +324,13 @@ export default function Streaks({ J, forge, terrain, shared }) {
     const on = J.duneBeam > 0.001 && J.progress > 0;
     const camS = routeDistance(J.progress);
     const pixel = (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / gl.domElement.height;
+    // the single beam, or the streaks (T.beamStreaks)
+    const many = T.beamStreaks;
     built.forEach((b, i) => {
       const mesh = refs.current[i];
-      if (mesh) mesh.visible = on;
-      b.cap.visible = on;
+      if (mesh) mesh.visible = on && !many;
+      b.cap.visible = on && !many;
+      b.streaks.visible = on && many;
       if (!on) return;
       const u = b.material.uniforms;
       // the head runs its lead ahead of the camera (shooting out to it as
@@ -300,6 +364,11 @@ export default function Streaks({ J, forge, terrain, shared }) {
       const cu = b.cap.material.uniforms;
       b.curve.getPointAt(Math.min(u.uHead.value, 1), cu.uHeadPos.value);
       cu.uCapOn.value = u.uHead.value < 0.9995 && u.uHead.value > u.uTail.value ? 1 : 0;
+      // the streaks: the same head and tail
+      const su = b.streaks.material.uniforms;
+      su.uHead.value = u.uHead.value;
+      su.uTail.value = u.uTail.value;
+      syncStreaks(su, T.oasisBeam * b.rib.bright * Math.min(J.duneBeam * 2, 1) * (1 + 0.6 * J.amber), pixel);
     });
   });
 
@@ -310,6 +379,7 @@ export default function Streaks({ J, forge, terrain, shared }) {
           el?.layers.set(VALLEY_LAYER);
         }} geometry={b.geometry} material={b.material} frustumCulled={false} renderOrder={3} visible={false} />
       <primitive object={b.cap} />
+      <primitive object={b.streaks} />
     </group>
   ));
 }

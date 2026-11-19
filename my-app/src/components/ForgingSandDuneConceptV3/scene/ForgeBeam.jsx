@@ -6,16 +6,18 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
 import { T } from "../tuning";
-import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, createSaberCap, saberUniforms, syncSaber } from "./saber";
+import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, STRAND_FRAGMENT, STRAND_VERTEX, createSaberCap, saberUniforms, streakUniforms, syncSaber, syncStreaks } from "./saber";
 
 // The energy beam: one single beam, laid along the sand. It runs in over
-// the dunes hugging the ground, to the foot of the slab; then, as the scroll
-// goes on, climbs the slab's face from its foot up into the core, flat to
-// the stone — and the core takes it (the blast follows). A solid beam of
-// light (scene/saber.js: a white-hot core in a soft glow, like a lightsaber's
-// blade). It is drawn up to a travelling head
-// (J.beam: 0 → 0.5 along the sand to the slab's foot, 0.5 → 1 up the face
-// into the core); on load it races out from under the viewer.
+// the dunes hugging the ground, to the foot of the slab, and goes into the
+// stone there, where the Spine crack starts (CrackRootAnchor). From there the
+// energy climbs inside the rock: the Spine lights from the foot up to the
+// core (scene/Forge.jsx), and the core takes it (the blast follows). A solid
+// beam of light (scene/saber.js: a white-hot core in a soft glow, like a
+// lightsaber's blade). It is drawn up to a travelling head
+// (J.beam: 0 → 0.5 along the sand into the slab's foot; 0.5 → 1 is the
+// Spine's climb, the beam holding at the foot); on load it races out from
+// under the viewer.
 
 // The ground run in plan (x, z; world metres): the line of the old sand
 // trail (its corridor is still carved low through the dunes). Heights come
@@ -28,7 +30,6 @@ const OVER_DUNES = [
   [3, 0, 45],
 ];
 const OVER_SAND = 0.22; // the beam's height over the sand (m)
-const OFF_FACE = 0.35; // ...and off the slab's face as it climbs
 const STRANDS = 1; // (one beam)
 
 const VERTEX = /* glsl */ `
@@ -75,8 +76,8 @@ function uAtZ(curve, z) {
 
 export function buildBeamPath(forge, terrain) {
   const { world } = forge;
-  const x = world.target.x;
-  const y = world.target.y;
+  // straight in at the Spine's start (bottom centre of the face)
+  const x = world.root.x;
   const face = world.frontZ;
   // along the sand: the plan line, sampled every ~2 m so the beam lies on
   // the ground's every rise and dip, to the slab's foot
@@ -87,16 +88,10 @@ export function buildBeamPath(forge, terrain) {
   );
   const n = Math.ceil(plan.getLength() / 2);
   const pts = plan.getSpacedPoints(n).map((p) => new THREE.Vector3(p.x, terrain.height(p.x, p.z) + OVER_SAND, p.z));
-  // the foot: round the corner from the sand onto the stone...
+  // the foot: it dips into the stone where the Spine comes out of the sand
+  // (the anchor itself is just under the sand: the slab is sunk FORGE.sink)
   const g = pts[pts.length - 1].y;
-  const wall = face + OFF_FACE;
-  pts.push(new THREE.Vector3(x, g + 0.25, face + 1.2), new THREE.Vector3(x, g + 1.1, wall));
-  // ...up the face, flat to it...
-  const top = y - 1.2;
-  const steps = Math.max(Math.ceil((top - (g + 1.1)) / 2.5), 1);
-  for (let i = 1; i <= steps; i++) pts.push(new THREE.Vector3(x, g + 1.1 + ((top - g - 1.1) * i) / steps, wall));
-  // ...and into the core
-  pts.push(new THREE.Vector3(x, y, wall), new THREE.Vector3(x, y, world.core.z));
+  pts.push(new THREE.Vector3(x, g + 0.05, face + 1.2), new THREE.Vector3(x, g - 0.05, face + 0.3), new THREE.Vector3(x, g - 0.15, face - 0.2));
   const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
   // (where along it the beam reaches the slab's foot)
   curve.userData = { foot: uAtZ(curve, face + 1.2) };
@@ -200,10 +195,25 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
       side: THREE.DoubleSide,
     });
 
+    // ...or the same path as a bundle of streaks (T.beamStreaks)
+    const bundle = buildStrands(path, { count: 18, spacing: 0.6, seed: 5 });
+    const streakMaterial = new THREE.ShaderMaterial({
+      uniforms: { ...streakUniforms(bundle.length), uTime: shared.uTime, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 }, fogNear: { value: 1 }, fogFar: { value: 2000 } },
+      vertexShader: STRAND_VERTEX,
+      fragmentShader: STRAND_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const streaks = new THREE.Mesh(bundle.geometry, streakMaterial);
+    streaks.frustumCulled = false;
+    streaks.renderOrder = 3;
+
     return {
       path,
       length,
       beam: { geometry, material },
+      streaks,
       // its round head (scene/saber.js)
       cap: createSaberCap(material.uniforms),
       // where the load-in race starts (the hero's lead is T.beamStart)
@@ -217,6 +227,8 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
       built.beam.geometry.dispose();
       built.beam.material.dispose();
       built.cap.material.dispose();
+      built.streaks.geometry.dispose();
+      built.streaks.material.dispose();
     },
     [built]
   );
@@ -224,9 +236,10 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
   useFrame(() => {
     const u = built.beam.material.uniforms;
     const front = Math.max(T.beamStart, built.intro);
-    // along the sand to the slab's foot, then up its face into the core
+    // along the sand into the slab's foot; it holds there while the Spine
+    // carries the energy up to the core (J.beam 0.5 → 1, scene/Forge.jsx)
     const foot = built.foot;
-    const head = J.beam < 0.5 ? front + (foot - front) * (J.beam / 0.5) : foot + (1 - foot) * ((J.beam - 0.5) / 0.5);
+    const head = front + (1 - front) * Math.min(J.beam / 0.5, 1);
     // The load-in race runs on the page's own clock (0.5 s after the visitor
     // enters, 2.8 s long, eased in and out), so nothing can rewind it; a
     // review frame sets J.intro to skip it.
@@ -238,7 +251,10 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     // nothing left lying on the sand without a purpose (the beam on out of
     // the core, past the mark, is Streaks.jsx's own)
     const gone = J.beamFade;
-    built.beam.material.visible = gone < 0.999;
+    // (the single beam, or the streaks: T.beamStreaks)
+    const many = T.beamStreaks;
+    built.beam.material.visible = gone < 0.999 && !many;
+    built.streaks.visible = gone < 0.999 && many;
     u.uIntensity.value = T.beamIntensity * J.beamVis * (1 - gone);
     // (the part up the slab's face goes as the stone breaks away)
     u.uWall.value = 1 - J.beamFade;
@@ -249,13 +265,19 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const h = u.uHead.value;
     const cu = built.cap.material.uniforms;
     built.path.getPointAt(Math.min(h, 1), cu.uHeadPos.value);
-    cu.uCapOn.value = h < 0.999 ? THREE.MathUtils.smoothstep(h, 0.0, 0.05) * (h > foot ? 1 - J.beamFade : 1) * (1 - gone) : 0;
+    cu.uCapOn.value = h < 0.999 ? THREE.MathUtils.smoothstep(h, 0.0, 0.05) * (h > foot ? 1 - J.beamFade : 1) * (1 - gone) * (many ? 0 : 1) : 0;
+    // the streaks: the same head
+    const su = built.streaks.material.uniforms;
+    su.uHead.value = h;
+    su.uTail.value = 0;
+    syncStreaks(su, J.beamVis * (1 - gone), u.uPixel.value);
   });
 
   return (
     <>
       <mesh geometry={built.beam.geometry} material={built.beam.material} frustumCulled={false} renderOrder={3} />
       <primitive object={built.cap} />
+      <primitive object={built.streaks} />
     </>
   );
 }

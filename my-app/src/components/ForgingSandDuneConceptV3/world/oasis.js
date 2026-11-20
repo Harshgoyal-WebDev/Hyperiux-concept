@@ -54,7 +54,7 @@ const ROUTE_POINTS = [
   [58, -570],
   [30, -635], // bend 3, to the left...
   [-34, -674],
-  [-47, -715], // ...straightening out: where the cut lands (oasisCamera S_LAND) the
+  [-47, -715], // ...straightening out (the cut lands a little past its end: oasisCamera S_LAND) the
   [-47, -780], // way runs straight ahead, as the logo shot looked —
   // then one even curve round to the right (a 220 m arc, 0° → 54°)…
   [-39.5, -836.9],
@@ -231,9 +231,31 @@ function massif(e, x, z) {
   const ridge = Math.max(1 - (Math.sqrt(n * n + 0.05) - Math.sqrt(0.05)), 0);
   // (lower near the mark, so the hero's backdrop stays the low dunes)
   const near = 0.45 + 0.55 * smooth(-150, -420, z);
-  const height = (28 + 30 * ridge * ridge + noiseA(x * 0.004, z * 0.004) * 6) * near;
-  const rise = smooth(0, 48, e);
-  const fall = 1 - smooth(160, 460, e);
+  // round the oasis itself: mountains rather than one even ring of dunes —
+  // tall peaks and low saddles, each its own height, set further back or
+  // closer in, their slopes steeper or gentler; all of it from smooth,
+  // warped noise, so every edge and corner is soft
+  const r = Math.hypot(x - BASIN.x, z - BASIN.z);
+  const round = smooth(BASIN.floor + 700, BASIN.floor + 260, r) * T.oasisMountains;
+  let height = (28 + 30 * ridge * ridge + noiseA(x * 0.004, z * 0.004) * 6) * near;
+  let riseLen = 48;
+  if (round > 0) {
+    const wx = x + noiseA(x * 0.003 + 11.3, z * 0.003) * 110;
+    const wz = z + noiseB(x * 0.003, z * 0.003 + 5.7) * 110;
+    const big = noiseA(wx * 0.0026 + 21.7, wz * 0.0026 - 4.2) * 0.5 + 0.5;
+    const mid = noiseB(wx * 0.0072 - 9.3, wz * 0.0072 + 2.8) * 0.5 + 0.5;
+    // (the masses: low round the oasis itself — a few metres over the dunes,
+    // smaller shoulders on them — and only the far ones, well back from the
+    // floor's edge, a little taller)
+    const back = smooth(15, 150, e) * (1 - smooth(420, 640, e));
+    const far = smooth(140, 360, e);
+    const peaks = (Math.pow(big, 2.4) * lerp(16, 46, far) + Math.pow(mid, 2.2) * lerp(8, 16, far)) * back;
+    // (the ring itself a little higher and lower along its length)
+    height = lerp(height, height * (0.7 + 0.5 * big) + peaks, round);
+    riseLen = lerp(48, 48 * (0.65 + 0.9 * mid), round);
+  }
+  const rise = smooth(0, riseLen, e);
+  const fall = 1 - smooth(160, 460, e) * (1 - 0.6 * round);
   // a softer foot (no step up from the floor)
   return height * Math.pow(rise, 1.3) * fall;
 }

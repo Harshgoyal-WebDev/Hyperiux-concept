@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
 import { breakupGLSL, breakupUniforms, puffDirection, samplePieceSurfaces } from "../world/breakup";
+import { STIR_BALL, createStirState } from "../world/windField";
 import { T } from "../tuning";
 
 // The sand the broken rock turns into (see world/breakup.js): grains come
@@ -35,7 +36,7 @@ void main() {
     return;
   }
   float heat;
-  p = breakupStir(p, aDrift.w, heat);
+  p = breakupStirAt(p, gl_VertexID, aDrift.w, heat);
   vec4 mv = viewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
   float px = aInfo.z * uSize * uScale / max(-mv.z, 1.0) * (1.0 + heat * 0.5);
@@ -115,18 +116,32 @@ export default function CrumbleSand({ J, tier, shared, forge }) {
       transparent: true,
       depthWrite: false,
     });
-    return { geometry, material };
+    // each grain's own push from the pointer's stir (world/windField.js)
+    const stir = createStirState({
+      count: tier.maxCrumble,
+      flowGLSL: breakupGLSL(forge.chunks.length),
+      uniforms: material.uniforms,
+      attributes: [
+        ["aLocal", geometry.attributes.aLocal.array, 3],
+        ["aMain", geometry.attributes.aInfo.array, 4],
+        ["aDrift", geometry.attributes.aDrift.array, 4],
+      ],
+      seed: "aDrift.w",
+      inertia: "1.0",
+    });
+    return { geometry, material, stir };
   }, [forge, tier, shared]);
 
   useEffect(
     () => () => {
       built.geometry.dispose();
       built.material.dispose();
+      built.stir.dispose();
     },
     [built]
   );
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const on = J.fracture > 0;
     if (ref.current) ref.current.visible = on;
     if (!on) return;
@@ -137,7 +152,9 @@ export default function CrumbleSand({ J, tier, shared, forge }) {
     u.uBright.value = (1 - shared.uNight.value * 0.6) * T.sandBrightness;
     u.uOpacity.value = T.crumbleOpacity;
     u.uHotColor.value.set(T.crackColor);
-    built.geometry.setDrawRange(0, Math.min(Math.round(T.crumbleSand), tier.maxCrumble));
+    const n = Math.min(Math.round(T.crumbleSand), tier.maxCrumble);
+    built.geometry.setDrawRange(0, n);
+    if (STIR_BALL.on) u.uStirState.value = built.stir.step(gl, camera, n, Math.min(delta, 0.1));
   });
 
   return <points ref={ref} geometry={built.geometry} material={built.material} frustumCulled={false} renderOrder={5} />;

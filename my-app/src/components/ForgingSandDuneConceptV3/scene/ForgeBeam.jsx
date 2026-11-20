@@ -254,7 +254,9 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const from = T.heroBeamBehind !== built.behindFor ? uAtZ(built.path, 155 + T.heroBeamBehind) : behind;
     const run = Math.min(J.beam / 0.5, 1);
     const climb = T.beamUpFace ? THREE.MathUtils.clamp((J.beam - 0.5) / 0.5, 0, 1) : 0;
-    u.uHead.value = J.beam <= 0 ? 0 : J.beam < 0.5 ? THREE.MathUtils.lerp(from, foot, run) : THREE.MathUtils.lerp(foot, 1, climb);
+    // (one continuous run from where it waits, just out of frame: no jump as
+    // the scroll leaves 0 — nor back and forth as it hovers there)
+    u.uHead.value = J.beam < 0.5 ? THREE.MathUtils.lerp(from, foot, run) : THREE.MathUtils.lerp(foot, 1, climb);
     // ...and the whole of it goes as the stone breaks away — the stretch
     // along the sand together with the one up the slab's face (J.beamFade):
     // nothing left lying on the sand without a purpose (the beam on out of

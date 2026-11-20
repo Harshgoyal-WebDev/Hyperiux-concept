@@ -114,6 +114,9 @@ const WORLD_SCHEMA = {
     stars: [0, 3, 0.01],
   },
   "Lighting & atmosphere": {
+    growSky: [0, 1, 0.01],
+    growSkySpan: [0.1, 1.5, 0.01],
+    growClouds: [0, 1, 0.01],
     exposure: [0.3, 2.5, 0.01],
     sunIntensity: [0, 8, 0.05],
     sunColor: "color",
@@ -128,6 +131,8 @@ const WORLD_SCHEMA = {
   Rocks: {
     stoneColor: "color",
     stoneRoughness: [0.2, 1, 0.01],
+    stoneMoss: "color",
+    stoneMossAmount: [0, 1, 0.01],
     crackScale: [0.3, 3, 0.01],
     crackDepth: [0, 3, 0.01],
   },
@@ -140,6 +145,8 @@ const WORLD_SCHEMA = {
   Impact: {
     shockStrength: [0, 3, 0.01],
     shockShake: [0, 3, 0.01],
+    shockReach: [200, 2000, 10],
+    shockSpan: [0.05, 0.8, 0.01],
     edgeBlur: [0, 3, 0.01],
     edgeChroma: [0, 2, 0.01],
   },
@@ -242,6 +249,7 @@ const OASIS_SCHEMA = {
     strandPushRadius: [1, 40, 0.5],
   },
   "Camera to the core & round the tree": {
+    camTurnSmooth: [0, 200, 1],
     camCoreDist: [5, 150, 0.5],
     camCoreLift: [-10, 30, 0.1],
     orbitSweep: [-720, 720, 1],
@@ -267,6 +275,7 @@ const OASIS_SCHEMA = {
   },
   Water: {
     oasisStreamWidth: [0.4, 4, 0.01],
+    oasisMountains: [0, 2, 0.01],
     valleyWidth: [0.5, 1.5, 0.01],
     waterShallow: "color",
     waterDeep: "color",
@@ -312,7 +321,7 @@ const FEEDBACK_SCHEMA = {
     logoParallax: [0, 3, 0.01],
   },
   "Hero beam": {
-    heroBeamBehind: [0, 120, 1],
+    heroBeamBehind: [-40, 120, 1],
     beamBlastFade: [0.001, 0.1, 0.001],
     beamFootAt: [0.05, 1, 0.01],
     beamUpFace: "bool",
@@ -354,6 +363,7 @@ const FEEDBACK_SCHEMA = {
     paceValley: [0.2, 3, 0.01],
   },
   "Valley beam": {
+    valleyBeamFrom: [0, 1, 0.01],
     valleyBeamBehind: [0, 150, 1],
     valleyBeamCatchUp: [0.002, 0.15, 0.001],
     oasisBeamLead: [0.2, 3, 0.01],
@@ -379,6 +389,7 @@ const BREAK_SCHEMA = {
   },
   Impact: {
     breakImpact: [0, 3, 0.01],
+    blastRingSize: [0.5, 5, 0.05],
     breakSpread: [0.2, 3, 0.01],
     breakSandShare: [0.05, 1, 0.01],
     breakShrink: [0.2, 1, 0.01],
@@ -399,17 +410,14 @@ const BREAK_SCHEMA = {
     streamLoose: [0, 1, 0.01],
   },
   "Pointer stir": {
-    breakStirForce: [0, 4, 0.01],
-    breakStirRadius: [0.01, 0.3, 0.005],
-    breakStirLinger: [0.05, 4, 0.01],
-    breakStirAlong: [0, 2, 0.01],
-    breakStirApart: [0, 2, 0.01],
-    breakStirSmooth: [0.005, 0.5, 0.005],
-    breakStirWake: [0, 0.8, 0.01],
+    breakStirForce: [0, 8, 0.01],
+    breakStirRadius: [0.02, 0.4, 0.005],
+    breakStirFollow: [20, 1500, 1],
+    breakStirLinger: [0.3, 8, 0.05],
+    breakStirMass: [0, 3, 0.01],
     breakStirSpread: [0, 1, 0.01],
     breakStirSand: [0, 3, 0.01],
     breakStirGravel: [0, 3, 0.01],
-    breakStirEase: [0.01, 1, 0.01],
     breakStirGlow: [0, 2, 0.01],
   },
   "Sand & gravel": {
@@ -426,7 +434,7 @@ const BREAK_SCHEMA = {
 // values the master timeline is built from (the beam's run, the camera's
 // keyframes): changing one rebuilds it (ForgingConcept)
 export const RETIME_EVENT = "forging-sand-dune-concept-v3:retime";
-const RETIME = new Set(["edgeFxOffAt", "beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+const RETIME = new Set(["edgeFxOffAt", "shockSpan", "beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
 
 // half as wide again as Leva's default (280 px), the extra all for the labels
 const PANEL_WIDTH = 420;
@@ -450,7 +458,7 @@ function buildControls(schema) {
         // (values the scroll timeline is built from: rebuild it)
         if (RETIME.has(key)) window.dispatchEvent(new Event(RETIME_EVENT));
         // (the land itself: the terrain, its water and plants are rebuilt)
-        if (key === "oasisStreamWidth" || key === "valleyWidth") window.dispatchEvent(new Event("forging-sand-dune-concept-v3:reshape"));
+        if (key === "oasisStreamWidth" || key === "valleyWidth" || key === "oasisMountains") window.dispatchEvent(new Event("forging-sand-dune-concept-v3:reshape"));
       };
       if (spec === "color") items[key] = { value: T[key], onChange };
       else if (typeof spec === "string" && spec.startsWith("select:")) items[key] = { value: T[key], options: spec.slice(7).split(","), onChange };

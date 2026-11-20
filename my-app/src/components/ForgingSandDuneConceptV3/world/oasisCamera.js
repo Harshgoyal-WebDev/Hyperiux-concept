@@ -58,7 +58,7 @@ export function runOnPast(p) {
 // route's end, over the lake (the rise as the light opens takes over). The
 // cut lands at S_LAND — on the stream between the trees, the oasis rising
 // round the camera from just behind it (world/oasis.js REVEAL_ORIGIN).
-export const S_LAND = 815; // (world/oasis.js: at the start of the straight before the curve)
+export const S_LAND = 880; // (world/oasis.js: at the end of the straight, as the curve to the right begins — the valley shot the cut opens on is already well up the way)
 const N = 900;
 let cache = null;
 let cacheKey = "";
@@ -183,6 +183,66 @@ function orbitAngle(p) {
   return rate * (d < ramp ? (d * d) / (2 * ramp) : d - ramp / 2);
 }
 
+// The heading along the way, smoothed: the aim (ahead along the way, then
+// turning to the core after the last curve) as one even turn to the right,
+// following the beam — not a turn as the look ahead goes into the curve and
+// then another as it swings round to the core. The raw heading at every 2 m,
+// smoothed over T.camTurnSmooth m (a Gaussian), and handed back to the raw
+// one over the last stretch to the stop (where it is aimed at the core).
+const YAW_STEP = 2;
+const _a = new THREE.Vector3();
+const _b = new THREE.Vector3();
+let yawCache = null;
+let yawKey = "";
+function rawYaw(s) {
+  routePoint(s, _a);
+  routePoint(s + 46, _b);
+  const toTree = smooth(S_RIM - 100, S_RIM + 15, s);
+  _b.x = lerp(_b.x, TREE.x, toTree);
+  _b.z = lerp(_b.z, TREE.z, toTree);
+  return Math.atan2(_b.z - _a.z, _b.x - _a.x);
+}
+function yawTable() {
+  const sigma = Math.max(T.camTurnSmooth, 0);
+  const key = `${sigma}`;
+  if (yawCache && key === yawKey) return yawCache;
+  const n = Math.ceil(S_END / YAW_STEP) + 1;
+  const raw = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    raw[i] = rawYaw(i * YAW_STEP);
+    // (unwrapped: no jump of 2π)
+    if (i > 0) raw[i] = raw[i - 1] + THREE.MathUtils.euclideanModulo(raw[i] - raw[i - 1] + Math.PI, Math.PI * 2) - Math.PI;
+  }
+  const out = new Float32Array(n);
+  const r = Math.ceil((sigma * 3) / YAW_STEP);
+  for (let i = 0; i < n; i++) {
+    if (r < 1) {
+      out[i] = raw[i];
+      continue;
+    }
+    let sum = 0;
+    let wsum = 0;
+    for (let j = -r; j <= r; j++) {
+      const k = Math.min(Math.max(i + j, 0), n - 1);
+      const w = Math.exp(-0.5 * ((j * YAW_STEP) / sigma) ** 2);
+      sum += raw[k] * w;
+      wsum += w;
+    }
+    const sm = sum / wsum;
+    const back = smoother(S_END - 70, S_END - 4, i * YAW_STEP);
+    out[i] = lerp(sm, raw[i], back);
+  }
+  yawCache = out;
+  yawKey = key;
+  return out;
+}
+function smoothYaw(s) {
+  const t = yawTable();
+  const f = Math.min(Math.max(s / YAW_STEP, 0), t.length - 1);
+  const i = Math.floor(f);
+  return lerp(t[i], t[Math.min(i + 1, t.length - 1)], f - i);
+}
+
 export function oasisCamera(p, pos, tgt) {
   const s = routeDistance(p);
   routePoint(s, pos);
@@ -195,6 +255,13 @@ export function oasisCamera(p, pos, tgt) {
   CORE.set(TREE.x, cubeY(), TREE.z);
   const toTree = smooth(S_RIM - 100, S_RIM + 15, s);
   if (toTree > 0) tgt.lerp(CORE, toTree);
+  // (its heading: the one smooth turn — its height as it was)
+  if (s < S_END) {
+    const yaw = smoothYaw(s);
+    const dist = Math.hypot(tgt.x - pos.x, tgt.z - pos.z);
+    tgt.x = pos.x + Math.cos(yaw) * dist;
+    tgt.z = pos.z + Math.sin(yaw) * dist;
+  }
   let fov = lerp(50, 54, smooth(S_RIM, S_END, s));
 
   // following the beam in: as it runs on to the core, the camera goes with

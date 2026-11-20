@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { STIR_W } from "./windField";
 import { sandNoise } from "./forgeAsset";
 import { T } from "../tuning";
 
@@ -35,10 +36,10 @@ import { T } from "../tuning";
 // gathers it back into the stone. Shared by the sand (CrumbleSand) and the
 // gravel (Gravel).
 //
-// The pointer stirs them: a field over the screen (BreakupStir brushes it
-// along the pointer's path) pushes each grain in the screen's plane — along
-// the pointer's motion and parted from its line — and lights it white-hot;
-// as the field relaxes the grains ease back into their streams.
+// The pointer stirs them: an invisible ball following the moving pointer
+// flings whatever it hits along its stroke, and each grain carries its own
+// push round with it and eases home to its place in its stream
+// (world/windField.js; BreakupStir keeps the ball).
 
 const DEG = Math.PI / 180;
 const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 5);
@@ -313,12 +314,12 @@ export function puffDirection(rng, out) {
   return out.set(rng() - 0.5, rng() * 0.7, 0.35 + rng() * 0.65).normalize();
 }
 
-// The pointer's stir over the screen (BreakupStir keeps it).
+// The pointer's stir (BreakupStir keeps these; each layer has its own
+// pushes, uStirState: world/windField.js createStirState).
 export const STIR_UNIFORMS = {
-  uStir: { value: null },
   uStirOn: { value: 0 },
   uStirGlow: { value: 0 },
-  uStirSpread: { value: 0.3 },
+  uStirScale: { value: 0.12 }, // the push's unit: the ball's radius, in screen heights
 };
 
 // Uniforms the flow reads (by reference: the forge updates them in place).
@@ -331,6 +332,7 @@ export function breakupUniforms(forge, shared) {
     ...FLOW_UNIFORMS,
     ...STIR_UNIFORMS,
     uStirAmount: { value: 1 }, // (each layer's own)
+    uStirState: { value: null }, // (each layer's own)
     uS: { value: forge.scale },
     uCenter: { value: forge.world.logo.clone() },
     uTime: shared.uTime,
@@ -362,28 +364,28 @@ vec3 bkAbove(vec3 p, float lift) {
   return p;
 }
 uniform float uS; // asset → world scale
-uniform sampler2D uStir; // the pointer's stir over the screen: push (screen uv) in rg, heat in b
+uniform sampler2D uStirState; // this layer's pushes (world/windField.js createStirState): one texel a grain, push in xy, its velocity in zw
 uniform float uStirOn;
 uniform float uStirAmount; // how much this layer (sand / gravel) is stirred
 uniform float uStirGlow; // how much a stirred grain lights up
-uniform float uStirSpread; // how unevenly the grains are pushed (0 = all alike)
-// a grain at p, stirred: pushed in the screen's plane by the field where it
-// is on screen (a little more or less for each, so it parts like a fluid);
-// heat: how hot the stir leaves it (0..1)
-vec3 breakupStir(vec3 p, float seed, out float heat) {
+uniform float uStirScale; // the push's unit: the ball's radius, in screen heights
+float bkStirTurn; // how far the stir has knocked it over (rad), for the stones to tumble by
+// grain id at p, stirred: moved in the screen's plane by its own push (it
+// carries it round with it, and eases home); heat: how hot it is from it
+vec3 breakupStirAt(vec3 p, int id, float seed, out float heat) {
   heat = 0.0;
+  bkStirTurn = 0.0;
   if (uStirOn < 0.5) return p;
+  vec4 st = texelFetch(uStirState, ivec2(id % ${STIR_W}, id / ${STIR_W}), 0);
+  if (dot(st.xy, st.xy) < 1e-8) return p;
   vec4 clip = projectionMatrix * viewMatrix * vec4(p, 1.0);
   if (clip.w <= 0.0) return p;
-  vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
-  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return p;
-  vec4 f = texture2D(uStir, uv);
   vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
   vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
   float worldH = 2.0 * clip.w / projectionMatrix[1][1]; // metres per screen height there
-  float aspect = projectionMatrix[1][1] / projectionMatrix[0][0];
-  heat = f.b * uStirGlow;
-  return p + (right * f.r * aspect + up * f.g) * worldH * uStirAmount * (1.0 - uStirSpread + 2.0 * uStirSpread * fract(seed * 23.17));
+  heat = min(length(st.zw) * 0.12, 1.0) * uStirGlow;
+  bkStirTurn = length(st.xy) * 1.2 * (fract(seed * 7.77) < 0.5 ? -1.0 : 1.0);
+  return p + (right * st.x + up * st.y) * worldH * uStirScale * uStirAmount;
 }
 vec3 bkRot(vec4 q, vec3 v) { return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v); }
 float bkProgress(int i) {

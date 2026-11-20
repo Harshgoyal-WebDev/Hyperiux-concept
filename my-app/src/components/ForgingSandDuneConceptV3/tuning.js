@@ -56,14 +56,18 @@ export const T = {
   coreLight: 1.0, // the sphere's and the cracks' light on the stone and sand
 
   // Scattered rocks (procedural basalt)
-  stoneColor: "#45403a",
-  stoneRoughness: 0.94, // (matte: high)
+  stoneColor: "#5e5044", // the rocks (after the reference: warm grey-brown, matte, faceted)
+  stoneRoughness: 0.95, // (matte: high)
+  stoneMoss: "#5f6232", // the olive moss / lichen on their tops...
+  stoneMossAmount: 0.5, // ...and how much of it
   crackScale: 0.1,
   crackDepth: 0.30,
 
   // Impact as the beam merges into the core
   shockStrength: 1.0, // ridge and light wave running out across the dunes
   shockShake: 0.9, // metres of camera jolt
+  shockReach: 1800, // metres it runs out to (past the far dunes on the horizon)
+  shockSpan: 0.5, // share of the forging the shockwave takes to run out across the dunes (it starts with the blast)
   edgeBlur: 0.8, // motion blur at the frame's edges through the forging event
   edgeChroma: 0.6, // ...and how far its colours split (chromatic aberration)
 
@@ -89,7 +93,7 @@ export const T = {
   parallaxShiftY: 1.55, // ...and up and down (m)
   parallaxLook: 0, // ...how much the aim slides with it (0 = it keeps looking at the same point, 1 = a flat pan)
   beamBlastFade: 0.006, // the hero beam is gone this fast as the slab blasts apart (share of the forging; the flash covers it)
-  heroBeamBehind: 20, // the hero beam starts this far behind the camera (m): nothing of it in view until the scroll starts
+  heroBeamBehind: -8, // where the hero beam's head starts, metres behind the camera (negative: ahead of it — just under the bottom of the frame, so it comes into view with the first scroll)
   sandInteract: false, // the sand's trail under the cursor (the water's ripples stay)
   beamUpFace: true, // the beam goes on up the slab's face from its foot to the core (no crack growing)
   beamFaceGap: 0.18, // ...how far off the face it runs (m)
@@ -113,8 +117,9 @@ export const T = {
   paceEven: 0.6, // how fully the scroll's pace is evened out over the whole way (pace.js: 0 = the same scroll speed everywhere, 1 = the picture changes at one rate everywhere)
   paceApproach: 1, // a hand trim: the pace × this from the rock breaking until the cut lands (the approach and the cut)
   paceValley: 1, // ...and × this from the cut until the beam runs on into the core (the valley)
-  valleyBeamBehind: 30, // past the cut the beam starts this far behind the camera (m)...
-  valleyBeamCatchUp: 0.035, // ...and comes up past it to its lead over this much scroll (p)
+  valleyBeamFrom: 0.5, // the valley's beam is drawn out from this share of the cut (it shows through the hexagons)...
+  valleyBeamBehind: 4, // ...starting this far behind the camera (m)...
+  valleyBeamCatchUp: 0.01, // ...and reaching its lead this much scroll (p) past the cut's end
   scrollFixedPace: false, // the page's own set scroll pace (the wheel / trackpad only says which way; pace.js evens it out) — off: the site's Lenis as it is (from the next load)
   scrollPace: 130, // ...that speed in the hero; elsewhere evened out to its picture (pace.js) (screen heights per second × 100: vh/s)
   scrollHold: 0.14, // ...seconds it keeps going after the last wheel input (wheel notches come this far apart)
@@ -144,6 +149,9 @@ export const T = {
   tlTreeGrowStart: 0.7898, // the Yggdrasil starts growing, from the bottom up, strand by strand
   tlTreeGrowEnd: 0.9258, // ...fully grown, to the top of its crown
   tlTreeLightEnd: 0.9475, // the tree's light has climbed to the top of its crown
+  growSky: 1.0, // as the tree grows the sky deepens to a clear blue, with clouds (0 = stays as the reveal left it)
+  growSkySpan: 0.6, // ...over this share of the tree's growth
+  growClouds: 0.65, // ...how many clouds
   tlOrbitStart: 0.7793, // the camera starts round the tree (at one steady pace, on to the end of the page)
   tlOrbitEnd: 0.9317, // ...has drawn back to its farthest (orbitSweep degrees round by then)
   tlOutroStart: 0.9317, // the glass-hexagon change from the scene to the white site: starts
@@ -167,7 +175,7 @@ export const T = {
   // The sand and gravel the broken rock turns into (counts are capped by the
   // quality tier).
   swirlSpeed: 0.99, // pace of the swirl's sound
-  crumbleSand: 1640, // grains of sand the broken rock turns into (capped by the quality tier)
+  crumbleSand: 0, // grains of sand the broken rock turns into (capped by the quality tier)
   crumbleSize: 1.07,
   crumbleOpacity: 1.0,
   gravelCount: 1650, // gravel it turns into (capped by the quality tier)
@@ -208,7 +216,7 @@ export const T = {
   streakBase: 1.09, // ...glow of the strands between dashes
   streakColor: "#ff5f00", // ...their colour
   streakHotColor: "#ffd3a6", // ...where brightest
-  oasisBeamLead: 0.31, // how far ahead of the camera it runs (x 150 m)
+  oasisBeamLead: 0.22, // how far ahead of the camera it runs (x 150 m)
   innerGlow: 1.8, // the forged logo's cube outline lit from within (the light in its openings)
   innerGlowColor: "#ff7a2a", // ...its colour (orange)
   logoParallax: 2.5, // the forged logo turning towards the cursor (0 = still)
@@ -239,6 +247,8 @@ export const T = {
   // the camera: following the beam in to the core, then round the tree as it grows
   lushAmount: 1, // as the oasis is revealed: how far the dunes turn dark green-grey and the dusk sky light blue (0 = stays dusk)
   lushSpan: 0.5, // ...over this share of the reveal
+  oasisMountains: 1.0, // the mountains round the oasis: peaks and saddles of every height (0 = an even ring of dunes)
+  camTurnSmooth: 70, // past the cut: how evenly the camera turns to the right along the way (m it is smoothed over; 0 = it follows each bend)
   camCoreDist: 56, // how far from the core it comes to as the beam touches it (m)
   camCoreLift: 4, // ...its height above the core's centre (m)
   orbitSweep: 270, // degrees it goes round between tlOrbitStart and tlOrbitEnd (and on at that pace; - turns the other way)
@@ -325,20 +335,21 @@ export const T = {
   // / seqBreakEnd above
   breakStart: 0.1,
   breakEnd: 1.0,
-  // the pointer stirring the broken rock's sand and gravel
-  breakStirForce: 4.0, // how far it pushes them
-  breakStirRadius: 0.17, // how wide its reach is (share of the screen)
-  breakStirLinger: 4.0, // seconds they take to ease back into their streams
-  breakStirAlong: 0.69, // how much they are pushed along the pointer's motion...
-  breakStirApart: 0, // ...and parted out from its line
-  breakStirSmooth: 0.5, // seconds the pointer's motion is smoothed over (higher = softer, lazier)
-  breakStirWake: 0.8, // how much the stir spreads out behind the pointer (a softer, wider wake)
-  breakStirSpread: 0.46, // how unevenly the grains are pushed (0 = all alike: more fluid the higher)
-  breakStirSand: 1.52, // how much the crumbled sand is stirred...
-  breakStirGravel: 1.66, // ...and the gravel
-  breakStirEase: 0.12, // how quickly the grains give way under the pointer (lower = they drift aside more gently)
+  // the pointer stirring the broken rock (world/windField.js): while it
+  // moves, whatever it hits — sand, gravel, pieces — is flung along its
+  // stroke, coasts out and eases back home to its own place in its stream
+  // (no overshoot, no circling; nothing at all while it rests)
+  breakStirForce: 4.0, // how hard it flings them (how far they go)
+  breakStirRadius: 0.09, // its reach (share of the screen's height)
+  breakStirFollow: 800, // how closely it follows the pointer (lower = smoother, lazier)
+  breakStirLinger: 2.85, // seconds they take to come back home
+  breakStirMass: 1.3, // how much less the heavier stones and the broken pieces are flung
+  breakStirSpread: 0.5, // how unevenly they are flung (0 = all alike: more fluid the higher)
+  breakStirSand: 2.16, // how much the crumbled sand is stirred...
+  breakStirGravel: 1.45, // ...and the gravel
   breakStirGlow: 0, // how much a stirred grain lights up (0 = not at all)
   breakImpact: 3.0, // how hard the blast hits: the shell of energy, the flare, the jolt
+  blastRingSize: 1.7, // how far the blast's ring of energy swells (× the scatter's reach): past the camera, filling the screen
   breakSpread: 1.75, // how far the blast scatters the rock (× the streams' radius)
   breakSandShare: 0.55, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
   breakShrink: 0.43, // the pieces' size once broken off
@@ -346,7 +357,7 @@ export const T = {
   breakSolid: true, // the pieces stay solid stone (no hollow wearing away); the big ones shatter into gravel and sand as the blast throws them
   breakBigVolume: 0, // ...how big a piece is to shatter (m³, the model's own; up to ~10)
   breakShatter: 1.68, // ...how soon they are gone (× the blast's length)
-  breakSpin: 0.26, // how fast the streams carry it round
+  breakSpin: 1.0, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)
   // — set from the seq values above
@@ -362,13 +373,13 @@ export const T = {
   breakSandFlow: 0.6, // how long a grain takes to find its place in the stream
   // the streams of sand the broken rock is carried round the mark in
   streams: 2, // how many
-  streamRadius: 32.3, // metres: how far round the mark they loop
-  streamTilt: 51.5, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
+  streamRadius: 23.4, // metres: how far round the mark they loop
+  streamTilt: 34.5, // degrees their loops lean towards the camera (0 = level, seen edge-on; 90 = facing it)
   streamWobble: 0.0, // degrees their loops keep tilting and turning by as they go
   streamHeight: 0.0, // metres they rise and fall on the way round
-  streamTail: 0.78, // how long each stream's tail is (share of a turn)
-  streamWidth: 7.4, // metres: how wide a stream spreads (wider towards its tail)
-  streamLoose: 0.06, // share of the grains drifting loose all round
+  streamTail: 1.0, // how long each stream's tail is (share of a turn)
+  streamWidth: 0.0, // metres: how wide a stream spreads (wider towards its tail)
+  streamLoose: 1.0, // share of the grains drifting loose all round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
   forgeDuration: 8.0,

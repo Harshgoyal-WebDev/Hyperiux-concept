@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
 import { breakupGLSL, breakupUniforms, puffDirection, samplePieceSurfaces } from "../world/breakup";
+import { STIR_BALL, createStirState } from "../world/windField";
 import { PALETTE } from "../config";
 import { T } from "../tuning";
 
@@ -62,13 +63,15 @@ function patch(material, uniforms, pieces) {
           float g = breakupFlow(int(aGravel.x + 0.5), aLocal, aGravel.y, aDrift, gvPos);
           float s = aGravel.w;
           float heat;
-          gvPos = breakupStir(gvPos, s, heat);
+          // (the bigger stones are heavier: the stir moves them less, and later)
+          gvPos = breakupStirAt(gvPos, gl_InstanceID, s, heat);
           // chips off at a little under full size, never seen growing from nothing
           float size = g < 0.0 ? 0.0 : aGravel.z * uGravelSize * uFade * mix(0.6, 1.0, smoothstep(0.0, 0.12, g));
           gvScale = size * vec3(1.0, 0.55 + 0.45 * fract(s * 3.17), 0.7 + 0.3 * fract(s * 5.71));
           // tumbling as it goes round
           vec3 axis = normalize(vec3(sin(s * 12.9), cos(s * 7.3), sin(s * 3.1 + 1.0)) + 1e-4);
-          float ang = uTime * (0.5 + 1.6 * fract(s * 9.1)) + s * 40.0;
+          // (and knocked round by the stir)
+          float ang = uTime * (0.5 + 1.6 * fract(s * 9.1)) + s * 40.0 + bkStirTurn;
           float c = cos(ang);
           float sn = sin(ang);
           float t = 1.0 - c;
@@ -139,7 +142,21 @@ export default function Gravel({ J, tier, shared, forge }) {
     };
     const material = new THREE.MeshStandardMaterial({ color: PALETTE.basalt, roughness: 0.95, metalness: 0, envMapIntensity: 0.35, flatShading: true });
     patch(material, uniforms, forge.chunks.length);
-    return { geometry, material, uniforms, stone };
+    // each stone's own push from the pointer's stir (world/windField.js):
+    // the bigger ones are heavier — flung less far, and picked up more slowly
+    const stir = createStirState({
+      count,
+      flowGLSL: breakupGLSL(forge.chunks.length),
+      uniforms,
+      attributes: [
+        ["aLocal", local, 3],
+        ["aMain", gravel, 4],
+        ["aDrift", drift, 4],
+      ],
+      seed: "aMain.w",
+      inertia: "min(0.55 + pow(aMain.z / 0.12, 1.12), 9.0)",
+    });
+    return { geometry, material, uniforms, stone, stir };
   }, [forge, tier, shared]);
 
   useEffect(
@@ -147,11 +164,12 @@ export default function Gravel({ J, tier, shared, forge }) {
       built.geometry.dispose();
       built.stone.dispose();
       built.material.dispose();
+      built.stir.dispose();
     },
     [built]
   );
 
-  useFrame(() => {
+  useFrame(({ gl, camera }, delta) => {
     const on = J.fracture > 0 && T.gravelCount >= 1;
     if (ref.current) ref.current.visible = on;
     if (!on) return;
@@ -162,7 +180,9 @@ export default function Gravel({ J, tier, shared, forge }) {
     u.uHotColor.value.set(T.crackColor);
     u.uEmbers.value = T.gravelEmbers;
     u.uEmberGlow.value = T.gravelEmberGlow;
-    built.geometry.instanceCount = Math.min(Math.round(T.gravelCount), tier.maxGravel);
+    const n = Math.min(Math.round(T.gravelCount), tier.maxGravel);
+    built.geometry.instanceCount = n;
+    if (STIR_BALL.on) u.uStirState.value = built.stir.step(gl, camera, n, Math.min(delta, 0.1));
   });
 
   return <mesh ref={ref} geometry={built.geometry} material={built.material} frustumCulled={false} />;

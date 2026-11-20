@@ -23,6 +23,9 @@ export default function Sky({ shared }) {
           uSunDir: { value: SUN_DIR.clone() },
           uNight: shared.uNight,
           uLush: shared.uLush ?? { value: 0 },
+          uGrowSky: shared.uGrowSky ?? { value: 0 },
+          uTime: shared.uTime ?? { value: 0 },
+          uClouds: { value: 0.6 },
           uWhite: shared.uWhite,
           uWhiteLevel: shared.uWhiteLevel,
           uStars: { value: 1 },
@@ -39,6 +42,9 @@ export default function Sky({ shared }) {
           uniform vec3 uSunDir;
           uniform float uNight;
           uniform float uLush;
+          uniform float uGrowSky;
+          uniform float uTime;
+          uniform float uClouds;
           uniform float uStars;
           uniform float uWhite;
           uniform float uWhiteLevel;
@@ -53,6 +59,26 @@ export default function Sky({ shared }) {
           float ncDisc(vec3 d, vec3 dir, float radius) {
             float a = acos(clamp(dot(d, dir), -1.0, 1.0));
             return 1.0 - smoothstep(radius - 0.0012, radius + 0.0012, a);
+          }
+          float ncN2(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = ncHash3(vec3(i, 0.0));
+            float b = ncHash3(vec3(i + vec2(1.0, 0.0), 0.0));
+            float c = ncHash3(vec3(i + vec2(0.0, 1.0), 0.0));
+            float e = ncHash3(vec3(i + vec2(1.0, 1.0), 0.0));
+            return mix(mix(a, b, f.x), mix(c, e, f.x), f.y);
+          }
+          float ncCloudFbm(vec2 p) {
+            float s = 0.0;
+            float a = 0.5;
+            for (int i = 0; i < 5; i++) {
+              s += a * ncN2(p);
+              p = p * 2.07 + vec2(3.1, 1.7);
+              a *= 0.5;
+            }
+            return s;
           }
           vec3 ncNight(vec3 d, float h, float sun) {
             vec3 zenith = vec3(0.004, 0.007, 0.02);
@@ -96,10 +122,32 @@ export default function Sky({ shared }) {
             if (h < 0.0) col = mix(col, vec3(0.62, 0.33, 0.17), smoothstep(0.0, -0.08, h));
             // the oasis come to life: the dusk gives way to a light blue sky
             if (uLush > 0.001) {
-              vec3 day = mix(vec3(0.80, 0.86, 0.92), vec3(0.45, 0.62, 0.84), smoothstep(0.0, 0.6, h));
-              day += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.35;
+              // (a vivid, clear blue: pale at the horizon, deep overhead)
+              vec3 day = mix(vec3(0.66, 0.80, 0.96), vec3(0.20, 0.46, 0.92), smoothstep(0.0, 0.55, h));
+              day = mix(day, vec3(0.10, 0.30, 0.82), smoothstep(0.45, 0.95, h));
+              day += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.3;
               if (h < 0.0) day = mix(day, vec3(0.55, 0.6, 0.6), smoothstep(0.0, -0.08, h));
               col = mix(col, mix(day, vec3(1.0, 0.96, 0.86) * 3.4, ncDisc(d, uSunDir, 0.03)), uLush);
+            }
+            // the tree growing: a deeper, clearer blue overhead, and soft
+            // fair-weather clouds drifting slowly over (on a plane high up:
+            // smaller and thinner towards the horizon), lit warm on the sun's side
+            if (uGrowSky > 0.001) {
+              vec3 blue = mix(vec3(0.60, 0.78, 0.98), vec3(0.14, 0.40, 0.92), smoothstep(0.0, 0.5, h));
+              blue = mix(blue, vec3(0.06, 0.24, 0.78), smoothstep(0.4, 0.95, h));
+              blue += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.3;
+              if (h < 0.0) blue = mix(blue, vec3(0.55, 0.6, 0.62), smoothstep(0.0, -0.08, h));
+              vec3 sky = mix(blue, vec3(1.0, 0.96, 0.86) * 3.4, ncDisc(d, uSunDir, 0.03));
+              if (h > 0.0) {
+                vec2 cp = d.xz / (h + 0.12) * 1.6 + vec2(uTime * 0.012, uTime * 0.004);
+                float n = ncCloudFbm(cp);
+                float cover = smoothstep(0.5, 0.78, n + 0.08 * ncN2(cp * 0.3)) * uClouds;
+                cover *= smoothstep(0.02, 0.16, h);
+                float shade = smoothstep(0.45, 0.95, ncCloudFbm(cp * 1.3 + 4.0));
+                vec3 cloud = mix(vec3(0.78, 0.82, 0.9), vec3(1.08, 1.05, 1.0), shade) + vec3(0.35, 0.22, 0.1) * pow(sun, 6.0);
+                sky = mix(sky, cloud, cover * (1.0 - ncDisc(d, uSunDir, 0.035) * 0.6));
+              }
+              col = mix(col, sky, uGrowSky);
             }
             if (uNight > 0.001) col = mix(col, ncNight(d, h, sun), uNight);
             col = mix(col, vec3(mix(0.9, uWhiteLevel, uWhite * uWhite * uWhite)), uWhite);
@@ -113,6 +161,7 @@ export default function Sky({ shared }) {
   );
   useFrame(() => {
     material.uniforms.uStars.value = T.stars;
+    material.uniforms.uClouds.value = T.growClouds;
   });
 
   return (

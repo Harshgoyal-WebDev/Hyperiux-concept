@@ -12,6 +12,7 @@ import { magnet } from "../world/magnet";
 import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
 import { grainProgress, pieceFlight, setFlowGround, syncFlow } from "../world/breakup";
+import { stirPiece } from "../world/windField";
 
 // The forging monolith: the authored slab (logo core + excess chunks), its
 // crack network and the core sphere, all from the GLB. The logo core keeps
@@ -579,6 +580,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
   }, [forge]);
   const coreLight = useRef();
   const pose = useMemo(() => ({ position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), scale: new THREE.Vector3(), visible: true }), []);
+  const stir = useMemo(() => ({ offset: new THREE.Vector3(), turn: new THREE.Quaternion() }), []);
   const lastFracture = useRef(-1);
   // a new forge: pose its pieces afresh
   useEffect(() => {
@@ -689,6 +691,12 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
         m.position.copy(pose.position).sub(o).divideScalar(S);
         m.quaternion.copy(pose.quaternion);
         m.scale.copy(pose.scale);
+        // shoved and knocked tumbling by the pointer's stir, by its mass
+        // (world/windField.js) — the stone only: its grains have their own
+        if (u > 0 && erode < 0.999 && stirPiece(c, pose.position, Math.min(1.5 + (c.vol ?? 1) * 1.2, 9), Math.min(delta, 0.1), camera, stir.offset, stir.turn)) {
+          m.position.addScaledVector(stir.offset, 1 / S);
+          m.quaternion.premultiply(stir.turn);
+        } else if (u <= 0) c.stir = null;
         m.visible = erode < 0.999;
         // a piece mostly gone to sand no longer casts a solid shadow
         m.castShadow = erode < 0.45;
@@ -723,7 +731,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     built.shell.visible = burst > 0.002;
     if (built.shell.visible) {
       const x = THREE.MathUtils.clamp(f / Math.max(T.breakBurstEnd, 0.01), 0, 1);
-      built.shell.scale.setScalar(4 + (1 - Math.pow(1 - x, 3)) * T.streamRadius * T.breakSpread);
+      built.shell.scale.setScalar(4 + (1 - Math.pow(1 - x, 3)) * T.streamRadius * T.breakSpread * T.blastRingSize);
       built.shell.material.uniforms.uLevel.value = burst * T.breakImpact;
       built.shell.material.uniforms.uColor.value.set(T.crackColor);
       halo.scale.multiplyScalar(1 + burst * 5 * T.breakImpact);

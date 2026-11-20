@@ -24,8 +24,8 @@ import Streaks from "./Streaks";
 // (tinting the sand), its water, its plants, the Yggdrasil, and the energy
 // streaks running on from the logo's core into the tree's.
 // Rocks along the valley the camera travels (the same low boulders as on
-// the hero's dunes — none of the tall shards): over its floor and up the
-// dunes' feet, out of the stream and clear of the camera's line.
+// the hero's dunes — none of the tall shards): over its floor round the
+// way (none up the dunes), clear of the camera's line.
 function valleyRocks(terrain, count = 70) {
   const rng = mulberry32(613);
   const rocks = [];
@@ -38,16 +38,17 @@ function valleyRocks(terrain, count = 70) {
     const s = S_LAND - 120 + rng() * (S_RIM + 60 - (S_LAND - 120));
     route.getPointAt(Math.min(s / L, 1), p);
     route.getTangentAt(Math.min(s / L, 1), t);
-    const lat = (rng() * 2 - 1) * (floorHalfWidth(s) + 18);
+    const lat = (rng() * 2 - 1) * (floorHalfWidth(s) + 2);
     const x = p.x - t.z * lat;
     const z = p.z + t.x * lat;
     oasisAt(x, z, o);
-    if (!o.inside || o.w < 1.5 || o.d < 6 || o.basin) continue;
+    // (on the valley's floor round the way, never up the dunes)
+    if (!o.inside || o.w < 1.5 || o.d < 6 || o.basin || o.e > 1.5) continue;
     const big = rng() < 0.08;
     rocks.push({
       position: [x, 0, z],
       scale: big ? 1.6 + rng() * 1.4 : 0.4 + rng() * 0.9,
-      squash: 0.5 + rng() * 0.55,
+      squash: 0.65 + rng() * 0.45,
       rotation: rng() * Math.PI * 2,
       variant: Math.floor(rng() * 3),
     });

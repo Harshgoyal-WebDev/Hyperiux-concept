@@ -41,23 +41,28 @@ const STREAK_COUNT = 18;
 // (past the cut it starts behind the camera — none of it in view as the
 // valley comes in — and comes up past it to its lead: T.valleyBeamBehind /
 // T.valleyBeamCatchUp)
+// (it is drawn out on the scroll from part-way through the cut — the valley
+// showing through its hexagons with the beam already running out ahead —
+// T.valleyBeamFrom of the cut, reaching its lead T.valleyBeamCatchUp past it)
+const beamFrom = () => THREE.MathUtils.lerp(CUT_FROM(), CUT_TO(), T.valleyBeamFrom);
+const beamUpTo = () => Math.max(CUT_TO() + T.valleyBeamCatchUp, beamFrom() + 0.004);
 const freeAt = (b, p, camS = routeDistance(p)) => {
   const lead = b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
-  const k = THREE.MathUtils.smoothstep(p, CUT_TO(), CUT_TO() + Math.max(T.valleyBeamCatchUp, 0.002));
+  const k = THREE.MathUtils.smoothstep(p, beamFrom(), beamUpTo());
   return camS + THREE.MathUtils.lerp(-T.valleyBeamBehind, lead, k);
 };
 let runKey = "";
 let run = null;
 function runIn(b) {
   const pb = T.tlBeamToTreeEnd;
-  const key = `${T.oasisBeamLead}:${pb}:${T.tlCutStart}:${T.tlCutEnd}:${b.qMax}:${P.canopy}:${T.valleyBeamBehind}:${T.valleyBeamCatchUp}`;
+  const key = `${T.oasisBeamLead}:${pb}:${T.tlCutStart}:${T.tlCutEnd}:${b.qMax}:${P.canopy}:${T.valleyBeamBehind}:${T.valleyBeamCatchUp}:${T.valleyBeamFrom}`;
   if (run && key === runKey) return run;
   const dp = 0.0005;
   const pace = (p) => (freeAt(b, p + dp) - freeAt(b, p - dp)) / (2 * dp);
   let pa = -1;
   let fastest = CUT_TO();
   let fastestV = 0;
-  for (let p = CUT_TO() + Math.max(T.valleyBeamCatchUp, 0.002) + 0.005; p < pb - 0.003; p += dp) {
+  for (let p = beamUpTo() + 0.005; p < pb - 0.003; p += dp) {
     const v = pace(p);
     if (v > fastestV) {
       fastestV = v;

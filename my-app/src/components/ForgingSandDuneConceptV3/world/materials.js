@@ -67,6 +67,7 @@ export function createSharedUniforms() {
     // dunes behind the reveal's front turn dark green-grey, the sky and the
     // haze a light blue (Sky.jsx, Rig)
     uLush: { value: 0 },
+    uGrowSky: { value: 0 }, // the tree growing: a deeper blue sky with clouds (scene/Sky.jsx)
     uLushDune: { value: new THREE.Color("#2b5230") },
     // ...when each spot comes up, and the light running out ahead of it
     // (world/revealMap.js; until it is built: never)
@@ -172,17 +173,20 @@ function injectWorldVertex(shader) {
 }
 
 // ---------------------------------------------------------------------------
-// Basalt
+// Stone
 // ---------------------------------------------------------------------------
-// Procedural basalt for the scattered rocks: an angular fracture network
-// (fine polygonal cells + a few major cracks) and fine relief, from world
-// position, so instances never repeat.
+// The rocks, after the reference (hyperiux-concepts v6): matte, water-worn
+// stone, warm grey-brown, its tone wandering a little from stone to stone and
+// over each one, and a dusting of olive moss / lichen on what faces the sky.
+// No crack network: the facets of the geometry (world/plants.js
+// boulderGeometry, flat shaded) carry its form. Colour from world position,
+// so instances never repeat. (T.stoneMoss / T.stoneMossAmount: the rigs set
+// STONE_UNIFORMS, synced by scene/Rocks.jsx.)
+export const STONE_UNIFORMS = { uMoss: { value: new THREE.Color("#5f6232") }, uMossAmount: { value: 0.5 } };
 export function createStoneMaterial(shared, { color = PALETTE.basalt } = {}) {
-  // (matte, dry stone: rough all over and only faintly catching the sky —
-  // not the glossy, metallic-looking black it was)
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.94, metalness: 0.0, envMapIntensity: 0.35 });
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.3, flatShading: true });
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, shared);
+    Object.assign(shader.uniforms, shared, STONE_UNIFORMS);
     injectWorldVertex(shader);
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -191,41 +195,58 @@ export function createStoneMaterial(shared, { color = PALETTE.basalt } = {}) {
         ${SHARED_DECLS}
         ${WORLD_VARYINGS}
         ${NOISE}
-        ${VORONOI}
-        ${BUMP}`
+        uniform vec3 uMoss;
+        uniform float uMossAmount;
+        // (small facets cut into the stone's surface: the nearest of a 3D
+        // jittered grid's points — each cell a flat patch with its own tilt)
+        vec3 ncFacet(vec3 p) {
+          vec3 i = floor(p);
+          vec3 f = fract(p);
+          float d1 = 8.0;
+          vec3 best = vec3(0.0);
+          for (int z = -1; z <= 1; z++)
+          for (int y = -1; y <= 1; y++)
+          for (int x = -1; x <= 1; x++) {
+            vec3 g = vec3(float(x), float(y), float(z));
+            vec3 c = i + g;
+            vec3 o = vec3(ncHash(c), ncHash(c + 7.3), ncHash(c + 13.1));
+            vec3 r = g + o - f;
+            float d = dot(r, r);
+            if (d < d1) { d1 = d; best = c; }
+          }
+          return vec3(ncHash(best + 2.9), ncHash(best + 5.7), ncHash(best + 11.3));
+        }`
       )
       .replace(
         "#include <clipping_planes_fragment>",
         /* glsl */ `#include <clipping_planes_fragment>
-        vec3 ncN = normalize(vNcNormal);
-        vec3 ncA = abs(ncN);
-        vec2 ncUV = ncA.z > max(ncA.x, ncA.y) ? vNcWorld.xy : (ncA.x > ncA.y ? vNcWorld.zy : vNcWorld.xz);
-        float ncTone = mix(0.86, 1.1, ncFbm(vNcWorld * 0.07));
-        float ncFine = ncFbm(vNcWorld * 1.9 + 4.0);
-        vec2 ncV1 = ncVoronoi(ncUV * 0.45 * uCrackScale);
-        vec2 ncV2 = ncVoronoi(ncUV * 0.12 * uCrackScale + 7.0);
-        float ncCrackFine = 1.0 - smoothstep(0.0, 0.045, ncV1.x);
-        float ncCrackMajor = 1.0 - smoothstep(0.0, 0.03, ncV2.x);`
+        // (the facet's own normal, in world space: flat shaded)
+        vec3 ncFn = normalize(cross(dFdx(vNcWorld), dFdy(vNcWorld)));
+        float ncTone = mix(0.8, 1.14, ncFbm(vNcWorld * 0.05));
+        float ncFine = ncFbm(vNcWorld * 1.3 + 4.0);
+        vec3 ncCell = ncFacet(vNcWorld * 2.6);
+        float ncMoss = smoothstep(0.35, 0.85, ncFn.y) * smoothstep(0.35, 0.7, ncFbm(vNcWorld * 0.6 + 11.0) + 0.15) * uMossAmount;`
       )
       .replace(
         "#include <color_fragment>",
         /* glsl */ `#include <color_fragment>
-        diffuseColor.rgb *= ncTone * mix(0.86, 1.08, ncFine);
-        diffuseColor.rgb *= 1.0 - (ncCrackFine * 0.45 + ncCrackMajor * 0.55) * min(uCrackDepth, 1.5);`
+        diffuseColor.rgb *= ncTone * mix(0.88, 1.08, ncFine) * mix(0.9, 1.08, ncCell.z);
+        // (a little lighter on top, where it is weathered pale)
+        diffuseColor.rgb *= mix(0.9, 1.12, smoothstep(-0.2, 0.9, ncFn.y));
+        diffuseColor.rgb = mix(diffuseColor.rgb, uMoss * mix(0.8, 1.15, ncFine), ncMoss);`
       )
       .replace(
         "#include <roughnessmap_fragment>",
         `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(roughnessFactor - ncFine * 0.08 + ncCrackFine * 0.05, 0.82, 1.0);`
+        roughnessFactor = clamp(roughnessFactor - ncFine * 0.06, 0.85, 1.0);`
       )
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
-        float ncH = ncFine * 0.05 - (ncCrackFine * 0.035 + ncCrackMajor * 0.09) * uCrackDepth;
-        normal = ncBump(-vViewPosition, normal, ncH, faceDirection);`
+        normal = normalize(normal + mat3(viewMatrix) * (ncCell - 0.5) * 0.55);`
       );
   };
-  material.customProgramCacheKey = () => "nc-stone";
+  material.customProgramCacheKey = () => "nc-stone-v6";
   return { material };
 }
 
@@ -413,9 +434,10 @@ export function createSandMaterial(shared) {
           float shD = length(ncP - uShockPos);
           // (squared by hand: pow() of a negative base is undefined — NaN on
           // some GPUs, which the bloom spreads into a black frame)
-          float shX = (shD - uShockR) / 6.0;
+          // (wider the further out it is, so it still reads at the horizon)
+          float shX = (shD - uShockR) / (6.0 + shD * 0.028);
           shRing = exp(-shX * shX) * uShockAmp;
-          shTrail = step(shD, uShockR) * exp(-(uShockR - shD) / 30.0) * uShockAmp;
+          shTrail = step(shD, uShockR) * exp(-(uShockR - shD) / (30.0 + shD * 0.06)) * uShockAmp;
           ncRip += shRing * 0.3;
         }`
       )
@@ -469,7 +491,8 @@ export function createSandMaterial(shared) {
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.42, 0.1) * (shRing * 0.8 + shTrail * 0.12);
+        // (brighter the further out, against the haze: seen to the horizon)
+        totalEmissiveRadiance += vec3(1.0, 0.42, 0.1) * (shRing * 0.8 + shTrail * 0.12) * (1.0 + uShockR * 0.0025);
         totalEmissiveRadiance += ncFront;`
       )
       .replace(

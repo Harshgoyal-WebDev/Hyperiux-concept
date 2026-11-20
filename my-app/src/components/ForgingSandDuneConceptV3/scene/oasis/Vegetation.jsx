@@ -53,7 +53,7 @@ const ISLAND_GRASS_TALL = 2.1; // the island's grass: this much taller than the 
 const ISLAND_FLOWER_SCALE = 1.6; // ...and its flowers this much bigger (taller)
 const SHORE_BOULDERS = 90; // round the lake's outer shore
 const SHORE_PEBBLES = 520;
-const OASIS_ROCK_COLOR = "#2b2623"; // (dark, water-worn: the reference's)
+const OASIS_ROCK_COLOR = "#4f443b"; // (water-worn, a little darker by the water: the reference's)
 // the valley (drawn from the first: the camera travels it before the reveal)
 const VALLEY_FROM = 770; // route m
 const VALLEY_TO = 1035;
@@ -61,10 +61,10 @@ const VALLEY_BOULDERS = 360;
 const VALLEY_PEBBLES = 600;
 const VALLEY_CLEAR = 7; // m either side of the camera's line (and the beam along it) kept clear
 const VALLEY_CLUSTER_SHARE = 0.55; // of the boulders that have others round them
-const VALLEY_DUNE_REACH = 22; // m up the dunes' feet they still lie
-const VALLEY_ROCK_COLOR = "#3e3229";
+const VALLEY_DUNE_REACH = 2.5; // m past the floor's edge they may still lie (none up the dunes: they keep round the way)
+const VALLEY_ROCK_COLOR = "#5e5044";
 const RIM_BOULDERS = 200; // ...and round the oasis's rim, at the dunes' feet (seen as the camera comes in, before the reveal)
-const RIM_REACH = [-3, 20]; // m: from just on the floor to up the dunes' feet
+const RIM_REACH = [-10, 2]; // m: on the floor, in from the dunes' feet (not up them)
 // the entrance (the gap in the dunes the way comes in by): a wall of trees
 // and bushes, a lane left clear for the camera
 const ENTRANCE_FROM = 960; // route m
@@ -210,7 +210,10 @@ export function scatterMore(terrain, veg, lists) {
     const s = VALLEY_FROM + rng() * (VALLEY_TO - VALLEY_FROM);
     const fh = floorHalfWidth(s);
     const side = rng() < 0.5 ? -1 : 1;
-    const lat = side * (rng() < 0.6 ? fh * (0.7 + rng() * 0.3) + rng() * VALLEY_DUNE_REACH * 0.8 : VALLEY_CLEAR + 2 + rng() * Math.max(fh - VALLEY_CLEAR - 2, 0));
+    // (round the way: most out on the floor beside it, the rest towards the
+    // floor's edges — none up the dunes)
+    const inner = VALLEY_CLEAR + 2;
+    const lat = side * (rng() < 0.6 ? inner + rng() * Math.max(fh * 0.75 - inner, 2) : fh * (0.75 + rng() * 0.25) + rng() * VALLEY_DUNE_REACH * 0.6);
     const [x, z] = at(s, lat);
     const big = rng() < 0.13 ? 2 + rng() * 2.6 : 0.45 + Math.pow(rng(), 1.6) * 1.5;
     if (!valleyOk(x, z, VALLEY_CLEAR + big)) continue;
@@ -458,9 +461,13 @@ function growVertex(shader, uniforms, far = 0) {
   shader.uniforms.uRevealMap = uniforms.uRevealMap;
   shader.uniforms.uRevealRect = uniforms.uRevealRect;
   const cull = far > 0 ? `\n#ifdef USE_INSTANCING\nif (distance(instanceMatrix[3].xyz, cameraPosition) > ${far.toFixed(1)}) transformed *= 0.0;\n#endif` : "";
+  // (and out of the camera's way: a plant it comes right up to — a swing of
+  // the cursor taking it low over the island's edge — shrinks away rather
+  // than filling the frame with leaves)
+  const clear = `\n#ifdef USE_INSTANCING\n{ float ncSz = length(instanceMatrix[0].xyz); float ncNear = distance(instanceMatrix[3].xyz, cameraPosition) - 2.2 * ncSz; transformed *= smoothstep(1.5, 7.0, ncNear); }\n#endif`;
   shader.vertexShader = shader.vertexShader
     .replace("#include <common>", `#include <common>\nattribute vec4 aGrow;\nattribute vec3 aAnchor;\n${REVEAL_GLSL}`)
-    .replace("#include <begin_vertex>", `#include <begin_vertex>\n${GROW}${cull}`);
+    .replace("#include <begin_vertex>", `#include <begin_vertex>\n${GROW}${cull}${clear}`);
 }
 // the shadow of a growing plant (alpha-tested like the plant)
 function growDepth(uniforms, { map = null, alphaTest = 0 } = {}) {
@@ -714,7 +721,7 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       bushLeaf: foliage(new THREE.MeshStandardMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true, roughness: 0.9, color: new THREE.Color(0.3, 0.3, 0.3) }), { sway: 0.035, far: 300 }, uniforms),
       wood: matte(new THREE.MeshStandardMaterial({ map: barkMap, vertexColors: true, roughness: 0.95, color: new THREE.Color(0.32, 0.3, 0.28) }), uniforms),
       bark: matte(new THREE.MeshStandardMaterial({ map: barkMap, roughness: 0.95, color: new THREE.Color(0.28, 0.25, 0.22) }), uniforms),
-      rock: createStoneMaterial(shared, { color: "#4c3b2e" }).material,
+      rock: createStoneMaterial(shared, { color: "#5e5044" }).material,
       // the valley's boulders and the oasis's dark water-worn ones: all
       // there from the first (the island's are seen before the beam
       // touches the orb), in the shared stone's matte look
@@ -736,7 +743,7 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     const reed = tuftGeometry({ blades: 6, height: 2.0, spread: 0.25, seed: 13 });
     const rocks = [rockGeometry(1), rockGeometry(2)];
     // boulders and pebbles (rounded, three and two shapes)
-    const boulders = [boulderGeometry(41), boulderGeometry(43, { lumpy: 0.3, flat: 0.5 }), boulderGeometry(47, { lumpy: 0.18, flat: 0.75 })];
+    const boulders = [boulderGeometry(41, { flat: 0.72 }), boulderGeometry(43, { lumpy: 0.3, flat: 0.62 }), boulderGeometry(47, { lumpy: 0.18, flat: 0.85 })];
     const pebbles = [boulderGeometry(53, { detail: 1, lumpy: 0.12, flat: 0.55 }), boulderGeometry(59, { detail: 1, lumpy: 0.16, flat: 0.7 })];
     // flowers: two clumps of wild flowers, blossoms over each tree's crown
     // and over the bushes

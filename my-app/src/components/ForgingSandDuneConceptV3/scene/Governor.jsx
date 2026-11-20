@@ -22,8 +22,10 @@ export default function Governor() {
     initialQualityLevel();
   }, []);
 
+  // (?nogov: held at its level — profiling)
+  const off = useMemo(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("nogov"), []);
   useFrame((_, delta) => {
-    if (Q.level >= LEVELS.length - 1) return;
+    if (off || Q.level >= LEVELS.length - 1) return;
     if (document.hidden || delta > 0.25) return; // a stall, not the frame rate
     if (s.wait > 0) {
       s.wait -= delta;

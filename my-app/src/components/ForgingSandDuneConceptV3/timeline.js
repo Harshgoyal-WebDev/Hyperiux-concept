@@ -263,19 +263,24 @@ export function buildMasterTimeline(J, dom) {
     [0, 0.3],
     [P.climb, 0.4],
     [P.core, 0.9, "power2.in"],
-    [e(0.06), 2.0, "power2.out"],
-    [e(0.5), 2.2],
-    [e(0.7), 1.7],
-    // ...and goes out as the breakup finishes: nothing glows in the cube's
-    // opening once the rock has broken away, nor as the camera passes it
-    [e(0.95), 0, "sine.inOut"],
+    [e(Math.min(0.06, T.breakStart * 0.6)), 2.0, "power2.out"],
+    [e(Math.max(T.breakStart, 0.07)), 2.2],
+    // ...and goes out as the slab breaks: gone by the end of the blast —
+    // nothing glows in the core once the rock has broken away
+    [Math.max(blastedAt(), e(Math.max(T.breakStart, 0.07)) + 0.002), 0, "power2.out"],
   ]);
   // the merge sends a shockwave and a wave of light out across the dunes,
   // jolts the camera, and the frame's edges smear and split (motion blur,
   // chromatic aberration) until the forging is done
   // (the crack glow spreads with it: same start, pace and ease)
   const SPREAD = [P.core, e(0.32), "power2.out"];
-  seg(tl, J, "shock", 0, 1, ...SPREAD);
+  // (the shockwave over the dunes goes out with the blast — the rock
+  // breaking away, T.breakStart — not as the beam reaches the core)
+  {
+    const b = Math.min(Math.max(T.breakStart, 0), 0.9);
+    // (at an even pace, a touch quicker at first: seen running all the way out)
+    seg(tl, J, "shock", 0, 1, e(b), e(Math.min(b + T.shockSpan, 1)), "sine.out");
+  }
   track(tl, J, "jolt", [
     [P.core - 0.003, 0],
     [P.core + 0.002, 1, "power3.in"],

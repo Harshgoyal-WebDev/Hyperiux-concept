@@ -419,15 +419,17 @@ export function rockGeometry(seed) {
 }
 
 // ---------------------------------------------------------------------------
-// Boulders and pebbles: dark, water-worn, rounded (the island's and the
-// valley's), smooth shaded. detail 2 for boulders, 1 for pebbles; lumpy is
-// how far the outline wanders, flat how squashed it is (y).
+// Boulders and pebbles, after the reference (hyperiux-concepts v6): rounded,
+// water-worn stones cut into many small flat facets (flat shaded, so each
+// facet catches the light on its own), a few broad chipped planes, and a
+// flatter underside where they sit. detail 2 for boulders, 1 for pebbles;
+// lumpy is how far the outline wanders, flat how squashed it is (y).
 // ---------------------------------------------------------------------------
-export function boulderGeometry(seed, { detail = 2, lumpy = 0.22, flat = 0.62 } = {}) {
+export function boulderGeometry(seed, { detail = 2, lumpy = 0.22, flat = 0.62, chips = 4 } = {}) {
   const rng = mulberry32(seed);
   const n3 = createNoise3D(rng);
   const ico = new THREE.IcosahedronGeometry(1, detail);
-  // (welded: no seams in the smooth shading)
+  // (displaced welded, so neighbouring facets still meet; split apart after)
   ico.deleteAttribute("normal");
   ico.deleteAttribute("uv");
   const g = mergeVertices(ico);
@@ -435,15 +437,31 @@ export function boulderGeometry(seed, { detail = 2, lumpy = 0.22, flat = 0.62 } 
   const P = g.attributes.position;
   const v = new THREE.Vector3();
   const stretch = 0.85 + rng() * 0.4;
+  // the chipped planes: mostly round its sides and top
+  const planes = Array.from({ length: chips }, () => {
+    const a = rng() * Math.PI * 2;
+    const up = 0.15 + rng() * 0.75;
+    const n = new THREE.Vector3(Math.cos(a) * (1 - up), up, Math.sin(a) * (1 - up)).normalize();
+    return { n, d: 0.72 + rng() * 0.18 };
+  });
   for (let i = 0; i < P.count; i++) {
     v.fromBufferAttribute(P, i);
     const k = 1 + n3(v.x * 0.9, v.y * 0.9, v.z * 0.9) * lumpy + n3(v.x * 2.6 + 5, v.y * 2.6, v.z * 2.6) * lumpy * 0.25;
-    // (a flatter underside: it sits on the ground)
-    const y = v.y * k * flat;
-    P.setXYZ(i, v.x * k * stretch, y < 0 ? y * 0.55 : y, v.z * k);
+    v.multiplyScalar(k);
+    for (const pl of planes) {
+      const over = v.dot(pl.n) - pl.d;
+      if (over > 0) v.addScaledVector(pl.n, -over * 0.85);
+    }
+    // (its underside carries on well down into the ground: sunk into the
+    // sand, its sides go into it at a steep angle — no sliver of lit sand
+    // showing under its edge where the ground dips)
+    const y = v.y * flat;
+    P.setXYZ(i, v.x * stretch, y < 0 ? y * 1.5 : y, v.z);
   }
-  g.computeVertexNormals();
-  return g;
+  const faceted = g.toNonIndexed();
+  g.dispose();
+  faceted.computeVertexNormals();
+  return faceted;
 }
 
 // ---------------------------------------------------------------------------

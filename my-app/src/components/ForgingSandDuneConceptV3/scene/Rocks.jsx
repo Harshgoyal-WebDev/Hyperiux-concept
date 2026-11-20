@@ -6,7 +6,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { createNoise3D } from "simplex-noise";
 import { mulberry32 } from "../world/layout";
-import { createStoneMaterial } from "../world/materials";
+import { STONE_UNIFORMS, createStoneMaterial } from "../world/materials";
+import { boulderGeometry } from "../world/plants";
 import { T } from "../tuning";
 
 // Faceted basalt shard: a subdivided box tapered towards the top, leaned
@@ -36,25 +37,6 @@ export function shardGeometry(seed, { taper = 0.55, noise = 0.16 } = {}) {
   return flat;
 }
 
-function boulderGeometry(seed) {
-  const rng = mulberry32(seed);
-  const n3 = createNoise3D(rng);
-  const g = new THREE.IcosahedronGeometry(1, 2);
-  const pos = g.attributes.position;
-  const v = new THREE.Vector3();
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i);
-    const d = 1 + n3(v.x * 1.3, v.y * 1.3, v.z * 1.3) * 0.32 + n3(v.x * 4, v.y * 4, v.z * 4) * 0.08;
-    v.multiplyScalar(d);
-    v.y = Math.max(v.y, -0.35);
-    pos.setXYZ(i, v.x, v.y, v.z);
-  }
-  const flat = g.index ? g.toNonIndexed() : g;
-  if (flat !== g) g.dispose();
-  flat.computeVertexNormals();
-  return flat;
-}
-
 function shardMatrix(l, terrain) {
   const m = new THREE.Matrix4();
   const y = terrain.height(l.position[0], l.position[2]) - 1.2;
@@ -65,7 +47,10 @@ function shardMatrix(l, terrain) {
 
 function scatterMatrix(r, terrain) {
   const m = new THREE.Matrix4();
-  const y = terrain.height(r.position[0], r.position[2]) - r.scale * 0.15;
+  // (sunk deeper on a slope, so no edge lifts off it)
+  const h = terrain.height(r.position[0], r.position[2]);
+  const g = Math.min(Math.hypot(terrain.height(r.position[0] + 1, r.position[2]) - h, terrain.height(r.position[0], r.position[2] + 1) - h), 1);
+  const y = h - r.scale * (0.15 + g * 0.4);
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r.rotation, 0));
   m.compose(new THREE.Vector3(r.position[0], y, r.position[2]), q, new THREE.Vector3(r.scale, r.scale * r.squash, r.scale * 1.1));
   return m;
@@ -76,7 +61,12 @@ function scatterMatrix(r, terrain) {
 export function buildRockSet(shards, scatter, terrain) {
   const groups = [
     ...[0, 1, 2, 3].map((i) => ({ geometry: shardGeometry(301 + i * 17), matrices: [] })),
-    ...[0, 1, 2].map((i) => ({ geometry: boulderGeometry(503 + i * 11), matrices: [] })),
+    // (the same faceted, water-worn stones as the oasis's: world/plants.js)
+    ...[
+      boulderGeometry(503, { lumpy: 0.24, flat: 0.8 }),
+      boulderGeometry(514, { lumpy: 0.3, flat: 0.7 }),
+      boulderGeometry(525, { lumpy: 0.18, flat: 0.9 }),
+    ].map((geometry) => ({ geometry, matrices: [] })),
   ];
   shards.forEach((l, i) => groups[i % 4].matrices.push(shardMatrix(l, terrain)));
   scatter.forEach((r) => groups[4 + r.variant].matrices.push(scatterMatrix(r, terrain)));
@@ -101,6 +91,12 @@ export default function Rocks({ rockSet, shared }) {
       m.userData.hex = T.stoneColor;
     }
     m.roughness = T.stoneRoughness;
+    // (every stone's moss: the oasis's too)
+    if (STONE_UNIFORMS.uMoss.userData !== T.stoneMoss) {
+      STONE_UNIFORMS.uMoss.value.set(T.stoneMoss);
+      STONE_UNIFORMS.uMoss.userData = T.stoneMoss;
+    }
+    STONE_UNIFORMS.uMossAmount.value = T.stoneMossAmount;
   });
 
   return (

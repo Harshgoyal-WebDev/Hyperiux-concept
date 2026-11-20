@@ -112,7 +112,8 @@ export function CameraRig({ J, opening }) {
 // ---------------------------------------------------------------------------
 const HAZE = new THREE.Color(0.62, 0.37, 0.21);
 const NIGHT_HAZE = new THREE.Color(0.035, 0.042, 0.075);
-const LUSH_HAZE = new THREE.Color(0.6, 0.68, 0.76);
+const LUSH_HAZE = new THREE.Color(0.56, 0.69, 0.85);
+const GROW_HAZE = new THREE.Color(0.5, 0.66, 0.88);
 
 export function UniformSync({ J, shared, shockCenter }) {
   const { scene, gl } = useThree();
@@ -141,9 +142,10 @@ export function UniformSync({ J, shared, shockCenter }) {
     // the photoscanned ripples: their tile's size (m) and strength
     shared.uSandTex.value.x = T.sandRippleSize;
     shared.uSandTex.value.y = T.sandRippleDepth;
-    // shockwave: out to ~380 m, fading as it spreads (nothing before the merge)
-    shared.uShockR.value = J.shock * 380;
-    shared.uShockAmp.value = J.shock > 0 ? Math.pow(1 - J.shock, 1.4) * T.shockStrength : 0;
+    // shockwave: out to the far edge of the sand (T.shockReach), still
+    // bright as it gets there, gone as it arrives (nothing before the blast)
+    shared.uShockR.value = J.shock * T.shockReach;
+    shared.uShockAmp.value = J.shock > 0 && J.shock < 1 ? Math.pow(1 - J.shock, 0.55) * T.shockStrength : 0;
     if (shockCenter) shared.uShockPos.value.set(shockCenter.x, shockCenter.z);
     shared.uLineWidth.value = T.lineWidth;
     shared.uLineDepth.value = T.lineDepth;
@@ -158,7 +160,15 @@ export function UniformSync({ J, shared, shockCenter }) {
       const x = Math.min(Math.max((J.progress - T.tlRevealStart) / span, 0), 1);
       shared.uLush.value = x * x * (3 - 2 * x) * T.lushAmount;
     }
-    fog.color.copy(HAZE).lerp(LUSH_HAZE, shared.uLush.value).lerp(NIGHT_HAZE, night);
+    // ...and as the tree grows, the sky deepens to a clear blue with clouds
+    // drifting over (Sky.jsx), the haze cooling with it
+    {
+      const g0 = T.tlTreeGrowStart;
+      const g1 = g0 + Math.max(T.tlTreeGrowEnd - g0, 0.002) * T.growSkySpan;
+      const x = Math.min(Math.max((J.progress - g0) / (g1 - g0), 0), 1);
+      shared.uGrowSky.value = x * x * (3 - 2 * x) * T.growSky;
+    }
+    fog.color.copy(HAZE).lerp(LUSH_HAZE, shared.uLush.value).lerp(GROW_HAZE, shared.uGrowSky.value * 0.8).lerp(NIGHT_HAZE, night);
     fog.density = T.fogDensity;
     // the captured environment is the sunset sky: dim it right down at night
     scene.environmentIntensity = T.envIntensity * (1 - night * 0.8);

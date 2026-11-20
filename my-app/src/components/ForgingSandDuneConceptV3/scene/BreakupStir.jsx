@@ -1,80 +1,84 @@
 "use client";
 /* eslint-disable react-hooks/immutability -- R3F pattern: three.js uniforms/objects are mutated imperatively inside useFrame, outside React's render. */
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import * as THREE from "three";
-import { createWindField } from "../world/windField";
+import { STIR_BALL } from "../world/windField";
 import { STIR_UNIFORMS } from "../world/breakup";
 import { pointer } from "../pointer";
 import { T } from "../tuning";
 
-// The pointer stirring the broken rock's sand and gravel as it streams round
-// the mark: a field over the screen (world/windField.js, in screen uv)
-// brushed along the pointer's path
-// each frame — the grains there are pushed along its motion and parted from
-// its line, harder the faster it goes (and lit, if T.breakStirGlow) — that
-// relaxes over T.breakStirLinger, so they ease back into their streams. The
-// sand and gravel read it (STIR_UNIFORMS, world/breakup.js), each by its own
-// amount; only while there is broken rock on screen. Every part of it is in
-// the panel (Breakup → Pointer stir).
+// The pointer stirring the broken rock as it streams round the mark: an
+// invisible ball following the pointer (closely, on a critically damped
+// spring: no lag to speak of, no overshoot) that flings whatever it hits
+// along its stroke — sand, gravel and pieces — each of which then coasts out
+// and eases back home to its own place in its stream (world/windField.js has
+// the physics; the sand and gravel step their own pushes, the Forge its
+// pieces'). It is only there while it moves — its reach comes from its
+// speed — so a resting pointer touches nothing. Only while there is broken
+// rock on screen. Every part of it is in the panel (Breakup → Pointer stir).
+const STEP = 1 / 240; // its spring's substep
+
 export default function BreakupStir({ J }) {
-  const { gl } = useThree();
-  const field = useMemo(() => createWindField(new THREE.Vector4(0, 0, 1, 1)), []);
-  useEffect(() => () => field.dispose(), [field]);
-  const s = useMemo(
-    () => ({ last: { x: 0, z: 0 }, now: { x: 0, z: 0 }, vel: new THREE.Vector2(), want: new THREE.Vector2(), moving: 0, lastMoved: 0, hasLast: false, activeUntil: 0 }),
-    []
-  );
+  const { size } = useThree();
+  const s = useMemo(() => ({ placed: false, wasActive: false, radius: 0, activeUntil: 0 }), []);
 
   useFrame((_, delta) => {
+    const B = STIR_BALL;
     const on = J.fracture > 0 && T.breakStirForce > 0;
     if (!on) {
       STIR_UNIFORMS.uStirOn.value = 0;
-      s.hasLast = false;
+      B.on = false;
+      s.placed = false;
       return;
     }
     const dt = Math.min(delta, 0.1);
     const now = performance.now();
-    // the pointer in screen uv, and how fast it moves (uv / s, smoothed)
-    s.now.x = pointer.x * 0.5 + 0.5;
-    s.now.z = pointer.y * 0.5 + 0.5;
-    if (!s.hasLast) {
-      s.last.x = s.now.x;
-      s.last.z = s.now.z;
-      s.hasLast = true;
+    const R = Math.max(T.breakStirRadius, 0.01);
+    B.radius = R;
+    B.aspect = size.width / Math.max(size.height, 1);
+    // the pointer, in the field's units (screen heights over the ball's
+    // radius); the ball starts there (and is put back there when the pointer
+    // comes back onto the page, so it never sweeps in from where it left)
+    const tx = ((pointer.x * 0.5 + 0.5) * B.aspect) / R;
+    const ty = (pointer.y * 0.5 + 0.5) / R;
+    const back = pointer.active && !s.wasActive;
+    s.wasActive = pointer.active;
+    if (!s.placed || s.radius !== R || back) {
+      B.pos.set(tx, ty);
+      B.vel.set(0, 0);
+      s.placed = true;
+      s.radius = R;
     }
-    const moved = pointer.active && pointer.movedAt !== s.lastMoved;
-    s.lastMoved = pointer.movedAt;
-    if (moved) s.vel.lerp(s.want.set((s.now.x - s.last.x) / dt, (s.now.z - s.last.z) / dt), 1 - Math.exp(-dt / Math.max(T.breakStirSmooth, 0.005)));
-    else s.vel.multiplyScalar(Math.exp(-dt / 0.08));
-    s.moving += ((moved ? Math.min(s.vel.length() * 1.5, 1) : 0) - s.moving) * (1 - Math.exp(-dt / (moved ? 0.05 : 0.15)));
-    const linger = Math.max(T.breakStirLinger, 0.05);
-    if (moved || s.moving > 0.01) s.activeUntil = now + linger * 4000;
-    if (now < s.activeUntil) {
-      const brushing = moved && s.vel.lengthSq() > 1e-4;
-      STIR_UNIFORMS.uStir.value = field.step(gl, {
-        from: brushing ? s.last : null,
-        to: brushing ? s.now : null,
-        vel: s.want.copy(s.vel).multiplyScalar(3),
-        push: 0.12 * T.breakStirForce,
-        radius: T.breakStirRadius,
-        glowRadius: T.breakStirRadius * 0.8,
-        glow: s.moving,
-        relax: Math.exp(-dt / (linger * 0.6)),
-        fade: Math.exp(-dt / (linger * 0.4)),
-        wake: T.breakStirWake,
-        along: T.breakStirAlong,
-        apart: T.breakStirApart,
-        // (frame-rate independent: the share per 60th of a second)
-        ease: 1 - Math.pow(1 - Math.min(T.breakStirEase, 1), dt * 60),
-      });
-      STIR_UNIFORMS.uStirGlow.value = T.breakStirGlow;
-      STIR_UNIFORMS.uStirSpread.value = T.breakStirSpread;
-      STIR_UNIFORMS.uStirOn.value = 1;
-    } else STIR_UNIFORMS.uStirOn.value = 0;
-    s.last.x = s.now.x;
-    s.last.z = s.now.z;
+    B.prev.copy(B.pos);
+    // after the pointer, critically damped (smooths the mouse's steps; never
+    // swings past it); once the pointer has left, it comes to rest
+    const k = Math.max(T.breakStirFollow, 1);
+    const c = 2 * Math.sqrt(k);
+    const gx = pointer.active ? tx : B.pos.x;
+    const gy = pointer.active ? ty : B.pos.y;
+    for (let t = 0; t < dt - 1e-6; t += STEP) {
+      const h = Math.min(STEP, dt - t);
+      B.vel.x += ((gx - B.pos.x) * k - B.vel.x * c) * h;
+      B.vel.y += ((gy - B.pos.y) * k - B.vel.y * c) * h;
+      B.pos.addScaledVector(B.vel, h);
+    }
+    // there only while it moves: at once as it sets off, gone as it stops
+    const want = Math.min(B.vel.length() / 2, 1);
+    B.presence += (want - B.presence) * (1 - Math.exp(-dt / (want > B.presence ? 0.03 : 0.12)));
+    if (B.presence < 1e-3) B.presence = 0;
+    const linger = Math.max(T.breakStirLinger, 0.2);
+    // (critically damped home: settled to within a few percent by ~linger)
+    B.omega = 4.7 / linger;
+    B.throw = T.breakStirForce;
+    B.spread = T.breakStirSpread;
+    B.mass = T.breakStirMass;
+    // stepping on until what was stirred has settled
+    if (B.presence > 0) s.activeUntil = now + linger * 2500;
+    B.on = now < s.activeUntil;
+    STIR_UNIFORMS.uStirScale.value = R;
+    STIR_UNIFORMS.uStirGlow.value = T.breakStirGlow;
+    STIR_UNIFORMS.uStirOn.value = B.on ? 1 : 0;
   });
   return null;
 }

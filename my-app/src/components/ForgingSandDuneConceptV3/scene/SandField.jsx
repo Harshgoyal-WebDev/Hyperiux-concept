@@ -387,7 +387,8 @@ export default function SandField({ J, tier, shared, heightField }) {
         s.lastHit = null;
         return;
       }
-      if (!hit) {
+      // (the sand's own trail is off for now — T.sandInteract)
+      if (!hit || !T.sandInteract) {
         s.lastHit = null;
         return;
       }

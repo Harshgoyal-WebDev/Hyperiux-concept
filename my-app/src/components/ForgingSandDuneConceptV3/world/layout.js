@@ -104,7 +104,9 @@ export function createTerrainSampler() {
     const cn = noise((u + warp) * 0.0105, v * 0.0032);
     // (offset so it is exactly |n| far from the crest, and never below 0:
     // pow() of a negative is NaN)
-    const crest = Math.max(1 - (Math.sqrt(cn * cn + 0.006) - Math.sqrt(0.006)), 0);
+    // (rounded over ~10 m: a dune's soft, smooth crest line — rounded over
+    // less, the mesh sawed it into a zigzag of teeth)
+    const crest = Math.max(1 - (Math.sqrt(cn * cn + 0.03) - Math.sqrt(0.03)), 0);
     // Sharp, slightly asymmetric crests.
     const dunes = Math.pow(crest, 2.4) * 12;
     const rolling = noise(x * 0.0022 + 7.1, z * 0.0022 - 3.3) * 7 + noiseB(x * 0.009, z * 0.009) * 1.6;

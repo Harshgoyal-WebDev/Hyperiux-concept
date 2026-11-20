@@ -25,6 +25,10 @@ import { P } from "./config";
 //            past, left to right and back, with each turn.
 //   dunes  – past the mark, the wind over the open desert; an airy swell as
 //            the light opens onto the site.
+//   nature – as the Yggdrasil grows, the abyss gives way (crossfading so
+//            slowly it isn't noticed) to a light, soothing score in D major:
+//            a warm, airy pad, a soft kalimba-like melody through an echo,
+//            and now and then a bird far off.
 //   vanish – as the world dissolves into white, the music sinks, darkens
 //            and washes out into the reverb until nothing is left.
 
@@ -82,6 +86,15 @@ const CHORDS = [
 const BASS = [38, 34, 31, 33]; // chord roots, an octave or two down
 const ARP = [0, 1, 2, 3, 2, 1, 3, 2]; // chord-tone order over a bar of 8ths
 const BELLS = [74, 77, 79, 81, 84, 86]; // D minor pentatonic, high
+// the nature score: D major, open and warm (each chord glides into the next)
+const N_CHORDS = [
+  [50, 57, 62, 66, 69], // D(add9 voicing): D A D F# A
+  [43, 50, 59, 62, 66], // Gmaj7: G D B D F#
+  [47, 54, 59, 62, 66], // Bm7: B F# B D F#
+  [45, 52, 57, 61, 64], // A(sus): A E A C# E
+];
+// its melody: D major pentatonic, a gentle phrase over each chord
+const N_SCALE = [74, 76, 78, 81, 83, 86, 88];
 
 class AudioEngine {
   constructor(ctx) {
@@ -119,6 +132,7 @@ class AudioEngine {
     this.buildVanish();
     this.buildBreak();
     this.buildSwirl();
+    this.buildNature(t);
 
     this.prev = { crackSpread: 0, fracture: 0, beam: 0, pulse: 0, progress: 0, outro: 0 };
     this.breakLevel = 0;
@@ -293,6 +307,113 @@ class AudioEngine {
     this.step = 0; // 8th-note counter
     this.nextStep = t + 0.5;
     this.nextBell = t + 9;
+  }
+
+  // The nature score (as the tree grows): its own level, crossfaded in by
+  // update(); a warm pad (soft triangle/sine voices, slowly breathing
+  // low-pass), the melody's soft plucks through their own echo, birds.
+  buildNature(t) {
+    const { ctx } = this;
+    this.natureLevel = this.gain(0);
+    this.natureLevel.connect(this.master);
+    const send = this.gain(0.7);
+    this.natureLevel.connect(send).connect(this.reverb);
+    this.nPadFilter = this.filter("lowpass", 1500, 0.4);
+    this.lfo(0.05, 500, this.nPadFilter.frequency);
+    const pad = this.gain(0.05);
+    this.lfo(0.08, 0.012, pad.gain);
+    this.nPadFilter.connect(pad).connect(this.natureLevel);
+    this.nPad = N_CHORDS[0].map((n, i) => {
+      const o = ctx.createOscillator();
+      o.type = i % 2 ? "sine" : "triangle";
+      o.frequency.value = midi(n);
+      o.detune.value = (i - 2) * 4;
+      const g = this.gain(i === 0 ? 0.6 : 0.42);
+      o.connect(g).connect(this.nPadFilter);
+      o.start(t);
+      return o;
+    });
+    // the melody's echo: dotted, soft
+    this.nEcho = ctx.createDelay(2);
+    this.nEcho.delayTime.value = 0.54;
+    const fb = this.gain(0.32);
+    const tone = this.filter("lowpass", 2600, 0.5);
+    this.nEcho.connect(tone).connect(fb).connect(this.nEcho);
+    tone.connect(this.gain(0.45)).connect(this.natureLevel);
+    this.nMelody = this.gain(1);
+    this.nMelody.connect(this.natureLevel);
+    this.nMelody.connect(this.nEcho);
+    this.nChord = 0;
+    this.nStep = 0;
+    this.nNext = t + 0.5;
+    this.nNote = 3;
+    this.nNextBird = t + 6;
+  }
+
+  // a soft pluck (kalimba / music box): sine + a faint octave, quick in,
+  // ringing out
+  pluck(t, n, level) {
+    const { ctx } = this;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(level, t + 0.012);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    const a = ctx.createOscillator();
+    a.frequency.value = midi(n);
+    const b = ctx.createOscillator();
+    b.frequency.value = midi(n) * 2.0;
+    const bg = this.gain(0.12);
+    a.connect(env);
+    b.connect(bg).connect(env);
+    env.connect(this.nMelody);
+    a.start(t);
+    b.start(t);
+    a.stop(t + 2.7);
+    b.stop(t + 2.7);
+  }
+
+  // a bird far off: a few quick whistled glides, mostly in the reverb
+  bird(t) {
+    const { ctx } = this;
+    const base = 2600 + Math.random() * 1600;
+    const notes = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < notes; i++) {
+      const t0 = t + i * (0.09 + Math.random() * 0.07);
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      const f0 = base * (0.9 + Math.random() * 0.25);
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.exponentialRampToValueAtTime(f0 * (Math.random() < 0.5 ? 1.35 : 0.75), t0 + 0.07);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, t0);
+      env.gain.linearRampToValueAtTime(0.012, t0 + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+      o.connect(env).connect(this.natureLevel);
+      o.start(t0);
+      o.stop(t0 + 0.1);
+    }
+  }
+
+  // one step of the nature score (quarter notes at its own, slower pace)
+  scheduleNature(t, step) {
+    const stepsPerChord = 16;
+    if (step % stepsPerChord === 0) {
+      this.nChord = (step / stepsPerChord) % N_CHORDS.length;
+      N_CHORDS[this.nChord].forEach((n, i) => this.nPad[i].frequency.setTargetAtTime(midi(n), t, 1.2));
+    }
+    // the melody: a gentle walk through the scale, resting often, a phrase
+    // to each chord (leaning to its tones on the strong beats)
+    const strong = step % 4 === 0;
+    if (Math.random() < (strong ? 0.75 : 0.32)) {
+      this.nNote = Math.min(Math.max(this.nNote + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)], 0), N_SCALE.length - 1);
+      let n = N_SCALE[this.nNote];
+      if (strong) {
+        // (on the beat: the nearest chord tone, up in the melody's range)
+        const tones = N_CHORDS[this.nChord].map((c) => c + 24);
+        n = tones.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
+      }
+      this.pluck(t + (Math.random() - 0.5) * 0.02, n, strong ? 0.05 : 0.032);
+    }
   }
 
   // one 8th-note step of the pulse (scheduled slightly ahead of time)
@@ -661,8 +782,27 @@ class AudioEngine {
     smooth(this.warpFilter.frequency, 260 + 1400 * Math.max(J.crack, 0) * (1 - fr * 0.7), 0.2);
     smooth(this.warpTremLfo.frequency, 3.2 - 2.6 * Math.min(fr * 1.3, 1), 0.3);
 
-    // music level: steps back while the cube breaks, and vanishes
-    smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * left, 0.4);
+    // the nature score as the tree grows: the abyss gives way to it over a
+    // long, slow crossfade (no moment where it changes), both following the
+    // scroll
+    const grow = Math.max(T.tlTreeGrowEnd - T.tlTreeGrowStart, 0.002);
+    const nat = smoothstep(J.progress, T.tlTreeGrowStart - grow * 0.15, T.tlTreeGrowStart + grow * 0.6);
+    smooth(this.natureLevel.gain, nat * T.natureVolume * left, 1.6);
+    if (nat > 0.001 && v < 0.85) {
+      if (this.nNext < t - 0.5) this.nNext = t + 0.05;
+      while (this.nNext < t + 0.3) {
+        this.scheduleNature(this.nNext, this.nStep++);
+        this.nNext += 60 / T.natureTempo;
+      }
+      if (t >= this.nNextBird) {
+        if (nat > 0.5) this.bird(t + 0.05);
+        this.nNextBird = t + 5 + Math.random() * 9;
+      }
+    } else this.nNext = t + 0.05;
+
+    // music level: steps back while the cube breaks, gives way to the
+    // nature score, and vanishes
+    smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * (1 - 0.92 * nat) * left, 0.4);
     smooth(this.musicTone.frequency, 18000 * Math.pow(1 - v, 3) + 220, 0.4);
     smooth(this.musicWet.gain, 0.55 + 1.4 * Math.sin(Math.PI * Math.min(v * 1.2, 1)), 0.5);
     this.sink = -v * 160; // cents: the held voices sink, new notes start there

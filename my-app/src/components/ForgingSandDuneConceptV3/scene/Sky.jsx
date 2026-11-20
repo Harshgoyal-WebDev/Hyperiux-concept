@@ -22,6 +22,7 @@ export default function Sky({ shared }) {
         uniforms: {
           uSunDir: { value: SUN_DIR.clone() },
           uNight: shared.uNight,
+          uLush: shared.uLush ?? { value: 0 },
           uWhite: shared.uWhite,
           uWhiteLevel: shared.uWhiteLevel,
           uStars: { value: 1 },
@@ -37,6 +38,7 @@ export default function Sky({ shared }) {
         fragmentShader: /* glsl */ `
           uniform vec3 uSunDir;
           uniform float uNight;
+          uniform float uLush;
           uniform float uStars;
           uniform float uWhite;
           uniform float uWhiteLevel;
@@ -92,6 +94,13 @@ export default function Sky({ shared }) {
             // bloom into a blob)
             col = mix(col, vec3(1.0, 0.94, 0.8) * 3.4, ncDisc(d, uSunDir, 0.03));
             if (h < 0.0) col = mix(col, vec3(0.62, 0.33, 0.17), smoothstep(0.0, -0.08, h));
+            // the oasis come to life: the dusk gives way to a light blue sky
+            if (uLush > 0.001) {
+              vec3 day = mix(vec3(0.80, 0.86, 0.92), vec3(0.45, 0.62, 0.84), smoothstep(0.0, 0.6, h));
+              day += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.35;
+              if (h < 0.0) day = mix(day, vec3(0.55, 0.6, 0.6), smoothstep(0.0, -0.08, h));
+              col = mix(col, mix(day, vec3(1.0, 0.96, 0.86) * 3.4, ncDisc(d, uSunDir, 0.03)), uLush);
+            }
             if (uNight > 0.001) col = mix(col, ncNight(d, h, sun), uNight);
             col = mix(col, vec3(mix(0.9, uWhiteLevel, uWhite * uWhite * uWhite)), uWhite);
             gl_FragColor = vec4(col, 1.0);

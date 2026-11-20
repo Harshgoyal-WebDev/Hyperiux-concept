@@ -63,6 +63,11 @@ export function createSharedUniforms() {
     // (the stream's bed filled level) — and the front itself a line of light
     uOasisReveal: { value: new THREE.Vector4(0, 0, 0, 45) },
     uOasisRing: { value: 1 },
+    // the land coming to life with the oasis (0..1, Rig UniformSync): the
+    // dunes behind the reveal's front turn dark green-grey, the sky and the
+    // haze a light blue (Sky.jsx, Rig)
+    uLush: { value: 0 },
+    uLushDune: { value: new THREE.Color("#2b5230") },
     // ...when each spot comes up, and the light running out ahead of it
     // (world/revealMap.js; until it is built: never)
     uRevealMap: { value: emptyRevealMap() },
@@ -142,6 +147,8 @@ uniform float uOasisOn;
 uniform vec3 uOasisGrass;
 uniform vec3 uOasisSoil;
 uniform float uOasisRing;
+uniform float uLush;
+uniform vec3 uLushDune;
 uniform sampler2D uSandNormal;
 uniform vec4 uSandTex;
 ${REVEAL_GLSL}
@@ -171,7 +178,9 @@ function injectWorldVertex(shader) {
 // (fine polygonal cells + a few major cracks) and fine relief, from world
 // position, so instances never repeat.
 export function createStoneMaterial(shared, { color = PALETTE.basalt } = {}) {
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.0 });
+  // (matte, dry stone: rough all over and only faintly catching the sky —
+  // not the glossy, metallic-looking black it was)
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.94, metalness: 0.0, envMapIntensity: 0.35 });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shared);
     injectWorldVertex(shader);
@@ -207,7 +216,7 @@ export function createStoneMaterial(shared, { color = PALETTE.basalt } = {}) {
       .replace(
         "#include <roughnessmap_fragment>",
         `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(roughnessFactor - ncFine * 0.25 + ncCrackFine * 0.1, 0.35, 1.0);`
+        roughnessFactor = clamp(roughnessFactor - ncFine * 0.08 + ncCrackFine * 0.05, 0.82, 1.0);`
       )
       .replace(
         "#include <normal_fragment_maps>",
@@ -413,6 +422,17 @@ export function createSandMaterial(shared) {
       .replace(
         "#include <color_fragment>",
         /* glsl */ `#include <color_fragment>
+        // the dunes come to life behind the oasis's front (its own clock,
+        // world/revealMap.js): dark green-grey, keeping their light and shade
+        if (uLush > 0.001) {
+          // (sweeping out with the front, and the far dunes — beyond its reach —
+          // turning with the rest as it spreads)
+          float lsBehind = max(clamp((uOasisReveal.z - revealStart(ncP)) / 160.0, 0.0, 1.0), 0.9 * smoothstep(0.25, 0.9, uLush));
+          float lsAmt = uLush * lsBehind * mix(0.75, 1.0, smoothstep(1.5, 12.0, vNcWorld.y));
+          float lsLum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+          vec3 lsCol = uLushDune * (0.55 + 1.1 * lsLum) * mix(0.85, 1.12, ncNoise(vNcWorld * 0.02));
+          diffuseColor.rgb = mix(diffuseColor.rgb, lsCol, lsAmt * 0.92);
+        }
         float ncLift = smoothstep(-2.0, 13.0, vNcWorld.y);
         diffuseColor.rgb *= mix(0.8, 1.14, ncLift) * mix(0.88, 1.06, ncNoise(vNcWorld * 0.04));
         diffuseColor.rgb *= 1.0 + (ncRip2 / max(0.36 * uRipple, 1e-3) - 0.5) * 0.08 * ncF2;

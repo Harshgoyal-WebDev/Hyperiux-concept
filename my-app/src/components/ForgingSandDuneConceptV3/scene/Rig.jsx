@@ -94,6 +94,7 @@ export function CameraRig({ J, opening }) {
     camera.position.copy(v.p);
     camera.lookAt(v.t);
     if (roll !== 0) camera.rotateZ(roll);
+    if (typeof window !== "undefined" && window.__seek && !window.__cam) window.__cam = camera; // (?debug: measuring the pace)
     // Portrait screens keep more of the horizontal framing (bounded so the
     // lens doesn't distort): the choreography is composed for landscape.
     const widen = Math.max(1, Math.pow(1 / camera.aspect, 0.6));
@@ -111,6 +112,7 @@ export function CameraRig({ J, opening }) {
 // ---------------------------------------------------------------------------
 const HAZE = new THREE.Color(0.62, 0.37, 0.21);
 const NIGHT_HAZE = new THREE.Color(0.035, 0.042, 0.075);
+const LUSH_HAZE = new THREE.Color(0.6, 0.68, 0.76);
 
 export function UniformSync({ J, shared, shockCenter }) {
   const { scene, gl } = useThree();
@@ -149,7 +151,14 @@ export function UniformSync({ J, shared, shockCenter }) {
     shared.uOasisReveal.value.set(REVEAL_ORIGIN.x, REVEAL_ORIGIN.y, J.revealR, REVEAL_BAND);
     shared.uOasisRing.value = T.revealRing;
     // (the whiteout's uniforms stay at rest: shared.uWhite etc.)
-    fog.color.copy(HAZE).lerp(NIGHT_HAZE, night);
+    // the land coming to life as the oasis is revealed: the dunes turn
+    // green-grey behind its front (materials.js), the sky and haze light blue
+    {
+      const span = Math.max(T.tlRevealEnd - T.tlRevealStart, 0.002) * T.lushSpan;
+      const x = Math.min(Math.max((J.progress - T.tlRevealStart) / span, 0), 1);
+      shared.uLush.value = x * x * (3 - 2 * x) * T.lushAmount;
+    }
+    fog.color.copy(HAZE).lerp(LUSH_HAZE, shared.uLush.value).lerp(NIGHT_HAZE, night);
     fog.density = T.fogDensity;
     // the captured environment is the sunset sky: dim it right down at night
     scene.environmentIntensity = T.envIntensity * (1 - night * 0.8);
@@ -221,7 +230,7 @@ export function Lights({ J, tier, shared }) {
       focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
       // (past the mark the box moves on in bigger steps: the oasis's plants
       // are a lot to redraw)
-      const grid = J.progress > P.through ? 26 : SHADOW_GRID;
+      const grid = J.progress > P.through ? 48 : SHADOW_GRID;
       focus.set(Math.round(focus.x / grid) * grid, 0, Math.round(focus.z / grid) * grid);
       const key = `${focus.x},${focus.z}`;
       // (and once the forge has arrived in the scene)
@@ -549,7 +558,7 @@ export function Post({ J, tier }) {
   });
   return (
     <>
-    <CutPass J={J} cut={cut} />
+    <CutPass J={J} cut={cut} samples={tier.multisampling} />
     <OutroPass J={J} outro={outro} />
     <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
       <primitive object={sanitize} dispose={null} />

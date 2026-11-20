@@ -9,6 +9,20 @@ import { TREE, WATER_Y } from "../../world/oasis";
 import { cubeY } from "../../world/oasisCamera";
 import { RIVULET_PN } from "./Rivulets";
 import { arrivalAt, treeSamples } from "../../world/treeSamples";
+import OrbRain, { RAIN, skidRadius } from "./OrbRain";
+
+// the pour's timing and spread (local: tuning.js is someone else's). Shares
+// of the burst (T.orbBurstSpan of the scroll from the beam's touch).
+const POUR = {
+  runners: 0.3, // share of the poured threads that run out along the reveal's rivulets (the rest skid out over the ground)
+  from: 0.01, // the first skidding threads let go this far into the burst...
+  spread: 0.34, // ...the last this much later (its underside first)
+  trail: 0.035, // a thread's tail lets go this long after its head (drawn out into a falling strand)
+  fall: RAIN.fall, // the fall from the top of the orb to the ground
+  skid: 0.27, // the skid on out over the ground, slowing (± 25%)
+  reach: RAIN.reach, // how far out they skid (m: the disc's soft radius)
+  chase: 260, // m per burst: a thread landed on a rivulet runs on along it this fast to catch its front
+};
 
 // The core at the lake's heart (after the reference, hyperiux-concepts V6's
 // orb): a ball of light hanging over the bare basin — thousands of motes
@@ -16,12 +30,14 @@ import { arrivalAt, treeSamples } from "../../world/treeSamples";
 // so it reads as wisps of light in a glass ball — with our glowing cube
 // waiting inside it, and a soft halo round it. As the beam comes in it
 // gathers itself (drawing in a little, turning faster, brightening); as the
-// beam touches it, it lets go, as the reference's does: nearly all its
-// threads pour down off it onto the ground at its foot — each onto the start
-// of one of the reveal's rivulets — and run on out along it at its front:
-// the poured light IS the rivulets' running heads (Rivulets.jsx, the V2
-// reveal, the same lines), the oasis coming up behind; a few are thrown out
-// or rise away. The cube stays, glowing, and as the tree grows past it it
+// beam touches it, it lets go, as the reference's does: it drains, its
+// underside first, nearly all its threads pouring down off it over the
+// burst; most land under it and skid on out over the ground, spreading its
+// light over the whole island and on (with OrbRain.jsx's curtain of sparks),
+// and the first down land on the inward ends of the reveal's rivulets and
+// run on out along them at their front: the rivulets' running heads
+// (Rivulets.jsx, the V2 reveal, the same lines), the oasis coming up
+// behind; a few are thrown out or rise away. The cube stays, glowing, and as the tree grows past it it
 // melts into it: it comes apart from its edges in threads of light that
 // spiral up round the trunk onto the strands, each reaching its strand just
 // as the strand's growing tip does (T.cubeFadeFrom → cubeFadeTo of the
@@ -37,8 +53,8 @@ attribute vec4 aA; // thread axis (xyz), its latitude (w)
 attribute vec4 aB; // a second axis, square to it (xyz), the mote's place along the thread (w)
 attribute vec4 aS; // speed, latitude waver, its rate, its phase
 attribute vec4 aD; // inset (share of the radius), width (m), brightness, seed
-attribute vec4 aR; // role (0 ring, 1 thrown out, 2 rising, 3 pouring down), when it lets go (share of the burst), jitter, tube side
-attribute vec4 aE; // pouring: its rivulet (row), its place along its thread (0 head … 1 tail), offset across (m)
+attribute vec4 aR; // role (0 ring, 1 thrown out, 2 rising, 3 pouring down and skidding out, 4 pouring down onto a rivulet), when it lets go (share of the burst), jitter, tube side (pouring: its heading out over the ground)
+attribute vec4 aE; // pouring: its rivulet (row), its place along its thread (0 head … 1 tail), offset across (m), how far out it skids (m)
 uniform sampler2D uPaths;
 uniform float uLand; // the burst's share at which the poured light lands: as the reveal starts (tuning.js tlRevealStart)
 uniform float uHand; // how far out along its rivulet the poured light runs before the rivulet's own threads carry on (m)
@@ -70,7 +86,16 @@ vec3 shellAt(float t, float R) {
   float s = sqrt(1.0 - hh * hh);
   return uC + r * (A * hh + (B * cos(th) + C * sin(th)) * s);
 }
+uniform float uFall; // how long a thread takes to fall from the top of the orb to the ground (share of the burst)
+uniform float uSkid; // ...and to skid on out over the ground after (share of the burst)
+uniform float uTrail; // how long after its head a thread's tail lets go (share of the burst)
+uniform float uChase; // how fast a thread landed on a rivulet runs on along it to its front (m per burst)
 const float PN = ${RIVULET_PN.toFixed(1)};
+// the island's ground (world/oasis.js floorHeight: barely above the lake,
+// rising to the trunk's foot), and the water's skin beyond it
+float groundY(float r) {
+  return max(${WATER_Y.toFixed(3)} + 0.08 + 0.7 * (1.0 - smoothstep(6.0, 42.0, r)), ${WATER_Y.toFixed(3)} + 0.22) + 0.16;
+}
 // a rivulet at arc length s (Rivulets.jsx's lines): where, and which way
 vec3 pathAt(int row, float s, float L, out vec2 dir) {
   float u = clamp(s / L, 0.0, 1.0) * (PN - 1.0);
@@ -92,41 +117,81 @@ vec3 moteAt(float b, float t, out float lit) {
   vec2 out2 = normalize(sh.xz - uC.xz + 1e-4);
   if (aR.x > 2.5) {
     // pouring down off it, as water over a ledge: out a little, then down —
-    // slow at first, falling faster — onto the start of its rivulet at the
-    // orb's foot; then on out along the rivulet at its running front (the
-    // reveal's clock, as Rivulets.jsx's own threads: the same line, the same
-    // reach), its motes trailing behind as a thread of light, until the
-    // rivulet's threads carry on (uHand)
-    int row = int(aE.x);
-    vec4 m = texelFetch(uPaths, ivec2(int(PN), row), 0); // t0, dur, L
-    vec2 dir;
-    vec3 land = pathAt(row, 0.0, m.z, dir);
-    land.xz += vec2(-dir.y, dir.x) * aE.z;
-    land.y += 0.18;
-    // (each lets go a little apart, and they all land together as the
-    // reveal sets off: its rivulets run out from where they land)
-    float leave = aR.y * uLand * 0.6;
-    float down = uLand * (0.94 + 0.4 * aR.y);
+    // slow at first, falling faster (the higher it leaves, the longer it
+    // falls) — its underside first, the rest after, over the burst, each
+    // thread pulled off the ball head first, its motes following (uTrail),
+    // so it drains in a stream of falling threads rather than all at once.
+    // Most then skid on out over the ground from where they land (under the
+    // orb, anywhere in a disc round its foot), slowing — spreading the light
+    // over the whole island and on (OrbRain.jsx's sparks do the same); the
+    // first down (role 4) land on the inward end of one of the reveal's
+    // rivulets and run on out along it at its running front (the reveal's
+    // clock, as Rivulets.jsx's own threads: the same line, the same reach),
+    // until the rivulet's threads carry on (uHand)
+    float along = aE.y;
+    bool run = aR.x > 3.5;
+    // (the rivulets' threads let go first, so they are down as the reveal
+    // sets off: uLand)
+    float leave = (run ? aR.y * uLand : aR.y) + along * uTrail;
     if (b <= leave) { lit = shellLit; return sh; }
-    if (b < down) {
-      float k = (b - leave) / max(down - leave, 1e-3);
+    vec2 dir;
+    vec3 land;
+    vec4 m;
+    int row = int(aE.x);
+    float sIn = 0.0;
+    vec2 sd = vec2(cos(aR.w), sin(aR.w));
+    float rL = uR * (0.08 + 1.05 * aR.z);
+    if (run) {
+      // (on the rivulet's line drawn on in towards the foot: the light runs
+      // out from under the orb, not from a ring round it)
+      m = texelFetch(uPaths, ivec2(int(PN), row), 0); // t0, dur, L
+      land = pathAt(row, 0.0, m.z, dir);
+      sIn = 5.5 * aR.z;
+      land.xz += -dir * sIn + vec2(-dir.y, dir.x) * aE.z * 0.6;
+      land.y = max(land.y + 0.18, groundY(length(land.xz - uC.xz)));
+    } else {
+      land = vec3(uC.x + sd.x * rL, 0.0, uC.z + sd.y * rL);
+      land.xz += vec2(-sd.y, sd.x) * aE.z * 0.4;
+      land.y = groundY(length(land.xz - uC.xz));
+    }
+    float tf = uFall * sqrt(max(sh.y - land.y, 0.5) / 14.0) * (0.85 + 0.3 * fract(aR.w * 7.31));
+    float k = (b - leave) / tf;
+    if (k < 1.0) {
       vec3 p;
-      p.xz = mix(sh.xz, land.xz, 1.0 - (1.0 - k) * (1.0 - k)) + out2 * sin(3.14159 * k) * uR * 0.18;
+      p.xz = mix(sh.xz, land.xz, 1.0 - (1.0 - k) * (1.0 - k)) + out2 * sin(3.14159 * k) * uR * 0.12;
       p.y = mix(sh.y, land.y, k * k);
       lit = (1.1 + 0.5 * k) * shellLit;
       return p;
     }
-    float bb = (b - down) / max(1.0 - down, 0.05);
+    float since = b - leave - tf;
+    if (!run) {
+      // skidding out over the ground, fast at first and slowing, curling a
+      // little, the thread drawn out behind its head into a streak
+      float x = clamp(since / (uSkid * (0.75 + 0.5 * fract(aR.w * 3.17))), 0.0, 1.0);
+      float rF = max(aE.w, rL + 3.0);
+      float e = 1.0 - pow(1.0 - x, 3.0);
+      float r = mix(rL, rF, e);
+      float a = aR.w + (fract(aD.w * 5.3) - 0.5) * 0.3 * e;
+      vec3 p = vec3(uC.x + cos(a) * r, 0.0, uC.z + sin(a) * r);
+      p.xz += vec2(-sin(a), cos(a)) * aE.z * 0.4 * (1.0 + 2.0 * e);
+      p.y = groundY(r);
+      lit = (1.7 * exp(-8.0 * x) + 0.7) * (1.0 - smoothstep(0.45, 1.0, x)) * (1.0 - 0.5 * along);
+      return p;
+    }
+    float bb = since / max(1.0 - leave - tf, 0.05);
     float x = clamp((uRevealR - m.x) / max(m.y, 1e-3), 0.0, 1.0);
     float reach = m.z * (1.0 - (1.0 - x) * (1.0 - x));
-    // (a little splash on along it as it lands, before the clock has it)
+    // (a little splash on along it as it lands, before the clock has it; and
+    // running on from where it landed to catch up with the front)
     float splash = (1.0 - exp(-5.0 * bb)) * uR * 0.5 * uSpread;
-    float trail = aE.y * (6.0 + 14.0 * aR.z) * uSpread;
-    float s = max(max(reach, splash) - trail, 0.0);
-    vec3 p = pathAt(row, s, m.z, dir);
-    p.xz += vec2(-dir.y, dir.x) * (aE.z + sin(s * 0.35 + aD.w * 30.0 + t * 0.9) * 0.3 * smoothstep(0.0, 6.0, s));
-    p.y += 0.18;
-    lit = (1.5 * exp(-bb * 3.0) + 0.9) * (1.0 - smoothstep(uHand * 0.45, uHand, s)) * (1.0 - 0.6 * aE.y);
+    float trail = along * (6.0 + 14.0 * aR.z) * uSpread;
+    float s = max(min(-sIn + since * uChase, max(reach, splash) - trail), -sIn);
+    vec3 p = pathAt(row, max(s, 0.0), m.z, dir);
+    // (short of the rivulet's start: on its line drawn on in towards the foot)
+    p.xz += dir * min(s, 0.0);
+    p.xz += vec2(-dir.y, dir.x) * (aE.z * 0.6 + sin(s * 0.35 + aD.w * 30.0 + t * 0.9) * 0.3 * smoothstep(0.0, 6.0, s));
+    p.y = max(p.y + 0.18, groundY(length(p.xz - uC.xz)));
+    lit = (1.5 * exp(-bb * 3.0) + 0.9) * (1.0 - smoothstep(uHand * 0.45, uHand, s)) * (1.0 - 0.6 * along);
     return p;
   }
   float a = (b - aR.y) / max(1.0 - aR.y, 0.05);
@@ -505,12 +570,22 @@ function buildMotes(threads, perThread, rivulets) {
     const roll = rnd();
     // (nearly all of it pours down onto the rivulets; a few are thrown out
     // or rise away — no ring rolling out round it: one spread, the rivulets')
-    const role = roll < 0.9 ? 3 : roll < 0.95 ? 1 : 2;
+    // (of the pour, a share runs out along the rivulets — role 4 — the rest
+    // skids out over the ground — role 3)
+    const role = roll < 0.9 ? (rnd() < POUR.runners ? 4 : 3) : roll < 0.95 ? 1 : 2;
     const row = Math.min(Math.floor(rnd() * rivulets), rivulets - 1);
     const across = (rnd() - 0.5) * 2.4;
     const jit = rnd();
-    const side = (rnd() * 2 - 1) || 0.5;
-    const lead = rnd() * 0.12;
+    // (pouring: which way it heads out over the ground — off the side of the
+    // ball its thread runs round, near enough)
+    const cx = a.x * lat;
+    const cz = a.z * lat;
+    const side = role >= 3 ? (Math.hypot(cx, cz) > 0.15 ? Math.atan2(cz, cx) : 0) + (rnd() - 0.5) * 1.2 : (rnd() * 2 - 1) || 0.5;
+    // when it lets go: the rivulets' threads first (a share of uLand); the
+    // rest over the burst, its underside first
+    const low = (a.y * lat / 0.85 + 1) / 2;
+    const lead = role === 4 ? rnd() * 0.55 : role === 3 ? POUR.from + POUR.spread * Math.min(0.6 * low + 0.4 * rnd(), 1) : rnd() * 0.12;
+    const far = skidRadius(rnd(), POUR.reach);
     const spacing = 0.025 + rnd() * 0.02;
     for (let j = 0; j < perThread; j++, k++) {
       A.set([a.x, a.y, a.z, lat], k * 4);
@@ -519,8 +594,8 @@ function buildMotes(threads, perThread, rivulets) {
       // (brightest mid-thread, fading at its ends)
       const mid = Math.sin((j / Math.max(perThread - 1, 1)) * Math.PI);
       D.set([inset, 0.05 + rnd() * 0.05, (0.35 + 0.65 * mid) * (0.6 + 0.4 * rnd()), rnd()], k * 4);
-      R.set([role, lead + rnd() * 0.04, jit, side], k * 4);
-      E.set([row, j / Math.max(perThread - 1, 1), across + (rnd() - 0.5) * 0.4, 0], k * 4);
+      R.set([role, role >= 3 ? lead : lead + rnd() * 0.04, jit, side], k * 4);
+      E.set([row, j / Math.max(perThread - 1, 1), across + (rnd() - 0.5) * 0.4, far], k * 4);
     }
   }
   const g = new THREE.InstancedBufferGeometry();
@@ -548,6 +623,10 @@ export default function CoreOrb({ J, shared, tier, paths, rivulets }) {
       uPaths: { value: paths },
       uHand: { value: 220 },
       uLand: { value: 0.43 },
+      uFall: { value: POUR.fall },
+      uSkid: { value: POUR.skid },
+      uTrail: { value: POUR.trail },
+      uChase: { value: POUR.chase },
       uC: { value: new THREE.Vector3() },
       uR: { value: 6 },
       uCharge: { value: 0 },
@@ -712,5 +791,10 @@ export default function CoreOrb({ J, shared, tier, paths, rivulets }) {
     parts.melt.visible = T.cubeMelt && grow > T.cubeFadeFrom - 0.01 && grow < Math.max(T.cubeFadeTo, T.cubeFadeFrom) + T.cubeMeltTravel * 1.2;
   });
 
-  return <primitive object={parts.group} />;
+  return (
+    <>
+      <primitive object={parts.group} />
+      <OrbRain J={J} shared={shared} tier={tier} />
+    </>
+  );
 }

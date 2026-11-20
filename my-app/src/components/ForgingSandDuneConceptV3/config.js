@@ -51,8 +51,8 @@ export const SCROLL_VH = {
   after: 112,
   approach: 136,
   pass: 72,
-  passage: 70, // straight out of the cut: the oasis rises out of the desert ("What we bring")
-  glow: 90, // on along the stream, an amber glow ahead ("From concept to conversion")
+  passage: 20, // straight out of the cut (inside it, mostly): the second scene is only its two lines
+  glow: 70, // on along the stream, an amber glow ahead ("From concept to conversion")
   reveal: 110, // the last curve: the tree ("Potential deserves a place to grow")
   canopy: 120, // over the lake: the beam runs on into the cube at its heart
   grow: 180, // the cube turns out; the Yggdrasil grows out of it, the camera round it ("Growth you can see")

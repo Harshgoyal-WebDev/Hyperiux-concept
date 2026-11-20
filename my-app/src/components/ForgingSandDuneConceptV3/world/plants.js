@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { createNoise3D } from "simplex-noise";
 import { mulberry32 } from "./layout";
 
 // Geometry and textures for the oasis's plants, all built here (no files
@@ -415,4 +416,213 @@ export function rockGeometry(seed) {
   }
   g.computeVertexNormals();
   return g;
+}
+
+// ---------------------------------------------------------------------------
+// Boulders and pebbles: dark, water-worn, rounded (the island's and the
+// valley's), smooth shaded. detail 2 for boulders, 1 for pebbles; lumpy is
+// how far the outline wanders, flat how squashed it is (y).
+// ---------------------------------------------------------------------------
+export function boulderGeometry(seed, { detail = 2, lumpy = 0.22, flat = 0.62 } = {}) {
+  const rng = mulberry32(seed);
+  const n3 = createNoise3D(rng);
+  const ico = new THREE.IcosahedronGeometry(1, detail);
+  // (welded: no seams in the smooth shading)
+  ico.deleteAttribute("normal");
+  ico.deleteAttribute("uv");
+  const g = mergeVertices(ico);
+  ico.dispose();
+  const P = g.attributes.position;
+  const v = new THREE.Vector3();
+  const stretch = 0.85 + rng() * 0.4;
+  for (let i = 0; i < P.count; i++) {
+    v.fromBufferAttribute(P, i);
+    const k = 1 + n3(v.x * 0.9, v.y * 0.9, v.z * 0.9) * lumpy + n3(v.x * 2.6 + 5, v.y * 2.6, v.z * 2.6) * lumpy * 0.25;
+    // (a flatter underside: it sits on the ground)
+    const y = v.y * k * flat;
+    P.setXYZ(i, v.x * k * stretch, y < 0 ? y * 0.55 : y, v.z * k);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Flowers (scene/oasis/Vegetation.jsx flowerMaterial: their petals open and
+// close in the vertex shader — the cursor makes them bloom). Every vertex
+// carries its flower's head (aHead: the centre the petals open round, and
+// aAxis: the way it faces) and aPetal (u: metres out along its petal, v:
+// metres across it, a: its bearing round the head, kind: 0 stem/leaf,
+// 1 petal, 2 the head's heart). Positions are the half-open pose.
+// ---------------------------------------------------------------------------
+const FLOWER_PITCH_REST = 0.5; // (the position attribute's pose: radians up from flat)
+function headFrame(axis) {
+  const ref = Math.abs(axis.y) < 0.95 ? v3(0, 1, 0) : v3(1, 0, 0);
+  const t1 = new THREE.Vector3().crossVectors(axis, ref).normalize();
+  const t2 = new THREE.Vector3().crossVectors(axis, t1).normalize();
+  return [t1, t2];
+}
+class FlowerBuilder {
+  constructor() {
+    this.pos = [];
+    this.nor = [];
+    this.col = [];
+    this.head = [];
+    this.axis = [];
+    this.petal = [];
+    this.grow = [];
+    this.anchor = [];
+    this.index = [];
+  }
+  vert(p, n, c, head, axis, petal, grow, anchor) {
+    this.pos.push(p.x, p.y, p.z);
+    this.nor.push(n.x, n.y, n.z);
+    this.col.push(c[0], c[1], c[2]);
+    this.head.push(head.x, head.y, head.z);
+    this.axis.push(axis.x, axis.y, axis.z);
+    this.petal.push(petal[0], petal[1], petal[2], petal[3]);
+    this.grow.push(grow[0], Math.max(grow[1], grow[0] + 0.001), 0, 0);
+    this.anchor.push(anchor.x, anchor.y, anchor.z);
+    return this.pos.length / 3 - 1;
+  }
+  // a head of petals (and its heart) round `head`, facing `axis`
+  flowerHead(head, axis, { petals = 6, len = 0.11, width = 0.06, grow = [0.4, 1], anchor = head, tint = 1, rng }) {
+    const [t1, t2] = headFrame(axis);
+    const a0 = rng() * Math.PI * 2;
+    const g0 = grow[0];
+    const gs = grow[1] - grow[0];
+    for (let k = 0; k < petals; k++) {
+      const a = a0 + (k / petals) * Math.PI * 2 + (rng() - 0.5) * 0.3;
+      const L = len * (0.85 + rng() * 0.3);
+      const W = width * (0.85 + rng() * 0.3);
+      const dir = t1.clone().multiplyScalar(Math.cos(a)).addScaledVector(t2, Math.sin(a));
+      const side = new THREE.Vector3().crossVectors(axis, dir);
+      const pd = dir.clone().multiplyScalar(Math.cos(FLOWER_PITCH_REST)).addScaledVector(axis, Math.sin(FLOWER_PITCH_REST));
+      const from = g0 + gs * (0.1 + 0.4 * (k / petals));
+      const gr = [from, from + gs * 0.5];
+      const at = (u, v) => head.clone().addScaledVector(pd, u).addScaledVector(side, v);
+      const shade = (u) => {
+        const s = (0.62 + 0.38 * (u / L)) * tint;
+        return [s, s, s];
+      };
+      const i0 = this.vert(at(0, 0), axis, shade(0), head, axis, [0, 0, a, 1], gr, anchor);
+      const i1 = this.vert(at(L * 0.45, W * 0.5), axis, shade(L * 0.45), head, axis, [L * 0.45, W * 0.5, a, 1], gr, anchor);
+      const i2 = this.vert(at(L * 0.45, -W * 0.5), axis, shade(L * 0.45), head, axis, [L * 0.45, -W * 0.5, a, 1], gr, anchor);
+      const i3 = this.vert(at(L, 0), axis, shade(L), head, axis, [L, 0, a, 1], gr, anchor);
+      this.index.push(i0, i1, i3, i0, i3, i2);
+    }
+    // the heart: a little cone of pollen
+    const r = len * 0.22;
+    const apex = this.vert(head.clone().addScaledVector(axis, r * 0.9), axis, [0.95, 0.62, 0.12], head, axis, [0, 0, 0, 2], [g0 + gs * 0.3, g0 + gs * 0.7], anchor);
+    const ring = [];
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2;
+      const d = t1.clone().multiplyScalar(Math.cos(a)).addScaledVector(t2, Math.sin(a));
+      ring.push(this.vert(head.clone().addScaledVector(d, r), d.clone().lerp(axis, 0.5).normalize(), [0.7, 0.42, 0.08], head, axis, [0, 0, 0, 2], [g0 + gs * 0.3, g0 + gs * 0.7], anchor));
+    }
+    for (let k = 0; k < 4; k++) this.index.push(ring[k], ring[(k + 1) % 4], apex);
+  }
+  // a thin crossed-ribbon stem from `base` to `top`
+  stem(base, top, width, grow, axis) {
+    const up = top.clone().sub(base);
+    const n0 = v3(1, 0, 0);
+    for (const s of [v3(1, 0, 0), v3(0, 0, 1)]) {
+      const w = s.clone().multiplyScalar(width * 0.5);
+      const c0 = [0.1, 0.2, 0.06];
+      const c1 = [0.22, 0.38, 0.12];
+      const mk = (p, c, t) => this.vert(p, n0.clone().crossVectors(s, up).normalize().lerp(v3(0, 1, 0), 0.5).normalize(), c, top, axis, [0, 0, 0, 0], [grow[0], grow[0] + (grow[1] - grow[0]) * Math.max(t, 0.1)], base);
+      const a = mk(base.clone().sub(w), c0, 0);
+      const b = mk(base.clone().add(w), c0, 0);
+      const c = mk(top.clone().sub(w.clone().multiplyScalar(0.6)), c1, 1);
+      const d = mk(top.clone().add(w.clone().multiplyScalar(0.6)), c1, 1);
+      this.index.push(a, b, c, b, d, c);
+    }
+  }
+  // a leaf blade at the foot
+  leaf(base, a, h, rng) {
+    const out = v3(Math.cos(a), 0, Math.sin(a));
+    const side = v3(-Math.sin(a), 0, Math.cos(a));
+    const w = 0.035 + rng() * 0.02;
+    const pts = [
+      [base.clone().addScaledVector(side, -w), 0],
+      [base.clone().addScaledVector(side, w), 0],
+      [base.clone().addScaledVector(out, h * 0.35).add(v3(0, h * 0.75, 0)), 1],
+    ];
+    const ids = pts.map(([p, t]) => this.vert(p, v3(0, 1, 0).addScaledVector(out, 0.4).normalize(), t ? [0.24, 0.42, 0.13] : [0.1, 0.2, 0.06], p, v3(0, 1, 0), [0, 0, 0, 0], [0, 0.35 + 0.2 * t], base));
+    this.index.push(ids[0], ids[1], ids[2]);
+  }
+  build() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(this.pos, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(this.nor, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(this.col, 3));
+    g.setAttribute("aHead", new THREE.Float32BufferAttribute(this.head, 3));
+    g.setAttribute("aAxis", new THREE.Float32BufferAttribute(this.axis, 3));
+    g.setAttribute("aPetal", new THREE.Float32BufferAttribute(this.petal, 4));
+    g.setAttribute("aGrow", new THREE.Float32BufferAttribute(this.grow, 4));
+    g.setAttribute("aAnchor", new THREE.Float32BufferAttribute(this.anchor, 3));
+    g.setIndex(this.index);
+    return g;
+  }
+}
+
+// A clump of wild flowers: a few stems of different heights, each with a
+// head of petals, and a couple of leaves at the foot. ~0.3–0.6 m tall.
+export function flowerClumpGeometry({ flowers = 4, height = 0.45, spread = 0.28, petals = 6, len = 0.1, width = 0.06, seed = 5 } = {}) {
+  const rng = mulberry32(seed);
+  const b = new FlowerBuilder();
+  for (let f = 0; f < flowers; f++) {
+    const a = rng() * Math.PI * 2;
+    const r = Math.sqrt(rng()) * spread;
+    const base = v3(Math.cos(a) * r, -0.02, Math.sin(a) * r);
+    const h = height * (0.6 + rng() * 0.6);
+    const lean = 0.08 + rng() * 0.22;
+    const la = rng() * Math.PI * 2;
+    const top = base.clone().add(v3(Math.cos(la) * lean * h, h, Math.sin(la) * lean * h));
+    const axis = v3(Math.cos(la) * lean * 1.6, 1, Math.sin(la) * lean * 1.6).normalize();
+    const g0 = (f / flowers) * 0.15 + rng() * 0.1;
+    b.stem(base, top, 0.016, [g0, g0 + 0.45], axis);
+    b.flowerHead(top, axis, { petals, len: len * (0.85 + rng() * 0.35), width, grow: [g0 + 0.35, 1], rng, tint: 0.85 + rng() * 0.15 });
+    b.leaf(base, a + 0.6, h * 0.45, rng);
+  }
+  return b.build();
+}
+
+// Blossoms over a clump-built crown (a bush's or a tree's, as returned by
+// clumpGeometry / buildBroadleaf / buildRoundTree): flower heads on the
+// outer cards, facing out of the crown, unfolding as their cards do.
+// share: of the outer cards that carry one.
+export function blossomGeometry(crown, { share = 0.3, len = 0.22, width = 0.13, petals = 5, seed = 7 } = {}) {
+  const rng = mulberry32(seed);
+  const b = new FlowerBuilder();
+  const P = crown.attributes.position;
+  const N = crown.attributes.normal;
+  const C = crown.attributes.color;
+  const G = crown.attributes.aGrow;
+  const A = crown.attributes.aAnchor;
+  const cards = Math.floor(P.count / 4);
+  const c = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  for (let k = 0; k < cards; k++) {
+    const i = k * 4;
+    // (only the crown's skin: its outer cards are the light ones)
+    if ((C ? C.getX(i) : 1) < 0.8 || rng() > share) continue;
+    c.set(0, 0, 0);
+    n.set(0, 0, 0);
+    for (let j = 0; j < 4; j++) {
+      c.x += P.getX(i + j) / 4;
+      c.y += P.getY(i + j) / 4;
+      c.z += P.getZ(i + j) / 4;
+      n.x += N.getX(i + j);
+      n.y += N.getY(i + j);
+      n.z += N.getZ(i + j);
+    }
+    n.normalize();
+    if (n.y < -0.35) continue;
+    const axis = n.clone().lerp(v3(0, 1, 0), 0.3).normalize();
+    const head = c.clone().addScaledVector(n, 0.12);
+    const to = G ? G.getY(i) : 1;
+    const anchor = A ? v3(A.getX(i), A.getY(i), A.getZ(i)) : head;
+    b.flowerHead(head, axis, { petals, len, width, grow: [Math.min(to, 0.9), Math.min(to + 0.25, 1)], anchor, rng, tint: 0.8 + rng() * 0.2 });
+  }
+  return b.build();
 }

@@ -38,19 +38,26 @@ const STREAK_COUNT = 18;
 // it to the core just as it touches (tlBeamToTreeEnd) — on into the core at
 // that pace (a cubic matched to its place and pace at both ends). No hold
 // short of the lake, no stop and start: one continuous run.
-const freeAt = (b, p, camS = routeDistance(p)) => camS + b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
+// (past the cut it starts behind the camera — none of it in view as the
+// valley comes in — and comes up past it to its lead: T.valleyBeamBehind /
+// T.valleyBeamCatchUp)
+const freeAt = (b, p, camS = routeDistance(p)) => {
+  const lead = b.rib.lead * T.oasisBeamLead * (0.45 + 0.55 * descentAt(camS));
+  const k = THREE.MathUtils.smoothstep(p, CUT_TO(), CUT_TO() + Math.max(T.valleyBeamCatchUp, 0.002));
+  return camS + THREE.MathUtils.lerp(-T.valleyBeamBehind, lead, k);
+};
 let runKey = "";
 let run = null;
 function runIn(b) {
   const pb = T.tlBeamToTreeEnd;
-  const key = `${T.oasisBeamLead}:${pb}:${T.tlCutStart}:${T.tlCutEnd}:${b.qMax}:${P.canopy}`;
+  const key = `${T.oasisBeamLead}:${pb}:${T.tlCutStart}:${T.tlCutEnd}:${b.qMax}:${P.canopy}:${T.valleyBeamBehind}:${T.valleyBeamCatchUp}`;
   if (run && key === runKey) return run;
   const dp = 0.0005;
   const pace = (p) => (freeAt(b, p + dp) - freeAt(b, p - dp)) / (2 * dp);
   let pa = -1;
   let fastest = CUT_TO();
   let fastestV = 0;
-  for (let p = CUT_TO() + 0.01; p < pb - 0.003; p += dp) {
+  for (let p = CUT_TO() + Math.max(T.valleyBeamCatchUp, 0.002) + 0.005; p < pb - 0.003; p += dp) {
     const v = pace(p);
     if (v > fastestV) {
       fastestV = v;
@@ -154,7 +161,7 @@ const up = new THREE.Vector3(0, 1, 0);
 export function buildPath(rib, core, terrain) {
   const pts = [core.clone()];
   const qs = [0];
-  const routeEnd = rib.end.root !== undefined ? S_END - 30 : S_RIM - 40 - rib.end.from;
+  const routeEnd = rib.end.root !== undefined ? S_RIM - 30 : S_RIM - 40 - rib.end.from;
   const p = new THREE.Vector3();
   const t = new THREE.Vector3();
   const side = new THREE.Vector3();
@@ -196,16 +203,40 @@ export function buildPath(rib, core, terrain) {
   let rootAt = -1;
   const c = TREE.core;
   if (rib.end.root !== undefined) {
-    // low over the lake, straight on into the cube at its heart (where the
-    // tree will grow): the beam touches it there
+    // from the oasis's entrance on into the cube at its heart (where the
+    // tree will grow) in one smooth curve: leaving the way along its own
+    // heading and carrying on turning the way it turns (to the right), low
+    // over the water, rising gently into the cube — no straight run at the
+    // end, no kink where it leaves the way
     const last = pts.at(-1);
     const cube = new THREE.Vector3(TREE.x, cubeY(), TREE.z);
-    const lowY = WATER_Y + 0.8;
-    const toCube = cube.clone().setY(lowY).sub(last.clone().setY(lowY));
-    const len = toCube.length();
-    toCube.normalize();
-    for (const k of [0.3, 0.6, 0.85]) tail.push(last.clone().setY(lowY).addScaledVector(toCube, len * k).setY(THREE.MathUtils.lerp(lowY, cube.y, Math.pow(k, 3))));
-    tail.push(cube);
+    route.getTangentAt(Math.min(routeEnd / S_END, 1), t);
+    const chord = new THREE.Vector2(cube.x - last.x, cube.z - last.z);
+    const len = chord.length();
+    // (the arrival: the chord's heading turned on to the right as much again
+    // as the way's heading is turned from the chord — one even bend)
+    const yawOf = (x, z) => Math.atan2(x, -z);
+    const yaw0 = yawOf(t.x, t.z);
+    const yawC = yawOf(chord.x, chord.y);
+    const yaw1 = yawC + (yawC - yaw0);
+    const m0 = new THREE.Vector2(Math.sin(yaw0), -Math.cos(yaw0)).multiplyScalar(len);
+    const m1 = new THREE.Vector2(Math.sin(yaw1), -Math.cos(yaw1)).multiplyScalar(len);
+    const lowY = Math.max(last.y, WATER_Y + 0.8);
+    const N = 16;
+    for (let i = 1; i <= N; i++) {
+      const k = i / N;
+      const k2 = k * k;
+      const k3 = k2 * k;
+      const h00 = 2 * k3 - 3 * k2 + 1;
+      const h10 = k3 - 2 * k2 + k;
+      const h01 = -2 * k3 + 3 * k2;
+      const h11 = k3 - k2;
+      const x = h00 * last.x + h10 * m0.x + h01 * cube.x + h11 * m1.x;
+      const z = h00 * last.z + h10 * m0.y + h01 * cube.z + h11 * m1.y;
+      // (low over the water most of the way, easing up into the cube)
+      const rise = THREE.MathUtils.smootherstep(k, 0.35, 1);
+      tail.push(i === N ? cube : new THREE.Vector3(x, THREE.MathUtils.lerp(lowY, cube.y, rise), z));
+    }
     rootAt = tail.length - 1;
   } else {
     // round the crown, spiralling in, and down through it into the core
@@ -348,11 +379,15 @@ export default function Streaks({ J, forge, terrain, shared }) {
       // light climbs from the roots with it (Yggdrasil.jsx)
       if (i === 0) J.beamInTree = b.qRoot > 0 ? THREE.MathUtils.clamp((q - b.qRoot) / (b.qMax - b.qRoot), 0, 1) : k;
       // (from the cut on the camera is in the valley: nothing behind it)
-      // ...until the camera turns away round the tree: then the beam fills
-      // back in behind, all the way up the way it came
-      const span = Math.max(T.tlOrbitEnd - T.tlOrbitStart, 0.002);
-      const unwind = THREE.MathUtils.smoothstep(J.progress, T.tlOrbitStart, T.tlOrbitStart + span * 0.3);
-      const back = J.progress >= CUT_FROM() ? (camS - 4) * (1 - unwind) : 0;
+      // ...and once it has touched the cube, its tail runs on in after it:
+      // the whole beam merged into the cube by the time the tree starts to
+      // grow (T.tlTreeGrowStart)
+      let back = J.progress >= CUT_FROM() ? camS - 4 : 0;
+      if (b.qRoot > 0) {
+        const t0 = T.tlBeamToTreeEnd;
+        const merge = THREE.MathUtils.smootherstep(J.progress, t0, Math.max(T.tlTreeGrowStart, t0 + 0.004));
+        if (merge > 0) back = THREE.MathUtils.lerp(Math.min(back, b.qRoot), b.qRoot, merge);
+      }
       let jt = 0;
       while (jt < b.qs.length - 2 && b.qs[jt + 1] < back) jt++;
       const ft = THREE.MathUtils.clamp((back - b.qs[jt]) / Math.max(b.qs[jt + 1] - b.qs[jt], 1e-3), 0, 1);

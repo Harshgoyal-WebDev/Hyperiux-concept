@@ -88,10 +88,20 @@ export function buildBeamPath(forge, terrain) {
   );
   const n = Math.ceil(plan.getLength() / 2);
   const pts = plan.getSpacedPoints(n).map((p) => new THREE.Vector3(p.x, terrain.height(p.x, p.z) + OVER_SAND, p.z));
-  // the foot: it dips into the stone where the Spine comes out of the sand
-  // (the anchor itself is just under the sand: the slab is sunk FORGE.sink)
+  // the foot: it turns up off the sand onto the slab's face, and runs on
+  // straight up the face, close against it, to the core (T.beamUpFace)
   const g = pts[pts.length - 1].y;
-  pts.push(new THREE.Vector3(x, g + 0.05, face + 1.2), new THREE.Vector3(x, g - 0.05, face + 0.3), new THREE.Vector3(x, g - 0.15, face - 0.2));
+  const gap = Math.max(T.beamFaceGap, 0.02);
+  const core = world.target ?? world.core;
+  pts.push(new THREE.Vector3(x, g + 0.08, face + 1.2), new THREE.Vector3(x, g + 0.35, face + gap + 0.25));
+  const top = core.y - 0.8;
+  const rise = Math.max(top - (g + 1.2), 0.5);
+  const steps = Math.max(Math.ceil(rise / 2), 2);
+  for (let i = 0; i <= steps; i++) {
+    const k = i / steps;
+    pts.push(new THREE.Vector3(THREE.MathUtils.lerp(x, core.x, k * k), g + 1.2 + rise * k, face + gap));
+  }
+  pts.push(new THREE.Vector3(core.x, core.y, core.z));
   const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
   // (where along it the beam reaches the slab's foot)
   curve.userData = { foot: uAtZ(curve, face + 1.2) };
@@ -216,8 +226,7 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
       streaks,
       // its round head (scene/saber.js)
       cap: createSaberCap(material.uniforms),
-      // where the load-in race starts (the hero's lead is T.beamStart)
-      intro: uAtZ(path, 200),
+      behindFor: T.heroBeamBehind,
       foot: path.userData.foot,
     };
   }, [terrain, forge, shared]);
@@ -233,19 +242,19 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     [built]
   );
 
+  // where the head is before the first scroll: behind the camera (the hero
+  // shot's at z 155), so none of it is in view until the page moves
+  const behind = useMemo(() => uAtZ(built.path, 155 + T.heroBeamBehind), [built]);
   useFrame(() => {
     const u = built.beam.material.uniforms;
-    const front = Math.max(T.beamStart, built.intro);
-    // along the sand into the slab's foot; it holds there while the Spine
-    // carries the energy up to the core (J.beam 0.5 → 1, scene/Forge.jsx)
+    // with the scroll from the first moment: from behind the camera along the
+    // sand to the slab's foot (J.beam 0 → 0.5), then on up its face into the
+    // core (0.5 → 1; T.beamUpFace) — no load-in race, nothing there before
     const foot = built.foot;
-    const head = front + (1 - front) * Math.min(J.beam / 0.5, 1);
-    // The load-in race runs on the page's own clock (0.5 s after the visitor
-    // enters, 2.8 s long, eased in and out), so nothing can rewind it; a
-    // review frame sets J.intro to skip it.
-    const k = THREE.MathUtils.clamp((performance.now() / 1000 - J.enterAt - 0.5) / 2.8, 0, 1);
-    const race = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-    u.uHead.value = THREE.MathUtils.lerp(built.intro, head, Math.max(race, J.intro));
+    const from = T.heroBeamBehind !== built.behindFor ? uAtZ(built.path, 155 + T.heroBeamBehind) : behind;
+    const run = Math.min(J.beam / 0.5, 1);
+    const climb = T.beamUpFace ? THREE.MathUtils.clamp((J.beam - 0.5) / 0.5, 0, 1) : 0;
+    u.uHead.value = J.beam <= 0 ? 0 : J.beam < 0.5 ? THREE.MathUtils.lerp(from, foot, run) : THREE.MathUtils.lerp(foot, 1, climb);
     // ...and the whole of it goes as the stone breaks away — the stretch
     // along the sand together with the one up the slab's face (J.beamFade):
     // nothing left lying on the sand without a purpose (the beam on out of

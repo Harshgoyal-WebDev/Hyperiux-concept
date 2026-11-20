@@ -17,8 +17,9 @@ import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
-import { brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
+import { blastedAt, brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
 import { deriveReveal } from "./world/oasisCamera";
+import { paceAt } from "./pace";
 import { ASSETS, CUT_TO, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
 import { CTA, OASIS_LINES } from "./content";
 
@@ -108,7 +109,18 @@ function paceScroll(lenis, J) {
   o.duration = T.scrollDuration;
   o.easing = (t) => 1 - Math.pow(1 - t, 3);
   const s = { dir: 0, last: -1e9, v: 0, raf: 0, prev: 0, y: 0 };
-  const boost = () => (J.progress >= brokenAt() && J.progress < CUT_TO() ? T.scrollBoost : 1);
+  // the pace through each stretch: evened out over the whole way (pace.js:
+  // quicker where little moves on screen, slower where much does — so the
+  // picture changes at one rate from start to end), × the hand trims
+  // T.paceApproach (rock breaking → cut landed) and T.paceValley (cut →
+  // the beam on into the core)
+  const boost = () => {
+    const p = J.progress;
+    let k = paceAt(p);
+    if (p >= brokenAt() && p < CUT_TO()) k *= T.paceApproach;
+    else if (p >= CUT_TO() && p < T.tlBeamToTreeStart) k *= T.paceValley;
+    return k;
+  };
   // the steady drive: one speed while input keeps coming, eased in and out
   const tick = (now) => {
     // (real time, so the pace holds even when frames come slower)
@@ -504,7 +516,9 @@ function Journey({ env }) {
   // distance ahead of where it is — so no one can race through the story,
   // nor crawl through it. From the rock breaking off the logo until the cut
   // has landed in the valley, it goes T.scrollBoost (30%) quicker.
-  useEffect(() => (lenis ? paceScroll(lenis, J) : undefined), [lenis, J]);
+  // (off by default — the site's own Lenis scrolling as it is; T.scrollFixedPace
+  // turns the set pace back on, from the next load)
+  useEffect(() => (lenis && T.scrollFixedPace ? paceScroll(lenis, J) : undefined), [lenis, J]);
 
   // Scroll position of a scroll fraction p, in page pixels.
   const pToY = useCallback((p) => {
@@ -524,7 +538,7 @@ function Journey({ env }) {
   // progress is the scroll fraction p. The driver shapes the scroll itself:
   //   up to the core – free, smooth scrolling (the beam travels and climbs);
   //   past the core – the page takes over: it scrolls on (locked) through
-  //     the impact until the rock has ground into sand (brokenAt), at a fixed
+  //     the impact until the blast is over (blastedAt), at a fixed
   //     pace, then hands back — the visitor scrolls the breakup themselves;
   //   scrolling back up before that point – it scrolls (locked) back to
   //     just short of the core.
@@ -616,9 +630,10 @@ function Journey({ env }) {
         if (lastGoal >= 0 && Math.abs(goal - lastGoal) > 1e-6) D.dir = Math.sign(goal - lastGoal);
         lastGoal = goal;
 
-        // until the broken rock has ground into sand: always auto-scrolled,
-        // forwards or back; from there the visitor scrolls on themselves
-        const freeAt = brokenAt();
+        // from the beam reaching the core until the blast is over: always
+        // auto-scrolled, forwards or back; from there the visitor scrolls on
+        // themselves (the broken rock settles with their scroll)
+        const freeAt = blastedAt();
         if (goal > P.core + EPS && goal < freeAt - EPS) {
           const forward = D.dir >= 0;
           const to = forward ? freeAt : P.core - 2 * EPS;
@@ -705,6 +720,19 @@ function Journey({ env }) {
             apply(current);
           }, 120)
         : null;
+
+      // (?debug: hold any scroll fraction from the console — measuring)
+      if (window.location.search.includes("debug"))
+        window.__seek = (p) => {
+          D.review = true;
+          D.resync = true;
+          J.intro = 1;
+          const l = lenisRef.current;
+          if (l) l.scrollTo(pToY(p), { immediate: true, force: true });
+          current = target();
+          apply(current);
+          return current;
+        };
 
       ScrollTrigger.refresh();
       return () => {

@@ -57,6 +57,79 @@ vec3 cutGlass(sampler2D tex, vec2 uv, vec2 off, float split) {
   return c;
 }
 
+vec3 bunqNext(vec2 uv) { return texture2D(tB, uv).rgb; }
+
+// (bunqlabs.com's own section change, ported as it is: their transition
+// shader and its settings) discs on a hexagonal grid, rising from the bottom
+// with a gentle dome to the front and a little jitter; each disc a dome of
+// glass refracting the next shot (uBRefract), the picture wobbling round the
+// discs' rims as they run together (uBWobble), the colours splitting a touch
+uniform float uStyle; // 1: this (T.cutStyle / outroStyle "bunq"), 0: the glass tiles
+uniform vec2 uBRes; // the view (css px)
+uniform float uBCellPx; // a disc's spacing (css px)
+uniform float uBSpread;
+uniform float uBJitter;
+uniform float uBOvershoot;
+uniform float uBRefract;
+uniform float uBWobble;
+uniform float uBBulge;
+float bunqHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+const float DISC_TOUCH = 0.5;
+const float DISC_FULL = 0.57735027;
+vec2 bunqDiscCell(vec2 p, out vec2 gv) {
+  vec2 r = vec2(1.0, 1.7320508);
+  vec2 h = r * 0.5;
+  vec2 a = mod(p, r) - h;
+  vec2 b = mod(p - h, r) - h;
+  gv = dot(a, a) < dot(b, b) ? a : b;
+  return p - gv;
+}
+vec3 bunqDiscNormal(vec2 gv, float d, float rad) {
+  float k = min(d / max(rad, 1e-4), 1.0);
+  return vec3(gv / max(d, 1e-5) * k, sqrt(max(0.0, 1.0 - k * k)));
+}
+vec3 bunqFrom(vec2 uv, float amount) {
+  vec2 o = vec2(cos(0.1), sin(0.1)) * amount;
+  return vec3(texture2D(inputBuffer, uv + o).r, texture2D(inputBuffer, uv).g, texture2D(inputBuffer, uv - o).b);
+}
+vec3 bunqTo(vec2 uv, float amount) {
+  vec2 o = vec2(cos(0.1), sin(0.1)) * amount;
+  return vec3(bunqNext(uv + o).r, bunqNext(uv).g, bunqNext(uv - o).b);
+}
+vec4 bunqImage(vec4 inputColor, vec2 uv) {
+  float ratio = uBRes.x / uBRes.y;
+  float scale = uBRes.x / uBCellPx;
+  vec2 p = (uv - 0.5) * vec2(1.0, 1.0 / ratio) * scale;
+  vec2 gv;
+  vec2 cell = bunqDiscCell(p, gv);
+  vec2 cuv = cell / scale * vec2(1.0, ratio) + 0.5;
+  float dome = 1.0 - abs(cuv.x - 0.5) * 2.0;
+  dome = dome * dome * (3.0 - 2.0 * dome);
+  float lead = (cuv.y - uBBulge * dome + uBBulge) / (1.0 + uBBulge);
+  lead += (bunqHash(floor(cell * 2.0 + 0.5)) - 0.5) * uBJitter;
+  lead = clamp(lead, 0.0, 1.0);
+  float t = clamp(uT * (1.0 + uBSpread) - lead * uBSpread, 0.0, 1.0);
+  float rad = t * (DISC_FULL + uBOvershoot);
+  float domeRad = min(rad, DISC_TOUCH);
+  float glass = 1.0 - smoothstep(DISC_TOUCH, DISC_FULL, rad);
+  float d = length(gv);
+  float aa = fwidth(d) + 1e-4;
+  float cut = (1.0 - smoothstep(rad - aa, rad + aa, d)) * smoothstep(0.0, aa, rad);
+  float lens = (1.0 - smoothstep(domeRad - aa, domeRad + aa, d)) * smoothstep(0.0, aa, domeRad);
+  vec3 n = bunqDiscNormal(gv, d, domeRad);
+  n.xy *= lens * glass;
+  float rim = length(n.xy);
+  float merge = smoothstep(0.0, 0.2, t) * smoothstep(1.0, 0.65, t);
+  uv += rim * sin(uv.y * 4.0 - uTime * 0.5) * merge * uBWobble;
+  vec2 uvTo = uv + n.xy * (uBRefract / scale) * merge;
+  uv = clamp(uv, 0.001, 0.999);
+  uvTo = clamp(uvTo, 0.001, 0.999);
+  vec3 fromC = vec3(0.0);
+  vec3 toC = vec3(0.0);
+  if (cut < 1.0) fromC = merge > 0.001 ? bunqFrom(uv, 0.002 * merge) : texture2D(inputBuffer, uv).rgb;
+  if (cut > 0.0) toC = merge > 0.001 ? bunqTo(uvTo, 0.002 * merge) : bunqNext(uvTo);
+  return vec4(mix(fromC, toC, cut), inputColor.a);
+}
 uniform float uHold; // 1: once turned over, it stays the next shot (the change to the white site)
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   if (uT <= 0.0005) {
@@ -65,6 +138,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   }
   if (uT >= 0.9995) {
     outputColor = uHold > 0.5 ? vec4(texture2D(tB, uv).rgb, inputColor.a) : inputColor;
+    return;
+  }
+  if (uStyle > 0.5) {
+    outputColor = bunqImage(inputColor, uv);
     return;
   }
   vec2 sp = (uv - 0.5) * vec2(uAspect, 1.0);
@@ -107,6 +184,19 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `;
 
+// the bunq hexagons' settings, from tuning.js (both changes share them)
+function syncBunq(u, style, size) {
+  u.uStyle.value = style === "bunq" ? 1 : 0;
+  u.uBRes.value.set(size.width, Math.max(size.height, 1));
+  u.uBCellPx.value = Math.max(T.transCellPx, 2);
+  u.uBSpread.value = T.transSpread;
+  u.uBJitter.value = T.transJitter;
+  u.uBOvershoot.value = T.transOvershoot;
+  u.uBRefract.value = T.transRefract;
+  u.uBWobble.value = T.transWobble;
+  u.uBBulge.value = T.transBulge;
+}
+
 // (its own pass, ahead of the bloom: the bloom then glows from the frame as
 // cut — not from the logo shot underneath, which would leave its glow hanging
 // over the valley)
@@ -120,6 +210,15 @@ export function createCutPass() {
     uGlass: { value: 1 },
     uChroma: { value: 0.12 },
     uHold: { value: 0 },
+    uStyle: { value: 1 },
+    uBRes: { value: new THREE.Vector2(1280, 720) },
+    uBCellPx: { value: 11 },
+    uBSpread: { value: 3.2 },
+    uBJitter: { value: 0.05 },
+    uBOvershoot: { value: 0.38 },
+    uBRefract: { value: 4 },
+    uBWobble: { value: 0.1 },
+    uBBulge: { value: 0.115 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -144,16 +243,17 @@ export function createCutPass() {
 
 // While the cut runs, the next shot (the oasis camera at this point of the
 // scroll) is rendered into a target for the effect, before the composer.
-export function CutPass({ J, cut }) {
+export function CutPass({ J, cut, samples = 0 }) {
   const { gl, scene, camera, size } = useThree();
   const res = useMemo(() => {
-    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
+    // (anti-aliased as the frame itself is: tier.multisampling)
+    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples });
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
     // (the valley's own layer, and not the forge's: config.js)
     cam.layers.enable(VALLEY_LAYER);
     cam.layers.enable(NO_MIRROR_LAYER);
     return { target, cam, pos: new THREE.Vector3(), tgt: new THREE.Vector3(), buf: new THREE.Vector2() };
-  }, []);
+  }, [samples]);
   useEffect(() => () => res.target.dispose(), [res]);
 
   useFrame((state) => {
@@ -164,14 +264,14 @@ export function CutPass({ J, cut }) {
     u.uTime.value = state.clock.elapsedTime;
     u.uGlass.value = T.cutGlass;
     u.uChroma.value = T.cutChroma;
+    syncBunq(u, T.cutStyle, size);
     // (a pass doing nothing still costs a full-screen copy: off outside the cut)
     cut.pass.enabled = t > 0.0005 && t < 0.9995;
     if (t <= 0.0005 || t >= 0.9995) return;
-    // (at a little over half the resolution: through the glass it is bent
-    // and blurred anyway, and drawing the valley a second time at full
-    // resolution made the cut stutter)
     gl.getDrawingBufferSize(res.buf);
-    res.buf.multiplyScalar(0.6).floor();
+    // (at the frame's own resolution: drawn smaller it showed pixelated
+    // through the hexagons, then snapped sharp as the cut ended)
+    res.buf.floor();
     if (res.target.width !== res.buf.x || res.target.height !== res.buf.y) res.target.setSize(res.buf.x, res.buf.y);
     const { cam, pos, tgt } = res;
     const fov = oasisCamera(J.progress, pos, tgt);
@@ -220,10 +320,13 @@ uniform float uWhiteFrom; // ...at which the white starts
 uniform float uWhiteFill; // ...each tile takes to fade in to white
 uniform float uRandom; // 0 in rings from the centre … 1 at random
 uniform vec3 uWhite;
-${FRAGMENT.slice(FRAGMENT.indexOf("// pointy-top"), FRAGMENT.indexOf("uniform float uHold"))}
+${FRAGMENT.slice(FRAGMENT.indexOf("// pointy-top"), FRAGMENT.indexOf("vec3 bunqNext"))}
+vec3 bunqNext(vec2 uv) { return uWhite; }
+${FRAGMENT.slice(FRAGMENT.indexOf("// (bunqlabs.com's own"), FRAGMENT.indexOf("uniform float uHold"))}
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   if (uT <= 0.0005) { outputColor = inputColor; return; }
   if (uT >= 0.9995) { outputColor = vec4(uWhite, inputColor.a); return; }
+  if (uStyle > 0.5) { outputColor = bunqImage(inputColor, uv); return; }
   vec2 sp = (uv - 0.5) * vec2(uAspect, 1.0);
   vec4 hx = cutHex(sp / uCell);
   vec2 l = hx.xy;
@@ -278,6 +381,15 @@ export function createOutroPass() {
     uWhiteFill: { value: 0.3 },
     uRandom: { value: 0.55 },
     uWhite: { value: new THREE.Vector3(24, 24, 24) },
+    uStyle: { value: 1 },
+    uBRes: { value: new THREE.Vector2(1280, 720) },
+    uBCellPx: { value: 11 },
+    uBSpread: { value: 3.2 },
+    uBJitter: { value: 0.05 },
+    uBOvershoot: { value: 0.38 },
+    uBRefract: { value: 4 },
+    uBWobble: { value: 0.1 },
+    uBBulge: { value: 0.115 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -314,6 +426,7 @@ export function OutroPass({ J, outro }) {
     u.uWhiteFrom.value = T.outroWhiteFrom;
     u.uWhiteFill.value = T.outroWhiteFill;
     u.uRandom.value = T.outroRandom;
+    syncBunq(u, T.outroStyle, size);
     // (off until it starts; on from then, white once over)
     outro.pass.enabled = t > 0.0005;
   });

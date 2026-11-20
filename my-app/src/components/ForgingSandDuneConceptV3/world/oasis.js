@@ -28,7 +28,7 @@ export const WATER_Y = -0.6;
 
 // The round oasis at the end: its centre, the radius of its level floor
 // (the dunes rise beyond it), the lake, and the island the tree stands on.
-export const BASIN = { x: 170, z: -1044, floor: 188, lake: 150, island: 26 };
+export const BASIN = { x: 170, z: -1044, floor: 188, lake: 150, island: 55 };
 
 // The Yggdrasil (a placeholder is built until public/models/yggdrasil.glb
 // exists): its foot, height, and its core — where the streaks meet, in the
@@ -52,14 +52,16 @@ const ROUTE_POINTS = [
   [-8, -420], // bend 2, to the right
   [40, -490],
   [58, -570],
-  [36, -650], // bend 3, to the left
-  [-10, -710],
-  [-48, -770],
-  [-60, -840], // the last curve, round to the right…
-  [-36, -900],
-  [6, -930], // …out onto the oasis
-  [44, -955],
-  [78, -980], // the last stop, over the lake
+  [30, -635], // bend 3, to the left...
+  [-34, -674],
+  [-47, -715], // ...straightening out: where the cut lands (oasisCamera S_LAND) the
+  [-47, -780], // way runs straight ahead, as the logo shot looked —
+  // then one even curve round to the right (a 220 m arc, 0° → 54°)…
+  [-39.5, -836.9],
+  [-17.5, -890],
+  [17.4, -935.6], // …out onto the oasis
+  [43.7, -958],
+  [77.6, -982.7], // the last stop, over the lake
 ];
 export const route = new THREE.CatmullRomCurve3(
   ROUTE_POINTS.map(([x, z]) => new THREE.Vector3(x, 0, z)),
@@ -137,15 +139,18 @@ export function streamHalfWidth(s) {
   return w * T.oasisStreamWidth;
 }
 export function floorHalfWidth(s) {
-  const extra = Math.max(streamHalfWidth(s) - streamHalfWidth(s) / Math.max(T.oasisStreamWidth, 1e-3), 0);
   // (T.valleyWidth narrows it: the dunes on both sides stay in view)
+  // (no stream now: no room kept for one; and narrowing again into the
+  // oasis's entrance — a gap in the dunes, closed by trees and bushes)
   const k = T.valleyWidth;
-  if (s < 170) return lerp(46, 15, smooth(70, 170, s)) * k + extra;
-  return (15 + 7 * smooth(170, 380, s) + 6 * smooth(380, 620, s) + 8 * smooth(620, 880, s)) * k + extra;
+  if (s < 170) return lerp(46, 15, smooth(70, 170, s)) * k;
+  return (15 + 7 * smooth(170, 380, s) + 6 * smooth(380, 620, s) - 9 * smooth(700, S_RIM - 20, s)) * k;
 }
 export const RESHAPE_EVENT = "forging-sand-dune-concept-v3:reshape";
+// (none from a little before the cut lands: from there the stream — and the
+// beam along it — follows the way's one curve round, without swaying)
 export function meander(s) {
-  return (Math.sin(s * 0.021 + 1.3) * 0.6 + Math.sin(s * 0.047) * 0.4) * Math.min(floorHalfWidth(s) - streamHalfWidth(s) - 2, 5) * 0.8;
+  return (Math.sin(s * 0.021 + 1.3) * 0.6 + Math.sin(s * 0.047) * 0.4) * Math.min(floorHalfWidth(s) - streamHalfWidth(s) - 2, 5) * 0.8 * (1 - smooth(690, 770, s));
 }
 // How alive the passage is at s: bare sand at the entrance, green by the oasis.
 export function lifeAt(s) {
@@ -188,10 +193,9 @@ export function oasisAt(x, z, o = {}) {
   const passage = hit.d - floorHalfWidth(s) + rag;
   const basin = o.r - BASIN.floor + rag * 2;
   o.e = Math.min(passage, basin);
-  // the stream (meandering in its bed) and the lake round the island
-  const stream = s < S_END - 4 ? Math.abs(hit.lat - meander(s)) - streamHalfWidth(s) + noiseB(x * 0.05, z * 0.05) * 0.6 : Infinity;
-  const lake = Math.max(o.r - BASIN.lake - noiseB(x * 0.012, z * 0.012) * 10, BASIN.island - o.r);
-  o.w = Math.min(stream, lake);
+  // the water: only the lake round the island, in the oasis's circle (no
+  // stream along the passage)
+  o.w = Math.max(o.r - BASIN.lake - noiseB(x * 0.012, z * 0.012) * 10, BASIN.island - o.r);
   // (none round the mark; fading out into the open desert far off)
   o.carve = carveAt(s) * (1 - smooth(380, 520, o.e));
   o.life = Math.max(lifeAt(s) * smooth(60, 0, passage), smooth(BASIN.floor + 40, BASIN.floor - 30, o.r));
@@ -223,7 +227,8 @@ function floorHeight(o, x, z) {
 function massif(e, x, z) {
   // (a soft |n|: rounded crests, no knife edges for the mesh to saw-tooth)
   const n = noiseB(x * 0.0065 + 3.1, z * 0.0065);
-  const ridge = Math.max(1 - (Math.sqrt(n * n + 0.012) - Math.sqrt(0.012)), 0);
+  // (rounded over ~15 m: smooth, curving crest lines, never sawn into teeth)
+  const ridge = Math.max(1 - (Math.sqrt(n * n + 0.05) - Math.sqrt(0.05)), 0);
   // (lower near the mark, so the hero's backdrop stays the low dunes)
   const near = 0.45 + 0.55 * smooth(-150, -420, z);
   const height = (28 + 30 * ridge * ridge + noiseA(x * 0.004, z * 0.004) * 6) * near;

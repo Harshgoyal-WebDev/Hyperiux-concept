@@ -11,6 +11,7 @@ import { TREE, WATER_Y, revealAt } from "../../world/oasis";
 import { buildCrown, buildWood } from "../../world/yggdrasil";
 import { attachPointer, pointer } from "../../pointer";
 import { sampleTree, setTreeSamples } from "../../world/treeSamples";
+import FallingLeaves from "./FallingLeaves";
 
 // The Yggdrasil, at the heart of the oasis: public/models/yggdrasil.glb when
 // it is there (fitted to TREE's height on its island), and until then a
@@ -459,7 +460,13 @@ function StrandTree({ J, tier, uniforms, onReady }) {
     uniforms.uPush.value = T.strandPush * push.on;
     uniforms.uPushR.value = T.strandPushRadius;
   });
-  return <primitive object={object} />;
+  return (
+    <>
+      <primitive object={object} />
+      {/* leaves shed from its crown once it has grown (FallingLeaves.jsx) */}
+      <FallingLeaves source={object} J={J} tier={tier} uniforms={uniforms} />
+    </>
+  );
 }
 
 export default function Yggdrasil({ J, tier, onReady }) {

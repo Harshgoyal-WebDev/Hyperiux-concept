@@ -58,7 +58,7 @@ export function runOnPast(p) {
 // route's end, over the lake (the rise as the light opens takes over). The
 // cut lands at S_LAND — on the stream between the trees, the oasis rising
 // round the camera from just behind it (world/oasis.js REVEAL_ORIGIN).
-export const S_LAND = 800;
+export const S_LAND = 815; // (world/oasis.js: at the start of the straight before the curve)
 const N = 900;
 let cache = null;
 let cacheKey = "";
@@ -68,41 +68,43 @@ function table() {
   const p0 = CUT_FROM();
   const p1 = P.canopy;
   const vArrive = runPace(P.through);
-  const ease = (P.passage - CUT_TO()) * 0.45; // (to cruise over the first part of the first moment)
+  // easing up from the cut's pace to the cruise: from as the hexagons have
+  // all but covered the screen (the last fifth of the cut) over a good
+  // stretch past it — no sudden step up as the cut ends (it was once a step:
+  // the second scene shortened, its stretch ended before the cut did)
+  const upFrom = CUT_TO() - (CUT_TO() - p0) * 0.2;
+  const upTo = Math.max(P.glow, CUT_TO() + 0.04);
   const stopFrom = P.reveal + (P.canopy - P.reveal) * 0.15;
   const shape = (p, V) => {
-    if (p < CUT_TO()) return runPace(Math.min(p, P.through));
-    const up = THREE.MathUtils.smoothstep(p, CUT_TO(), CUT_TO() + ease);
+    const run = p < P.through ? runPace(p) : vArrive;
+    const up = smoother(upFrom, upTo, p);
     const down = 1 - THREE.MathUtils.smoothstep(p, stopFrom, p1);
-    return THREE.MathUtils.lerp(vArrive, V, up) * down;
+    return THREE.MathUtils.lerp(run, V, up) * down;
   };
-  const integrate = (V, out) => {
+  const integrate = (V, a0, a1, out) => {
     let s = 0;
-    const dp = (p1 - p0) / N;
+    const dp = (a1 - a0) / N;
     if (out) out[0] = 0;
     for (let k = 0; k < N; k++) {
-      const a = p0 + k * dp;
+      const a = a0 + k * dp;
       s += 0.5 * (shape(a, V) + shape(a + dp, V)) * dp;
       if (out) out[k + 1] = s;
     }
     return s;
   };
-  // the cut's own distance, then the cruise that reaches the route's end
-  let covered = 0;
-  {
-    const dp = (CUT_TO() - p0) / 200;
-    for (let k = 0; k < 200; k++) covered += 0.5 * (shape(p0 + k * dp, 0) + shape(p0 + (k + 1) * dp, 0)) * dp;
-  }
-  const s0 = S_LAND - covered;
+  // the cruise that, past the landing (S_LAND at CUT_TO), reaches the
+  // route's end — then where that puts the cut's start
   let lo = 0;
   let hi = 1e5;
   for (let it = 0; it < 50; it++) {
     const mid = (lo + hi) / 2;
-    if (s0 + integrate(mid, null) < S_END) lo = mid;
+    if (S_LAND + integrate(mid, CUT_TO(), p1, null) < S_END) lo = mid;
     else hi = mid;
   }
+  const V = (lo + hi) / 2;
+  const s0 = S_LAND - integrate(V, p0, CUT_TO(), null);
   const cum = new Float32Array(N + 1);
-  integrate((lo + hi) / 2, cum);
+  integrate(V, p0, p1, cum);
   cache = { p0, p1, s0, cum };
   cacheKey = key;
   return cache;
@@ -167,11 +169,17 @@ export const cubeY = () => WATER_Y + T.orbHeight;
 // tlOrbitStart (T.orbitSweep degrees over tlOrbitStart → tlOrbitEnd), eased
 // in over its first moment — and on at that pace to the end of the page,
 // through the glass into the site (no stop)
+// (the turn round to the right starts already as the camera comes in to the
+// tree — from part way through its run in, gathering pace until it is at
+// the orbit's own pace as that starts — so it never stops between the two:
+// it arrives turning, a little round to the right of the way it came)
+const orbitFrom = () => lerp(T.tlBeamToTreeStart, Math.min(T.tlBeamToTreeEnd, T.tlOrbitStart), 0.4);
 function orbitAngle(p) {
   const span = Math.max(T.tlOrbitEnd - T.tlOrbitStart, 0.002);
   const rate = THREE.MathUtils.degToRad(T.orbitSweep) / span;
-  const d = Math.max(p - T.tlOrbitStart, 0);
-  const ramp = 0.012;
+  const from = orbitFrom();
+  const d = Math.max(p - from, 0);
+  const ramp = Math.max(T.tlOrbitStart - from, 0.012);
   return rate * (d < ramp ? (d * d) / (2 * ramp) : d - ramp / 2);
 }
 
@@ -194,12 +202,14 @@ export function oasisCamera(p, pos, tgt) {
   // T.camCoreLift m above its centre) as the beam touches it
   routePoint(S_END, END);
   const away = Math.atan2(END.z - CORE.z, END.x - CORE.x);
+  // (where it comes in to is already turning round the tree: orbitAngle)
   const k = smoother(T.tlBeamToTreeStart, Math.max(T.tlBeamToTreeEnd, T.tlBeamToTreeStart + 0.002), p);
-  if (k > 0) {
-    AT.set(CORE.x + Math.cos(away) * T.camCoreDist, CORE.y + T.camCoreLift, CORE.z + Math.sin(away) * T.camCoreDist);
+  if (k > 0 && p <= T.tlOrbitStart) {
+    const a = away - orbitAngle(p);
+    AT.set(CORE.x + Math.cos(a) * T.camCoreDist, CORE.y + T.camCoreLift, CORE.z + Math.sin(a) * T.camCoreDist);
     pos.lerp(AT, k);
     tgt.lerp(CORE, k);
-  }
+  } else if (k > 0) tgt.copy(CORE);
 
   // then round the tree as it grows up out of the lake: steadily round it,
   // and steadily further off and higher until it stands complete (T.orbitRadius

@@ -101,9 +101,20 @@ const glide = (rise, settle) => {
 // pieces thrown out and worn to grains): the end of the auto-scrolled part
 // of the forging event (ForgingConcept), and where the camera sets off for
 // the logo — so the visitor's own scroll moves it straight away.
+// (held, T.breakHoldOn: the broken rock stops changing with the scroll at
+// T.breakHold — from there it is settled, and the camera sets off)
 export function brokenAt() {
   const end = Math.max(T.breakEnd, T.breakStart + 0.02);
-  return eventAt(T.breakStart + Math.max(T.breakBurstEnd, T.breakBlastEnd, T.breakGrindEnd) * (end - T.breakStart));
+  const settled = Math.max(T.breakBurstEnd, T.breakBlastEnd, T.breakGrindEnd);
+  return eventAt(T.breakStart + Math.min(settled, T.breakHold ?? 1) * (end - T.breakStart));
+}
+// Where the blast is over (the impact spent, the pieces thrown out): the end
+// of the forging event's auto-scroll — the beam reaching the core and the
+// blast play by themselves; from here the visitor scrolls on, and the broken
+// rock settles as they do.
+export function blastedAt() {
+  const end = Math.max(T.breakEnd, T.breakStart + 0.02);
+  return eventAt(T.breakStart + Math.max(T.breakBurstEnd, T.breakBlastEnd) * (end - T.breakStart));
 }
 
 // the run at the opening: under way from the first scroll (a steady share),
@@ -167,7 +178,19 @@ export function deriveBreak(J) {
   const end = Math.max(T.breakEnd, start + 0.02);
   const t = J.eventT;
   J.fracture = Math.min(Math.max((t - start) / (end - start), 0), 1);
-  J.beamFade = 1 - Math.cos((Math.min(Math.max((t - start) / 0.08, 0), 1) * Math.PI) / 2);
+  // Past the blast (the auto-scroll's end) the broken rock, its sand and
+  // gravel settle with the visitor's own scroll — slowly, over the whole
+  // way to the cut (CUT_FROM), easing into where they stay (T.breakHold)
+  const fb = Math.max(T.breakBurstEnd, T.breakBlastEnd);
+  const fh = Math.max(T.breakHold ?? 1, fb);
+  if (J.fracture > fb) {
+    const from = blastedAt();
+    const to = Math.max(CUT_FROM(), from + 0.01);
+    const x = Math.min(Math.max((J.progress - from) / (to - from), 0), 1);
+    J.fracture = fb + (fh - fb) * sineOut(x);
+  }
+  // (the beam goes in the blast itself: T.beamBlastFade of the forging)
+  J.beamFade = 1 - Math.cos((Math.min(Math.max((t - start) / Math.max(T.beamBlastFade, 0.001), 0), 1) * Math.PI) / 2);
   J.orbitSpeed = t <= start ? 0 : 0.35 + 0.65 * sineOut((t - start) / (1 - start));
   // the impact: in at once, dissipating by T.breakBurstEnd of the breakup
   // (the rig jolts the camera, flares the bloom and smears the frame's edges with it)
@@ -258,13 +281,16 @@ export function buildMasterTimeline(J, dom) {
     [P.core + 0.002, 1, "power3.in"],
     [e(0.28), 0, "power2.out"],
   ]);
-  track(tl, J, "edgeFx", [
-    [P.core - 0.002, 0],
-    [P.core + 0.004, 1, "power2.out"],
-    [e(0.5), 0.75],
-    [e(0.85), 0.55],
-    [P.forged, 0],
-  ]);
+  // (settled soon after the slab has broken: T.edgeFxOffAt)
+  {
+    const off = Math.min(Math.max(T.edgeFxOffAt, 0.02), 1);
+    track(tl, J, "edgeFx", [
+      [P.core - 0.002, 0],
+      [P.core + 0.004, 1, "power2.out"],
+      [e(off * 0.5), 0.75],
+      [e(off), 0, "sine.inOut"],
+    ]);
+  }
   track(tl, J, "pulse", [
     [P.core - 0.004, 0],
     [P.core + 0.004, 1, "power3.in"],

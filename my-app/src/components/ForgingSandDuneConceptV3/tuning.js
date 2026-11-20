@@ -6,6 +6,8 @@ export const T = {
   // Audio (generated live; switched on from the header's Sound toggle)
   masterVolume: 0.8,
   musicVolume: 0.8, // the abyss: drone, pad, wind, bells
+  natureVolume: 0.9, // the light nature score the music turns into as the tree grows
+  natureTempo: 66, // ...its pace (BPM of its quarter notes)
   musicTempo: 84, // BPM of the slow pulse
   pulseDepth: 0.35, // how much the pad breathes on each beat
   arpVolume: 0.6, // the quiet arpeggio
@@ -54,8 +56,8 @@ export const T = {
   coreLight: 1.0, // the sphere's and the cracks' light on the stone and sand
 
   // Scattered rocks (procedural basalt)
-  stoneColor: "#3a332e",
-  stoneRoughness: 0.6,
+  stoneColor: "#45403a",
+  stoneRoughness: 0.94, // (matte: high)
   crackScale: 0.1,
   crackDepth: 0.30,
 
@@ -81,8 +83,40 @@ export const T = {
   revealChroma: 1.4, // ...and split into its colours
 
   // The scroll's pace (wheel): one fixed feel, whoever is scrolling
-  scrollFixedPace: true, // one steady scroll speed the whole way (the wheel / trackpad only says which way)
-  scrollPace: 70, // ...that speed (screen heights per second × 100: vh/s)
+  // ----- feedback round 2 (its own Leva panel: "Feedback")
+  parallaxMode: "shift", // the cursor's parallax: "shift" slides the camera (the classic parallax) · "swing" swings it round what it looks at
+  parallaxShiftX: 6.6, // ...how far it slides sideways (m)
+  parallaxShiftY: 1.55, // ...and up and down (m)
+  parallaxLook: 0, // ...how much the aim slides with it (0 = it keeps looking at the same point, 1 = a flat pan)
+  beamBlastFade: 0.006, // the hero beam is gone this fast as the slab blasts apart (share of the forging; the flash covers it)
+  heroBeamBehind: 20, // the hero beam starts this far behind the camera (m): nothing of it in view until the scroll starts
+  sandInteract: false, // the sand's trail under the cursor (the water's ripples stay)
+  beamUpFace: true, // the beam goes on up the slab's face from its foot to the core (no crack growing)
+  beamFaceGap: 0.18, // ...how far off the face it runs (m)
+  spineCrack: false, // the Spine crack lighting up from the foot to the core
+  breakShatterSpin: 0, // turns a big rock spins up through as it shatters into sand (faster and faster)
+  edgeFxOffAt: 0.1, // the impact's motion blur at the frame's edges has settled by this share of the forging (the break is at 0.1)
+  fillDepth: 12, // ...and how deep into the openings it fills (m; the slab is 12 m thick: right through)
+  fillDensity: 0.25, // ...how quickly the light in the openings thickens with depth (per m: the view through the whole depth is always full; lower = the space inside glows more evenly)
+  fillWallGlow: 1.2, // ...and how brightly the openings' walls glow with it
+  fillFront: -0.1, // the light in the cube's openings: on the front face, this far in front of it (m)
+  cutStyle: "bunq", // the logo → valley change: "bunq" (small glass hexagons growing up from the bottom) · "glass" (the earlier one)
+  outroStyle: "bunq", // the scene → white site change: the same choice
+  // (bunqlabs.com's own transition settings)
+  transCellPx: 11, // the discs' spacing (px)
+  transSpread: 3.2, // how long the band of growing discs is (higher = a softer, taller front)
+  transJitter: 0.05, // how ragged the front is
+  transOvershoot: 0.38, // how far past touching the discs grow (so they run together)
+  transRefract: 4.0, // how strongly each glass disc bends the next shot (in discs)
+  transWobble: 0.1, // the fluid wobble of the picture round the discs' rims
+  transBulge: 0.115, // how much the front rises in the middle (a dome)
+  paceEven: 0.6, // how fully the scroll's pace is evened out over the whole way (pace.js: 0 = the same scroll speed everywhere, 1 = the picture changes at one rate everywhere)
+  paceApproach: 1, // a hand trim: the pace × this from the rock breaking until the cut lands (the approach and the cut)
+  paceValley: 1, // ...and × this from the cut until the beam runs on into the core (the valley)
+  valleyBeamBehind: 30, // past the cut the beam starts this far behind the camera (m)...
+  valleyBeamCatchUp: 0.035, // ...and comes up past it to its lead over this much scroll (p)
+  scrollFixedPace: false, // the page's own set scroll pace (the wheel / trackpad only says which way; pace.js evens it out) — off: the site's Lenis as it is (from the next load)
+  scrollPace: 130, // ...that speed in the hero; elsewhere evened out to its picture (pace.js) (screen heights per second × 100: vh/s)
   scrollHold: 0.14, // ...seconds it keeps going after the last wheel input (wheel notches come this far apart)
   scrollRampIn: 0.16, // ...seconds it takes to get up to speed
   scrollRampOut: 0.3, // ...and to ease to a stop
@@ -97,23 +131,23 @@ export const T = {
   beamStart: 0.6, // how far along its path the beam is already drawn at the hero (0..1)
   // Timeline points (scroll position p, 0 = top of the page, 1 = the end;
   // the dev HUD and the panel's scrubber show p): when things start and end
-  tlCutStart: 0.3945, // the glass-hexagon cut from the logo to the valley: starts
-  tlCutEnd: 0.5917, // ...ends (the valley camera takes over)
-  tlOrbShow: 0.66, // the core (the orb with our cube in it) is there at the lake's heart, as the camera turns to it
-  tlBeamToTreeStart: 0.752, // the beam runs on in to the core, the camera following it; the orb gathers itself
-  tlBeamToTreeEnd: 0.79, // ...the beam touches the core: the orb bursts (over orbBurstSpan)
+  tlCutStart: 0.4146, // the glass-hexagon cut from the logo to the valley: starts
+  tlCutEnd: 0.5839, // ...ends (the valley camera takes over)
+  tlOrbShow: 0.6427, // the core (the orb with our cube in it) is there at the lake's heart, as the camera turns to it
+  tlBeamToTreeStart: 0.7394, // the beam runs on in to the core, the camera following it; the orb gathers itself
+  tlBeamToTreeEnd: 0.7793, // ...the beam touches the core: the orb bursts (over orbBurstSpan)
   syncFallReveal: false, // the reveal and the tree start the moment the orb's poured threads land (overrides tlRevealStart / tlTreeGrowStart and their ends)
   revealSpan: 0.075, // ...the reveal's length then (share of the scroll)
   treeGrowSpan: 0.12, // ...the tree's growth's length then
-  tlRevealStart: 0.795, // the oasis's reveal (threads of light running out, V2) sets off from under the core
+  tlRevealStart: 0.7846, // the oasis's reveal (threads of light running out, V2) sets off from under the core
   tlRevealEnd: 1.0, // ...has spread over all of it
-  tlTreeGrowStart: 0.8, // the Yggdrasil starts growing, from the bottom up, strand by strand
-  tlTreeGrowEnd: 0.9294, // ...fully grown, to the top of its crown
-  tlTreeLightEnd: 0.95, // the tree's light has climbed to the top of its crown
-  tlOrbitStart: 0.79, // the camera starts round the tree (at one steady pace, on to the end of the page)
-  tlOrbitEnd: 0.935, // ...has drawn back to its farthest (orbitSweep degrees round by then)
-  tlOutroStart: 0.935, // the glass-hexagon change from the scene to the white site: starts
-  tlOutroEnd: 0.995, // ...all white
+  tlTreeGrowStart: 0.7898, // the Yggdrasil starts growing, from the bottom up, strand by strand
+  tlTreeGrowEnd: 0.9258, // ...fully grown, to the top of its crown
+  tlTreeLightEnd: 0.9475, // the tree's light has climbed to the top of its crown
+  tlOrbitStart: 0.7793, // the camera starts round the tree (at one steady pace, on to the end of the page)
+  tlOrbitEnd: 0.9317, // ...has drawn back to its farthest (orbitSweep degrees round by then)
+  tlOutroStart: 0.9317, // the glass-hexagon change from the scene to the white site: starts
+  tlOutroEnd: 0.9947, // ...all white
   treeLeafGlow: 1.0, // the Yggdrasil's (cosmic) leaves: their brightness before the tree's light reaches them
   treeLeafLit: 2.0, // ...and the extra glow once it has climbed to them
   treeLeafColor: "#ffffff", // ...a tint over their own colours (white: as made)
@@ -203,7 +237,9 @@ export const T = {
   cubeMeltTravel: 0.26, // share of the growth each thread takes to get from the cube to its strand
   cubeMeltGlow: 3.76, // ...their brightness
   // the camera: following the beam in to the core, then round the tree as it grows
-  camCoreDist: 70, // how far from the core it comes to as the beam touches it (m)
+  lushAmount: 1, // as the oasis is revealed: how far the dunes turn dark green-grey and the dusk sky light blue (0 = stays dusk)
+  lushSpan: 0.5, // ...over this share of the reveal
+  camCoreDist: 56, // how far from the core it comes to as the beam touches it (m)
   camCoreLift: 4, // ...its height above the core's centre (m)
   orbitSweep: 270, // degrees it goes round between tlOrbitStart and tlOrbitEnd (and on at that pace; - turns the other way)
   orbitRadius: 138, // its farthest from the trunk, once the tree is complete (m; the lake is 150)
@@ -269,13 +305,13 @@ export const T = {
   // These set the shares below every frame (timeline.js syncSequence).
   seqBreak: 20, // the rock breaks (the impact)
   seqImpactEnd: 41.6, // the impact's energy has dissipated
-  seqBlastEnd: 38, // the blast has thrown the pieces out
+  seqBlastEnd: 38, // the blast has thrown the pieces out (with seqImpactEnd: the auto-scroll hands back to the visitor here)
   seqGatherStart: 48.8, // the pieces start to be drawn in towards the streams...
   seqGatherEnd: 155, // ...and are riding them
   seqSpinStart: 20, // the streams start to pick up speed...
   seqSpinEnd: 133.4, // ...and are up to full speed
   seqGrindStart: 20, // the pieces start to grind away into sand and gravel...
-  seqGrindEnd: 108.2, // ...and are all sand: the auto-scroll hands back to the visitor here
+  seqGrindEnd: 108.2, // ...and are all sand
   seqSandFlow: 108, // how long (vh) a grain takes to find its place in its stream
   seqBreakEnd: 200, // the breakup is over
   seqHold: 60, // from here on the broken rock stays as it is — it keeps revolving, but scrolling on no longer changes it (breakHoldOn)
@@ -308,8 +344,8 @@ export const T = {
   breakShrink: 0.43, // the pieces' size once broken off
   breakHoldOn: true, // the broken rock, sand and gravel stay as they are after the break (seqHold): no drawing in or grinding away on the scroll
   breakSolid: true, // the pieces stay solid stone (no hollow wearing away); the big ones shatter into gravel and sand as the blast throws them
-  breakBigVolume: 3.0, // ...how big a piece is to shatter (m³, the model's own; up to ~10)
-  breakShatter: 1.0, // ...how soon they are gone (× the blast's length)
+  breakBigVolume: 0, // ...how big a piece is to shatter (m³, the model's own; up to ~10)
+  breakShatter: 1.68, // ...how soon they are gone (× the blast's length)
   breakSpin: 0.26, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)

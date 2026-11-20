@@ -301,6 +301,65 @@ const OASIS_SCHEMA = {
 
 // The breakup, in a panel of its own: every stage's start and end, the
 // impact, the streams of sand, the sand and gravel.
+// The feedback round's own controls (tuning.js "feedback round 2")
+const FEEDBACK_SCHEMA = {
+  "Cursor parallax": {
+    parallaxMode: "select:shift,swing",
+    parallaxShiftX: [0, 10, 0.05],
+    parallaxShiftY: [0, 6, 0.05],
+    parallaxLook: [0, 1, 0.01],
+    magnetDamping: [0.5, 12, 0.1],
+    logoParallax: [0, 3, 0.01],
+  },
+  "Hero beam": {
+    heroBeamBehind: [0, 120, 1],
+    beamBlastFade: [0.001, 0.1, 0.001],
+    beamFootAt: [0.05, 1, 0.01],
+    beamUpFace: "bool",
+    beamFaceGap: [0, 1, 0.01],
+    spineCrack: "bool",
+  },
+  "Sand": {
+    sandInteract: "bool",
+  },
+  "Break": {
+    breakBigVolume: [0, 11, 0.05],
+    breakShatter: [0.1, 6, 0.01],
+    breakShatterSpin: [0, 12, 0.1],
+    edgeFxOffAt: [0.1, 1, 0.005],
+    fillFront: [-0.5, 1, 0.005],
+    fillDensity: [0.01, 2, 0.01],
+    fillWallGlow: [0, 6, 0.05],
+    fillDepth: [0, 14, 0.05],
+  },
+  "Transitions (bunq hexagons)": {
+    cutStyle: "select:bunq,glass",
+    outroStyle: "select:bunq,glass",
+    transCellPx: [3, 60, 0.5],
+    transSpread: [0.2, 8, 0.05],
+    transJitter: [0, 0.5, 0.005],
+    transOvershoot: [0, 1, 0.01],
+    transRefract: [0, 20, 0.1],
+    transWobble: [0, 0.5, 0.005],
+    transBulge: [0, 0.6, 0.005],
+    tlCutStart: [0, 1, 0.0005],
+    tlCutEnd: [0, 1, 0.0005],
+    tlOutroStart: [0, 1, 0.0005],
+    tlOutroEnd: [0, 1, 0.0005],
+  },
+  "Scroll pace": {
+    scrollPace: [10, 300, 1],
+    paceEven: [0, 1, 0.01],
+    paceApproach: [0.3, 4, 0.01],
+    paceValley: [0.2, 3, 0.01],
+  },
+  "Valley beam": {
+    valleyBeamBehind: [0, 150, 1],
+    valleyBeamCatchUp: [0.002, 0.15, 0.001],
+    oasisBeamLead: [0.2, 3, 0.01],
+  },
+};
+
 const BREAK_SCHEMA = {
   "Sequence on the scroll (vh after the beam reaches the core; 200 = forged)": {
     seqBreak: [0, 120, 0.5],
@@ -367,7 +426,7 @@ const BREAK_SCHEMA = {
 // values the master timeline is built from (the beam's run, the camera's
 // keyframes): changing one rebuilds it (ForgingConcept)
 export const RETIME_EVENT = "forging-sand-dune-concept-v3:retime";
-const RETIME = new Set(["beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+const RETIME = new Set(["edgeFxOffAt", "beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
 
 // half as wide again as Leva's default (280 px), the extra all for the labels
 const PANEL_WIDTH = 420;
@@ -419,6 +478,19 @@ export default function TuningPanel({ onScrub }) {
   const worldStore = useCreateStore();
   const breakStore = useCreateStore();
   const oasisStore = useCreateStore();
+  const feedbackStore = useCreateStore();
+  useControls(
+    () => ({
+      ...buildControls(FEEDBACK_SCHEMA),
+      "Copy feedback settings": button(() => {
+        const keys = Object.values(FEEDBACK_SCHEMA).flatMap((f) => Object.keys(f));
+        const json = JSON.stringify(Object.fromEntries(keys.map((k) => [k, T[k]])), null, 2);
+        navigator.clipboard?.writeText(json);
+        console.info("[forging-sand-dune-concept-v3] feedback:\n" + json);
+      }),
+    }),
+    { store: feedbackStore }
+  );
 
   useControls(
     () => ({
@@ -495,6 +567,7 @@ export default function TuningPanel({ onScrub }) {
       }}
     >
       {[
+        [feedbackStore, "Feedback · round 2"],
         [objectStore, "Forge · energy (H)"],
         [breakStore, "Breakup · sand streams"],
         [oasisStore, "Oasis · beam · water · tree"],

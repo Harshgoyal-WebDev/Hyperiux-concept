@@ -94,7 +94,10 @@ vec3 threadAt(float c, float t, bool needLit, out float lit) {
     float front = exp(-pow((reach - s) / 7.0, 2.0)) * (1.0 - 0.6 * x);
     // (the far end of its run thins away)
     float tail = smoothstep(0.0, 0.35, (s - (reach - uWindow)) / uWindow);
-    lit = vis * tail * (0.7 + 2.4 * front) * (1.0 - 0.55 * smoothstep(0.85, 1.0, x));
+    lit = vis * tail * (0.7 + 2.4 * front * smoothstep(20.0, 80.0, reach)) * (1.0 - 0.55 * smoothstep(0.85, 1.0, x));
+    // (coming in as they reach out from under the orb — its falling sparks
+    // carry the first spread — not a bright disc with a hard edge at first)
+    lit *= smoothstep(5.0, 60.0, reach);
     vec2 dir;
     p = pathAt(row, max(s, 0.0), m.z, dir);
     p.xz += vec2(-dir.y, dir.x) * (aN.x + sin(s * 0.35 + seed * 30.0 + t * 0.9) * 0.35);

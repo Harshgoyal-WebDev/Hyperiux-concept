@@ -44,11 +44,31 @@ const qPitch = new THREE.Quaternion();
 // Moves the shot (pos, tgt) by the cursor; returns the roll (radians) to
 // apply about the camera's view once it is aimed. floorY: it never goes
 // below this.
+const up = new THREE.Vector3();
 export function applyMagnet(pos, tgt, orbit = 1, floorY = -Infinity) {
   const amt = T.magnet;
   if (amt <= 0.001) return 0;
   const cx = edgeCurve(magnet.x, T.magnetEdge);
   const cy = edgeCurve(magnet.y, T.magnetEdge);
+  // The classic parallax (T.parallaxMode "shift"): the camera slides
+  // sideways and up and down with the cursor, its aim sliding a little
+  // with it, so near things move against far ones — no swinging round.
+  // (Through the logo's opening, only ±1.4 m clear, it slides by `orbit`.)
+  if (T.parallaxMode !== "swing") {
+    fwd.subVectors(tgt, pos).normalize();
+    right.crossVectors(fwd, UP);
+    if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
+    right.normalize();
+    up.crossVectors(right, fwd).normalize();
+    const k = amt * Math.min(Math.max(orbit, 0.15), 1);
+    const dx = cx * T.parallaxShiftX * k;
+    const dy = cy * T.parallaxShiftY * k;
+    const baseY = pos.y;
+    pos.addScaledVector(right, dx).addScaledVector(up, dy);
+    tgt.addScaledVector(right, dx * T.parallaxLook).addScaledVector(up, dy * T.parallaxLook);
+    pos.y = Math.max(pos.y, baseY - T.magnetDip, floorY);
+    return 0;
+  }
   fwd.subVectors(tgt, pos);
   const reach = Math.min(fwd.length(), T.magnetReach) * Math.min(Math.max(orbit, 0), 1);
   fwd.normalize();

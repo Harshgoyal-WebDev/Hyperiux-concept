@@ -137,7 +137,7 @@ export default function Gravel({ J, tier, shared, forge }) {
       uEmbers: { value: 0.3 },
       uEmberGlow: { value: 0.6 },
     };
-    const material = new THREE.MeshStandardMaterial({ color: PALETTE.basalt, roughness: 0.88, metalness: 0, flatShading: true });
+    const material = new THREE.MeshStandardMaterial({ color: PALETTE.basalt, roughness: 0.95, metalness: 0, envMapIntensity: 0.35, flatShading: true });
     patch(material, uniforms, forge.chunks.length);
     return { geometry, material, uniforms, stone };
   }, [forge, tier, shared]);

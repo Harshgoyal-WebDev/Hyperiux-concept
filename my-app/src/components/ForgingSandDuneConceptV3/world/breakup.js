@@ -196,6 +196,7 @@ function placeOf(forge, c) {
 // its turn and size into out.quaternion / out.scale (the mesh's asset space
 // is the caller's); returns how far it has ground away into sand (0..1).
 // Its stream, place on it and size go to forge.pieceStream for the sand.
+const spinUp = new THREE.Quaternion();
 // a piece big enough to shatter (T.breakSolid), and how long it takes
 export const isBigPiece = (c) => (c.vol ?? 1) >= T.breakBigVolume;
 const shatterSpan = () => Math.max(T.breakBlastEnd * T.breakShatter, 0.005);
@@ -230,6 +231,12 @@ export function pieceFlight(forge, c, u, out) {
   // (the blast throws it there from the slab)
   out.position.lerpVectors(rest, onStream, b);
   out.quaternion.setFromAxisAngle(c.axis, c.spin * (5 * b + U.uBreakAngle.value * 2 * T.breakTumble) * Math.max(T.breakTumble, 0.2));
+  // a big rock spins up — faster and faster — as it shatters into sand
+  if (T.breakSolid && isBigPiece(c)) {
+    const x = Math.min(u / shatterSpan(), 1);
+    spinUp.setFromAxisAngle(c.axis, Math.sign(c.spin || 1) * T.breakShatterSpin * Math.PI * 2 * x * x * x);
+    out.quaternion.premultiply(spinUp);
+  }
   // (never into the sand: a loop dipping below the dunes rolls along over them)
   keepAboveGround(out.position, c.dim * forge.scale * size * 0.45);
   // solid stone (T.breakSolid): the small pieces never wear away; the big

@@ -71,6 +71,8 @@ function patchStone(material, U, local, pieces) {
         varying vec3 vRestN;
         varying float vErode;
         uniform vec3 uSandTone;
+        uniform vec3 uGapGlow;
+        uniform vec2 uGapHex[6];
         ${NOISE}
         ${SAND_NOISE_GLSL}`
       )
@@ -102,6 +104,21 @@ function patchStone(material, U, local, pieces) {
         totalEmissiveRadiance += uCrackColor * sdEdge * 0.35 * uCrackLevel;
         float fgPocket = (1.0 - smoothstep(0.3, 1.0, length(vRest - uCoreAsset))) * (1.0 - smoothstep(0.95, 1.15, vRest.z));
         totalEmissiveRadiance += uCrackColor * fgPocket * fgPocket * uHeat;
+        // the cube outline's openings lit right through: their walls (the
+        // strokes' inner faces, inside the outline's hexagon, facing
+        // sideways — not the front face) glow with the light that fills them
+        if (uGapGlow.r + uGapGlow.g + uGapGlow.b > 0.001) {
+          float gpIn = 1.0;
+          for (int i = 0; i < 6; i++) {
+            vec2 a = uGapHex[i];
+            vec2 e = uGapHex[(i + 1) % 6] - a;
+            vec2 q = vRest.xy - a;
+            gpIn *= step(0.0, e.x * q.y - e.y * q.x);
+          }
+          float gpSide = 1.0 - smoothstep(0.35, 0.7, abs(normalize(vRestN + vec3(0.0, 0.0, 1e-5)).z));
+          float gpBehind = step(vRest.z, ${FRONT_Z.toFixed(2)} + 0.02);
+          totalEmissiveRadiance += uGapGlow * gpIn * gpSide * gpBehind;
+        }
         // One energy front, growing out from the core once the beam reaches
         // it (the sand-dune monolith's front: metres at monument scale, with
         // a noisy edge and a brighter band where it is arriving).
@@ -147,6 +164,77 @@ function patchStone(material, U, local, pieces) {
   };
   material.customProgramCacheKey = () => "forge-stone";
   material.needsUpdate = true;
+}
+
+// The cube outline's hexagon in asset space, a touch inside its outer edge,
+// counter-clockwise (for the openings' walls: patchStone uGapHex).
+const ccw = (pts) => {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) a += pts[i].x * pts[(i + 1) % pts.length].y - pts[(i + 1) % pts.length].x * pts[i].y;
+  return a < 0 ? [...pts].reverse() : pts;
+};
+function gapHexagon() {
+  const c = cubeHexagon();
+  const mid = c.reduce((m, v) => m.add(v), new THREE.Vector2()).multiplyScalar(1 / c.length);
+  return ccw(c.map((v) => v.clone().sub(mid).multiplyScalar(0.97).add(mid)));
+}
+
+// The light in the openings as a volume: drawn by the prism's far side
+// (BackSide), each pixel's light from how far the view runs inside the prism
+// to it — the ray from the camera entering the prism (its six sides and its
+// two ends, in its own space scaled to metres) to this point on its far
+// side — so it is as full as before looking straight through (the whole
+// depth), and from inside it the way ahead glows. T.fillDensity: how quickly
+// it thickens with depth.
+function patchFill(material, hex) {
+  const F = {
+    uFillCam: { value: new THREE.Vector3() },
+    uFillScale: { value: new THREE.Vector3(1, 1, 1) },
+    uFillDepth: { value: 1 },
+    uFillDensity: { value: 0.25 },
+    uFillHex: { value: ccw(hex) },
+  };
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, F);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nuniform vec3 uFillScale;\nvarying vec3 vFillP;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvFillP = transformed * uFillScale;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+        uniform vec3 uFillCam;
+        uniform float uFillDepth;
+        uniform float uFillDensity;
+        uniform vec2 uFillHex[6];
+        varying vec3 vFillP;`
+      )
+      .replace(
+        "#include <color_fragment>",
+        /* glsl */ `#include <color_fragment>
+        {
+          vec3 c = uFillCam;
+          vec3 d = vFillP - c; // (t = 1 at this point: where the ray leaves)
+          float enter = -1e5;
+          // the ends: z from -depth (back) to 0 (front)
+          if (d.z < -1e-5) enter = max(enter, (0.0 - c.z) / d.z);
+          else if (d.z > 1e-5) enter = max(enter, (-uFillDepth - c.z) / d.z);
+          // the six sides (inside: to the left of each edge)
+          for (int i = 0; i < 6; i++) {
+            vec2 a = uFillHex[i];
+            vec2 e = uFillHex[(i + 1) % 6] - a;
+            float f0 = e.x * (c.y - a.y) - e.y * (c.x - a.x);
+            float df = e.x * d.y - e.y * d.x;
+            if (df > 1e-6) enter = max(enter, -f0 / df);
+          }
+          float through = (1.0 - clamp(enter, 0.0, 1.0)) * length(d);
+          float full = 1.0 - exp(-uFillDepth * uFillDensity);
+          diffuseColor.a *= clamp((1.0 - exp(-through * uFillDensity)) / max(full, 1e-3), 0.0, 1.0);
+        }`
+      );
+  };
+  material.customProgramCacheKey = () => "forge-fill-volume";
+  return F;
 }
 
 // The crack strips: dark grooves while dormant; lit progressively by a front
@@ -240,6 +328,11 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       // per piece: world position + erosion (forge.swirlSource, by reference)
       uPiece: { value: forge.swirlSource },
       uSandTone: { value: new THREE.Color("#a98a66") },
+      // the openings' walls lit (patchStone): the light's colour × level, and
+      // the outline's hexagon (asset space, counter-clockwise, a touch inside
+      // its outer edge so the outline's outer walls stay stone)
+      uGapGlow: { value: new THREE.Color(0, 0, 0) },
+      uGapHex: { value: gapHexagon() },
     };
     // per material: logo core vs excess rock (see patchStone)
     const coreLevel = { value: 0 };
@@ -345,18 +438,24 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       const p = forge.toWorld(new THREE.Vector3(q.x, q.y, 0));
       return new THREE.Vector2(p.x, p.y);
     });
-    const fill = new THREE.Mesh(
-      new THREE.ShapeGeometry(new THREE.Shape(hex)),
-      // (covering what lies behind the openings — the bright sky — rather
-      // than adding to it, which washed the orange out to pale yellow)
-      new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })
-    );
-    fill.position.z = forge.world.core.z;
+    // (a prism, not a sheet: the light fills the openings right through, so
+    // turning the mark shows glowing walls, not the stone inside — 1 m deep,
+    // scaled to T.fillDepth, its front at the face)
+    const prism = new THREE.ExtrudeGeometry(new THREE.Shape(hex), { depth: 1, bevelEnabled: false, curveSegments: 1 });
+    prism.translate(0, 0, -1);
+    // (a volume of light, not lit faces: drawn by its far side, each pixel
+    // as bright as the depth of the openings the view passes through to it —
+    // so from in front the openings are full of it, and flying through them
+    // the space ahead glows, not just the two ends: patchFill)
+    const fillMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.BackSide, toneMapped: false });
+    const fillU = patchFill(fillMat, hex);
+    const fill = new THREE.Mesh(prism, fillMat);
+    fill.position.z = forge.world.frontZ + T.fillFront;
     fill.renderOrder = 4;
     fill.visible = false;
     const fillColor = new THREE.Color(T.innerGlowColor);
 
-    return { U, coreLevel, excessLevel, assign, fill, fillColor, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point, shell };
+    return { U, coreLevel, excessLevel, assign, fill, fillU, fillColor, stoneMaterials: [...stoneMaterials.values()], stages, crackMaterials, glowMap, halo, point, shell };
   }, [forge, shared]);
 
   useEffect(() => {
@@ -486,7 +585,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     lastFracture.current = -1;
   }, [forge]);
 
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     if (!built) return;
     const { U, stages, halo, point } = built;
     U.uCrackSpread.value = J.crackSpread * T.crackSpread;
@@ -500,7 +599,12 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     built.fill.visible = true;
     built.fill.material.color.set(T.innerGlowColor).multiplyScalar(0.6 + 1.0 * fillK);
     built.fill.material.opacity = Math.min(fillK, 1) * 0.96;
+    // (the openings' walls lit with it)
+    U.uGapGlow.value.set(T.innerGlowColor).multiplyScalar(fillK * T.fillWallGlow);
     const tilt = J.logoTilt * T.logoParallax;
+    const fillZ = forge.world.frontZ + T.fillFront;
+    built.fill.scale.z = Math.max(T.fillDepth, 0.01);
+    if (!logo?.on) built.fill.position.z = fillZ;
     if (logo && (tilt > 1e-4 || logo.on)) {
       logo.on = tilt > 1e-4;
       const L = logo;
@@ -518,8 +622,18 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       L.node.position.copy(L.pos).sub(L.pivotL).applyQuaternion(L.qL).add(L.pivotL);
       // the light sheet in its openings turns with it
       built.fill.quaternion.copy(L.qW);
-      L.v.set(0, 0, core.z).sub(core).applyQuaternion(L.qW).add(core);
+      L.v.set(0, 0, fillZ).sub(core).applyQuaternion(L.qW).add(core);
       built.fill.position.copy(L.v);
+    }
+    // the volume's view: the camera in its own (scaled) space
+    {
+      const F = built.fillU;
+      built.fill.updateMatrixWorld();
+      F.uFillCam.value.copy(camera.position);
+      built.fill.worldToLocal(F.uFillCam.value).multiply(built.fill.scale);
+      F.uFillScale.value.copy(built.fill.scale);
+      F.uFillDepth.value = built.fill.scale.z;
+      F.uFillDensity.value = T.fillDensity;
     }
     U.uFissureGlow.value = T.fissureGlow;
     U.uSurge.value = Math.min(J.sphere / 2, 1);
@@ -536,9 +650,11 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
         // the energy enters at the slab's foot and climbs the Spine to the
         // core while the beam holds there (J.beam 0.5 → 1); it is lit first
         const k = THREE.MathUtils.clamp((J.beam - 0.5) / 0.5, 0, 1);
+        // (off by default: the beam itself goes up the face — T.spineCrack)
+        const on = T.spineCrack ? 1 : 0;
         s.uSpread.value = k;
-        s.uHead.value = (k > 0 && k < 1 ? 1 : 0) * T.crackGlow;
-        s.uStageGlow.value = J.spineGlow * T.crackGlow;
+        s.uHead.value = (k > 0 && k < 1 ? 1 : 0) * T.crackGlow * on;
+        s.uStageGlow.value = J.spineGlow * T.crackGlow * on;
         continue;
       }
       s.uSpread.value = J.crackSpread * 1.25;

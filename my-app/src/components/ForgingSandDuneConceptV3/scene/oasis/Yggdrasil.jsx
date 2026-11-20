@@ -394,7 +394,9 @@ function leafMaterial(material, uniforms) {
 // A denser crown: the branch and crown-wisp filaments are drawn again,
 // turned about the trunk and a touch smaller or larger, so the limbs come
 // out of the braided trunk in more directions and the crown fills in.
-const CROWN_COPIES = { high: [[3.1, 0.97]], medium: [], low: [] };
+// (none now: half a million more triangles of see-through strands, for a
+// crown the leaves fill in — the tree's growing was the oasis's lag)
+const CROWN_COPIES = { high: [], medium: [], low: [] };
 
 function StrandTree({ J, tier, uniforms, onReady }) {
   const gltf = useGLTF(STRANDS_GLB, ASSETS.draco);
@@ -426,6 +428,8 @@ function StrandTree({ J, tier, uniforms, onReady }) {
       o.renderOrder = 4;
       o.frustumCulled = false;
       const leaves = /Leaves/i.test(o.name) || /Leaves/i.test(o.material.name);
+      // (the roots go down into the water: nothing of them to reflect)
+      if (/Roots/i.test(o.name)) o.layers.set(NO_MIRROR_LAYER);
       if (leaves) o.renderOrder = 3;
       if (!materials.has(o.material)) materials.set(o.material, leaves ? leafMaterial(o.material.clone(), uniforms) : strandMaterial(o.material.clone(), uniforms));
       o.material = materials.get(o.material);

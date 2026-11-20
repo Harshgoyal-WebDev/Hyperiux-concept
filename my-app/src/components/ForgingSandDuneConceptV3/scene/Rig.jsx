@@ -8,7 +8,7 @@ import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postp
 import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
 import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
 import { CUT_TO, oasisCamera, runOnPast } from "../world/oasisCamera";
-import { REVEAL_BAND, REVEAL_ORIGIN, WATER_Y } from "../world/oasis";
+import { REVEAL_BAND, REVEAL_ORIGIN, TREE, WATER_Y } from "../world/oasis";
 import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
 import { T } from "../tuning";
 import { attachPointer } from "../pointer";
@@ -236,12 +236,27 @@ export function Lights({ J, tier, shared }) {
     const night = shared.uNight.value;
     const s = sun.current;
     if (s) {
-      camera.getWorldDirection(fwd);
-      focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
-      // (past the mark the box moves on in bigger steps: the oasis's plants
-      // are a lot to redraw)
-      const grid = J.progress > P.through ? 48 : SHADOW_GRID;
-      focus.set(Math.round(focus.x / grid) * grid, 0, Math.round(focus.z / grid) * grid);
+      // (from the run in to the tree on, the box holds still over the whole
+      // lake — the camera going round the tree never moves it, so the
+      // oasis's plants aren't redrawn into it as it goes)
+      const atTree = J.progress >= T.tlBeamToTreeStart;
+      if (atTree) focus.set(TREE.x, 0, TREE.z);
+      else {
+        camera.getWorldDirection(fwd);
+        focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
+        // (past the mark the box moves on in bigger steps: the oasis's plants
+        // are a lot to redraw)
+        const grid = J.progress > P.through ? 48 : SHADOW_GRID;
+        focus.set(Math.round(focus.x / grid) * grid, 0, Math.round(focus.z / grid) * grid);
+      }
+      const reach = atTree ? 235 : 130;
+      const sc = s.shadow.camera;
+      if (sc.right !== reach) {
+        sc.left = sc.bottom = -reach;
+        sc.right = sc.top = reach;
+        sc.updateProjectionMatrix();
+        gl.shadowMap.needsUpdate = true;
+      }
       const key = `${focus.x},${focus.z}`;
       // (and once the forge has arrived in the scene)
       // (and whenever the event's clock moves: the pieces' shadows go with
@@ -546,6 +561,10 @@ export function Post({ J, tier }) {
     }
   });
   useFrame(() => {
+    // (the frame's clean-up only where a stray pixel can come out NaN — the
+    // breakup's flash, the shell sweeping past the camera — a full-screen
+    // pass the rest of the way saved)
+    sanitize.enabled = J.progress > P.core - 0.01 && J.progress < P.held;
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
     fx.get("uChroma").value = T.edgeChroma;
@@ -572,9 +591,10 @@ export function Post({ J, tier }) {
     <OutroPass J={J} outro={outro} />
     <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
       <primitive object={sanitize} dispose={null} />
-      <primitive object={edgeFx} dispose={null} />
       <primitive object={cut.pass} dispose={null} />
-      <Bloom ref={bloom} mipmapBlur intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
+      {/* (the edge blur and the bloom in one full-screen pass) */}
+      <primitive object={edgeFx} dispose={null} />
+      <Bloom ref={bloom} mipmapBlur levels={6} intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
       <primitive object={outro.pass} dispose={null} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette ref={vignette} offset={0.32} darkness={0.6} />

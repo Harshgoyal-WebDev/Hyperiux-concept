@@ -81,6 +81,10 @@ const BLOSSOM_REST_OPEN = 0.6; // ...and a blossom on a tree or bush
 const BLOOM_GROW = 0.4; // how much bigger a head gets in full bloom
 const BLOOM_GLOW = 1.6; // how much it lights up
 const FLOWER_FAR = 210; // m: the wild flowers aren't drawn beyond
+const GRASS_FAR = 170; // ...the grass and reeds (as their material's own cut-off)
+const BUSH_FAR = 300; // ...the bushes and shrubs
+const PEBBLE_FAR = 130; // ...the pebbles (too small to see further off)
+const CELL = 110; // m: the cells the small plants are drawn in (each skipped whole when past its distance)
 const FLOWER_COLORS = ["#f3eee2", "#f4c53f", "#ee7aa8", "#a57ae6", "#f08945", "#e04f4a", "#f6a6c8"];
 const TREE_BLOSSOM_COLORS = ["#f3a0c4", "#b88af0", "#f5efe6", "#f09a52", "#e8637d"];
 const BUSH_BLOSSOM_COLORS = ["#e7518a", "#f4c53f", "#f3eee2", "#ad7de8", "#ef7f45"];
@@ -744,7 +748,8 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     const rocks = [rockGeometry(1), rockGeometry(2)];
     // boulders and pebbles (rounded, three and two shapes)
     const boulders = [boulderGeometry(41, { flat: 0.72 }), boulderGeometry(43, { lumpy: 0.3, flat: 0.62 }), boulderGeometry(47, { lumpy: 0.18, flat: 0.85 })];
-    const pebbles = [boulderGeometry(53, { detail: 1, lumpy: 0.12, flat: 0.55 }), boulderGeometry(59, { detail: 1, lumpy: 0.16, flat: 0.7 })];
+    // (pebbles: a few pixels across — 20 facets each is plenty)
+    const pebbles = [boulderGeometry(53, { detail: 0, lumpy: 0.12, flat: 0.55, chips: 1 }), boulderGeometry(59, { detail: 0, lumpy: 0.16, flat: 0.7, chips: 1 })];
     // flowers: two clumps of wild flowers, blossoms over each tree's crown
     // and over the bushes
     const flowerClumps = [flowerClumpGeometry({ flowers: 4, height: 0.5, petals: 6, len: 0.14, width: 0.085, seed: 61 }), flowerClumpGeometry({ flowers: 3, height: 0.7, petals: 5, len: 0.17, width: 0.1, seed: 67 })];
@@ -780,11 +785,15 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     // one instanced mesh per (geometry, chunk)
     // (gate: drawn only once the oasis has come up at its first item — the
     // valley's rocks are drawn from the first)
-    const add = (geometry, material, items, place, { shadow = false, tint, gate = true, mirror = shadow } = {}) => {
+    // (far: the small plants, drawn only within this many metres — in cells
+    // of CELL m, so a whole cell past it is skipped, not run through the
+    // shader for nothing)
+    const add = (geometry, material, items, place, { shadow = false, tint, gate = true, mirror = shadow, far = 0 } = {}) => {
       const chunks = new Map();
       for (const it of items) {
-        if (!chunks.has(it.chunk)) chunks.set(it.chunk, []);
-        chunks.get(it.chunk).push(it);
+        const key = far > 0 ? `${it.chunk}|${Math.floor(it.x / CELL)},${Math.floor(it.z / CELL)}` : it.chunk;
+        if (!chunks.has(key)) chunks.set(key, []);
+        chunks.get(key).push(it);
       }
       for (const list of chunks.values()) {
         const mesh = new THREE.InstancedMesh(geometry, material, list.length);
@@ -796,6 +805,7 @@ export default function Vegetation({ J, tier, shared, terrain }) {
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
         mesh.computeBoundingSphere();
+        if (far > 0) mesh.userData.far = far;
         mesh.castShadow = shadow && tier.shadowMap > 0;
         // (the low plants stay out of the water's mirror)
         // (in the lake's mirror only the tall things: trees, not rocks or low plants)
@@ -845,19 +855,19 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       turn(it, qq, 0.2);
       ss.set(0.8 + it.r3 * 0.9, 0.7 + it.r2 * 0.6, 0.8 + it.r3 * 0.9);
     };
-    add(bush, mats.bushLeaf, lists.bushes, bushPlace, { tint: (it, c) => c.setRGB(0.28 + it.r * 0.1, 0.5 + it.r2 * 0.15, 0.18) });
-    add(bushBlossom, mats.blossom, lists.bushes.filter((it) => it.r4 < BUSH_BLOSSOM_SHARE), bushPlace, { tint: (it, c) => c.copy(pick(BUSH_BLOSSOM_COLORS, it.r4 / BUSH_BLOSSOM_SHARE)) });
+    add(bush, mats.bushLeaf, lists.bushes, bushPlace, { far: BUSH_FAR, tint: (it, c) => c.setRGB(0.28 + it.r * 0.1, 0.5 + it.r2 * 0.15, 0.18) });
+    add(bushBlossom, mats.blossom, lists.bushes.filter((it) => it.r4 < BUSH_BLOSSOM_SHARE), bushPlace, { far: BUSH_FAR, tint: (it, c) => c.copy(pick(BUSH_BLOSSOM_COLORS, it.r4 / BUSH_BLOSSOM_SHARE)) });
     add(shrub, mats.bushLeaf, lists.shrubs, (it, p, qq, ss) => {
       p.set(it.x, it.y - 0.1, it.z);
       turn(it, qq, 0.2);
       ss.setScalar(0.6 + it.r3 * 0.7);
-    }, { tint: (it, c) => c.setRGB(0.42, 0.36, 0.2) }); // dry, olive-brown
+    }, { far: BUSH_FAR, tint: (it, c) => c.setRGB(0.42, 0.36, 0.2) }); // dry, olive-brown
     const tuftPlace = (it, p, qq, ss) => {
       p.set(it.x, it.y - 0.05, it.z);
       turn(it, qq, 0.3);
       ss.setScalar(0.55 + it.r3 * 0.7);
     };
-    add(tuft, mats.grass, lists.grass, tuftPlace, { tint: (it, c) => c.setRGB(0.8 + it.r2 * 0.35, 0.85 + it.r3 * 0.3, 0.6) });
+    add(tuft, mats.grass, lists.grass, tuftPlace, { far: GRASS_FAR, tint: (it, c) => c.setRGB(0.8 + it.r2 * 0.35, 0.85 + it.r3 * 0.3, 0.6) });
     // (the island's sward: lusher)
     const islandTuftPlace = (it, p, qq, ss) => {
       p.set(it.x, it.y - 0.05, it.z);
@@ -865,12 +875,12 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       const k = 0.6 + it.r3 * 0.7;
       ss.set(k * 1.15, k * ISLAND_GRASS_TALL, k * 1.15);
     };
-    add(tuft, mats.grass, more.islandGrass, islandTuftPlace, { tint: (it, c) => c.setRGB(0.75 + it.r2 * 0.3, 0.95 + it.r3 * 0.3, 0.55) });
+    add(tuft, mats.grass, more.islandGrass, islandTuftPlace, { far: GRASS_FAR, tint: (it, c) => c.setRGB(0.75 + it.r2 * 0.3, 0.95 + it.r3 * 0.3, 0.55) });
     add(reed, mats.grass, lists.reeds, (it, p, qq, ss) => {
       p.set(it.x, it.y, it.z);
       turn(it, qq, 0.2);
       ss.set(0.8, 0.7 + it.r3 * 0.6, 0.8);
-    }, { tint: (it, c) => c.setRGB(0.75, 0.82, 0.55) });
+    }, { far: GRASS_FAR, tint: (it, c) => c.setRGB(0.75, 0.82, 0.55) });
     // wild flowers: on the island, on the banks, at the entrance
     const flowerPlace = (it, p, qq, ss) => {
       p.set(it.x, it.y - 0.03, it.z);
@@ -879,8 +889,8 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     };
     const flowerTint = (it, c) => c.set(FLOWER_COLORS[it.col]).multiplyScalar(0.85 + it.r2 * 0.3);
     flowerClumps.forEach((fg, vi) => {
-      add(fg, mats.flower, more.islandFlowers.filter((_, i) => i % flowerClumps.length === vi), (it, p, qq, ss) => (flowerPlace(it, p, qq, ss), ss.multiplyScalar(ISLAND_FLOWER_SCALE)), { tint: flowerTint });
-      add(fg, mats.flower, more.flowers.filter((_, i) => i % flowerClumps.length === vi), flowerPlace, { tint: flowerTint });
+      add(fg, mats.flower, more.islandFlowers.filter((_, i) => i % flowerClumps.length === vi), (it, p, qq, ss) => (flowerPlace(it, p, qq, ss), ss.multiplyScalar(ISLAND_FLOWER_SCALE)), { far: FLOWER_FAR, tint: flowerTint });
+      add(fg, mats.flower, more.flowers.filter((_, i) => i % flowerClumps.length === vi), flowerPlace, { far: FLOWER_FAR, tint: flowerTint });
     });
     rocks.forEach((rg, vi) => {
       const items = lists.rocks.filter((_, i) => i % rocks.length === vi);
@@ -899,12 +909,12 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     };
     const scatterRocks = (list, geoms, material, opts) => geoms.forEach((g, vi) => add(g, material, list.filter((_, i) => i % geoms.length === vi), rockPlace, opts));
     scatterRocks(more.valleyBoulders, boulders, mats.valleyRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.valleyPebbles, pebbles, mats.valleyRock, { gate: false });
+    scatterRocks(more.valleyPebbles, pebbles, mats.valleyRock, { gate: false, far: PEBBLE_FAR });
     // (the island's and the shore's too: there before the reveal)
     scatterRocks(more.islandBoulders, boulders, mats.oasisRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.islandPebbles, pebbles, mats.oasisRock, { gate: false });
+    scatterRocks(more.islandPebbles, pebbles, mats.oasisRock, { gate: false, far: PEBBLE_FAR });
     scatterRocks(more.shoreBoulders, boulders, mats.oasisRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.shorePebbles, pebbles, mats.oasisRock, { gate: false });
+    scatterRocks(more.shorePebbles, pebbles, mats.oasisRock, { gate: false, far: PEBBLE_FAR });
     // (their base colours, for the brightness control)
     for (const m of Object.values(mats)) m.userData.base = m.color.clone();
     const geometries = [...palms.flatMap((v) => [v.trunk, v.crown]), ...broad.flatMap((v) => [v.trunk, v.crown]), bush, shrub, tuft, reed, ...rocks, ...boulders, ...pebbles, ...flowerClumps, ...treeBlossoms, bushBlossom];
@@ -935,15 +945,19 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     // shader every frame for plants of no size at all — through the cut and
     // all the way down the bare valley, the oasis's lag.
     const R = J.revealR;
+    const cam = state.camera.position;
     for (const m of built.meshes) {
       const d = m.userData;
-      if (!d.at) continue;
-      if (d.from < 0 && R > 0) {
-        let lo = Infinity;
-        for (const [x, z] of d.at) lo = Math.min(lo, revealStartAt(x, z));
-        d.from = lo;
-      }
-      m.visible = J.warmup > 0 || (d.from >= 0 && R > d.from);
+      if (d.at) {
+        if (d.from < 0 && R > 0) {
+          let lo = Infinity;
+          for (const [x, z] of d.at) lo = Math.min(lo, revealStartAt(x, z));
+          d.from = lo;
+        }
+        m.visible = J.warmup > 0 || (d.from >= 0 && R > d.from);
+      } else m.visible = true;
+      // (a cell of small plants all past their distance: not drawn at all)
+      if (d.far && m.visible && J.warmup <= 0 && m.boundingSphere && m.boundingSphere.center.distanceTo(cam) - m.boundingSphere.radius > d.far) m.visible = false;
     }
     built.uniforms.uSunColor.value.set(T.sunColor).multiplyScalar(T.sunIntensity * T.leafGlow);
     // the cursor over the flowers (only once there are flowers)

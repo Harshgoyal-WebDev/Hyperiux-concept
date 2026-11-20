@@ -1,0 +1,44 @@
+{
+  "asset": "rocks.glb",
+  "path": "public/models/rocks.glb",
+  "concept": "Six photoreal water-worn desert/valley boulders (riverbed sandstone/granite): broad smooth planes with a few chipped facets, subtle cracks and pitting, warm grey-brown #6b5a4b base, lighter sun-bleached tops, faint olive moss/lichen in crevices and on upward faces, darker damp ground line.",
+  "source": {
+    "blend": "blender/rocks/rocks.blend (game meshes rock_01..06 at the origin; high-poly bake sources rock_0N_high in the Rocks_High collection, hidden)",
+    "generatorScript": "blender/rocks/scripts/rocks_build.py (build_one(name) per rock, atlas_uvs, bake_all, export; deterministic seeds)",
+    "textures": "blender/rocks/textures/rock_atlas_basecolor.png, rock_atlas_normal.png, rock_atlas_orm.png (2048, PNG masters; JPEG 85 inside the GLB)",
+    "preview": "blender/rocks/rocks-preview.png"
+  },
+  "units": "metres (1 glTF unit = 1 m)",
+  "orientation": {
+    "up": "+Y",
+    "origin": "every rock's pivot is the centre of its base on the ground (y = 0); x/z centred on the footprint",
+    "transforms": "applied: every node has identity translation / rotation / scale"
+  },
+  "buriedSkirt": "each mesh continues 30% of its height below y = 0 so it sits embedded in the ground with no gap; place rocks at ground height and the skirt hides any slope",
+  "compression": "KHR_draco_mesh_compression level 6 (decoder served from /draco/)",
+  "rocks": {
+    "rock_01": {"size": "large, slightly flattened", "width": 3.0, "depth": 2.35, "height": 1.6, "yMin": -0.48, "triangles": 2600},
+    "rock_02": {"size": "large, chunkier, one sheared face", "width": 2.5, "depth": 2.15, "height": 2.0, "yMin": -0.6, "triangles": 2700},
+    "rock_03": {"size": "medium, low and flat", "width": 1.4, "depth": 1.1, "height": 0.8, "yMin": -0.24, "triangles": 1000},
+    "rock_04": {"size": "medium, rounded", "width": 1.2, "depth": 1.05, "height": 1.0, "yMin": -0.3, "triangles": 1000},
+    "rock_05": {"size": "small", "width": 0.6, "depth": 0.47, "height": 0.35, "yMin": -0.1, "triangles": 360},
+    "rock_06": {"size": "pebble cluster piece (three fused flat pebbles)", "width": 0.3, "depth": 0.22, "height": 0.07, "yMin": -0.02, "triangles": 330}
+  },
+  "material": {
+    "Rock_Atlas": "one shared MeshStandardMaterial for all six rocks: baseColorTexture, normalTexture (tangent space, OpenGL +Y), occlusionTexture + metallicRoughnessTexture = the same ORM image (R ambient occlusion, G roughness 0.85-0.92, B metalness 0). Single-sided (closed meshes).",
+    "atlas": "2048 x 2048, all six rocks packed without overlap at one texel density (~2 px/cm), 8 px bake margin",
+    "bake": "Cycles, high-poly (5k-82k tris) -> game mesh. AO is the high-poly's own occlusion times a ground-contact term that darkens toward y = 0, so instances stay correct wherever they are placed."
+  },
+  "threeJsSetup": {
+    "loading": "GLTFLoader + DRACOLoader('/draco/'); gltf.scene children are rock_01..rock_06 meshes. Clone a mesh per placement (mesh.clone() shares geometry + material) or use InstancedMesh with mesh.geometry / mesh.material for many copies.",
+    "shading": "use as loaded. aoMap uses uv (three r15x+ reads the occlusion from the first UV set). castShadow / receiveShadow true works well; vary rotation.y and a uniform scale of 0.8-1.25 per placement to hide repetition.",
+    "verified": "loaded with three r186 GLTFLoader + DRACOLoader: all six meshes, sizes and base heights as listed, maps present (map, normalMap, aoMap, roughnessMap, metalnessMap), no console errors"
+  },
+  "budget": {
+    "triangles": 7990,
+    "drawCalls": 6,
+    "materials": 1,
+    "textures": 3,
+    "glbBytes": 784352
+  }
+}

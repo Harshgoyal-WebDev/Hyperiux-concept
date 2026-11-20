@@ -66,7 +66,7 @@ export const T = {
   // Impact as the beam merges into the core
   shockStrength: 1.0, // ridge and light wave running out across the dunes
   shockShake: 0.9, // metres of camera jolt
-  shockReach: 1800, // metres it runs out to (past the far dunes on the horizon)
+  shockReach: 2200, // metres it runs out to (past the far dunes on the horizon)
   shockSpan: 0.5, // share of the forging the shockwave takes to run out across the dunes (it starts with the blast)
   edgeBlur: 0.8, // motion blur at the frame's edges through the forging event
   edgeChroma: 0.6, // ...and how far its colours split (chromatic aberration)

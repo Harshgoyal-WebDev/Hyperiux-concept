@@ -93,7 +93,8 @@ export default function Oasis({ J, tier, shared, terrain, forge }) {
     // (the plants growing: redraw the shadows as the oasis comes up, every
     // so often on its clock, while it is still coming up)
     const growing = J.revealR > 0 && J.revealR < reveal.end + 160;
-    if (growing && Math.abs(J.revealR - shadowAt.current) > 12) {
+    // (every ~80 m of it: each redraw is all the oasis's trees and rocks again)
+    if (growing && Math.abs(J.revealR - shadowAt.current) > 80) {
       shadowAt.current = J.revealR;
       J.sceneVersion += 1;
     }

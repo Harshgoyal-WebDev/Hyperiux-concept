@@ -190,7 +190,14 @@ export default function Water({ J, tier, shared, ground, treePos }) {
         clipBias: 0.02,
       });
       mesh.material.defines = { MIRROR: "" };
-      // the mirror at half the screen's resolution
+      // (the mirror redrawn every other frame — it costs a whole second
+      // render of the oasis; a frame's lag in a rippled reflection doesn't
+      // show — and always when the view has jumped)
+      const drawMirror = mesh.onBeforeRender;
+      mesh.onBeforeRender = function (...args) {
+        if (mesh.userData.mirrorNow) drawMirror.apply(this, args);
+      };
+      // the mirror at a third of the screen's resolution
       const rt = mesh.getRenderTarget();
       mesh.userData.resize = (gl) => {
         gl.getDrawingBufferSize(size);
@@ -295,6 +302,14 @@ export default function Water({ J, tier, shared, ground, treePos }) {
     u0.uRippleRect.value.copy(ripples.rect);
     u0.uRippleOn.value = ripples.idle() ? 0 : 1;
     water.userData.resize?.(gl);
+    // (every other frame, unless the camera has jumped: a seek, a reload)
+    {
+      const m = rip.mirror ?? (rip.mirror = { n: 0, at: new THREE.Vector3(1e9, 0, 0) });
+      const jumped = m.at.distanceToSquared(camera.position) > 25;
+      m.n++;
+      water.userData.mirrorNow = jumped || m.n % 2 === 0;
+      m.at.copy(camera.position);
+    }
     // the mirror's camera sees what the camera sees, less the low plants
     // (Reflector clones the camera once: its layers are kept in step here)
     if (water.getReflectionCamera) {

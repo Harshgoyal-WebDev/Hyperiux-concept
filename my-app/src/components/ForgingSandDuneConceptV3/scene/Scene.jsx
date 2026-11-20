@@ -170,7 +170,7 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
       <UniformSync J={J} shared={shared} shockCenter={forge?.world.origin} />
       <SoundDriver J={J} />
       <Governor />
-      <Precompile post={!!(tier.post && post)} />
+      <Precompile post={!!(tier.post && post)} samples={tier.multisampling ?? 0} />
       <CameraRig J={J} opening={forge?.world.opening} />
 
       {tier.post && post && <Post J={J} tier={tier} />}

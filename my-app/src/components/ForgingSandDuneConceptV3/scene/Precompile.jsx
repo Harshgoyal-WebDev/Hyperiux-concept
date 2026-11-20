@@ -25,7 +25,7 @@ const UNTIL = 40; // s after mount: by then everything has arrived
 
 const TEXTURE_KEYS = ["map", "normalMap", "roughnessMap", "metalnessMap", "aoMap", "emissiveMap", "alphaMap", "bumpMap", "displacementMap", "lightMap"];
 
-export default function Precompile({ post }) {
+export default function Precompile({ post, samples = 0 }) {
   const { gl, scene, camera } = useThree();
   const s = useMemo(
     () => ({
@@ -33,9 +33,14 @@ export default function Precompile({ post }) {
       next: 0.3,
       seen: new WeakSet(),
       state: "idle", // idle → compiling → draw
-      target: new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }),
+      // (drawn as the frame really is: half-float and multisampled like the
+      // composer's own buffer — on the GPU a program drawn into a different
+      // kind of target is set up again the first time it is really drawn,
+      // which was a stall as each thing first came into view: the tree
+      // growing, its leaves, the flowers)
+      target: new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples }),
     }),
-    []
+    [samples]
   );
   useEffect(() => () => s.target.dispose(), [s]);
 

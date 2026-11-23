@@ -1,0 +1,753 @@
+"use client";
+/* eslint-disable react-hooks/immutability -- R3F pattern: three.js uniforms/objects are mutated imperatively inside useFrame, outside React's render. */
+
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
+import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { Effect, EffectAttribute, ShaderPass, ToneMappingMode } from "postprocessing";
+import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
+import { CUT_TO, oasisCamera, routeDistance, runOnPast } from "../world/oasisCamera";
+import { valleyShot } from "./valleyShot";
+import { REVEAL_BAND, REVEAL_ORIGIN, TREE, WATER_Y } from "../world/oasis";
+import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
+import { T } from "../tuning";
+import { rewinding } from "../timeline";
+import { attachPointer } from "../pointer";
+import { applyMagnet, stepMagnet } from "../world/magnet";
+import { desertOn } from "./hero/heroState";
+
+// ---------------------------------------------------------------------------
+// Camera: a pure function of the timeline's shot channels (position, aim,
+// lens), so every story time maps to exactly one shot; through the mark and
+// on into the oasis it is world/oasisCamera.js. The cursor's pull is layered
+// on top (world/magnet.js). Every
+// shot keeps the camera well in front of the slab and outside the space the
+// flying chunks pass through.
+// ---------------------------------------------------------------------------
+const UP = new THREE.Vector3(0, 1, 0);
+export function CameraRig({ J, opening }) {
+  const { camera } = useThree();
+  const v = useMemo(
+    () => ({
+      p: new THREE.Vector3(),
+      t: new THREE.Vector3(),
+      fwd: new THREE.Vector3(),
+      right: new THREE.Vector3(),
+      up: new THREE.Vector3(),
+      shift: new THREE.Vector3(),
+    }),
+    []
+  );
+  useEffect(() => attachPointer(), []);
+
+  useFrame((_, delta) => {
+    v.p.set(J.camX, J.camY, J.camZ);
+    v.t.set(J.tgtX, J.tgtY, J.tgtZ);
+    let lens = J.fov;
+    // past the cut: the valley shot (and nothing of the forge's world)
+    const valley = J.progress >= CUT_TO();
+    if (valley) lens = valleyShot(J.progress, v.p, v.t);
+    else if (J.progress > P.through) {
+      // (while the cut runs, the logo shot keeps going at its pace, on
+      // through the opening)
+      const on = runOnPast(J.progress);
+      v.p.z -= on;
+      v.t.z -= on;
+    }
+    camera.layers.enable(NO_MIRROR_LAYER);
+    if (valley) {
+      camera.layers.disable(FORGE_LAYER);
+      camera.layers.enable(VALLEY_LAYER);
+    } else {
+      camera.layers.enable(FORGE_LAYER);
+      camera.layers.disable(VALLEY_LAYER);
+    }
+    // shots through the mark are composed on the nominal opening: move them
+    // onto the real one (the slab's height depends on the sand under it)
+    if (opening && J.align > 0) {
+      v.shift.subVectors(opening, OPENING_NOMINAL).multiplyScalar(J.align);
+      v.p.add(v.shift);
+      v.t.add(v.shift);
+    }
+
+    // the cursor's pull (world/magnet.js): all the way, turning the camera
+    // in place through the logo's opening (J.orbit)
+    stepMagnet(delta);
+    // (in the valley, much less, and mostly turning in place: the camera
+    // stays sitting over the beam — T.magnetValley / T.magnetValleyOrbit)
+    const roll = applyMagnet(v.p, v.t, valley ? T.magnetValleyOrbit : J.orbit, valley ? WATER_Y + 1.5 : -Infinity, valley ? T.magnetValley : 1);
+
+    // entering: the whole scene comes in from far off to the camera's place
+    // (pulled back along its view and lifted, closing in quickly then
+    // settling), the lens a little wider on the way
+    if (J.arrive < 1) {
+      const far = Math.pow(1 - J.arrive, 3);
+      v.fwd.subVectors(v.t, v.p).normalize();
+      v.p.addScaledVector(v.fwd, -T.arriveDistance * far);
+      v.p.y += T.arriveLift * far;
+      lens += 14 * far;
+    }
+    // the jolt as the beam merges into the core
+    // (and the rock blasting off)
+    const jolt = Math.max(rewinding(J) ? 0 : J.jolt, J.breakBurst * 1.3 * T.breakImpact) * T.shockShake;
+    if (jolt > 0.001) {
+      const t = performance.now() * 0.001;
+      v.p.x += Math.sin(t * 61) * Math.sin(t * 17) * jolt;
+      v.p.y += Math.sin(t * 53 + 1.3) * Math.sin(t * 23) * jolt * 0.7;
+    }
+    camera.position.copy(v.p);
+    camera.lookAt(v.t);
+    if (roll !== 0) camera.rotateZ(roll);
+    if (typeof window !== "undefined" && window.__seek && !window.__cam) window.__cam = camera; // (?debug: measuring the pace)
+    // Portrait screens keep more of the horizontal framing (bounded so the
+    // lens doesn't distort): the choreography is composed for landscape.
+    const widen = Math.max(1, Math.pow(1 / camera.aspect, 0.6));
+    const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(lens) / 2) * widen));
+    if (Math.abs(camera.fov - fov) > 1e-3) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+  });
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Shared uniforms + fog, written once per frame.
+// ---------------------------------------------------------------------------
+const HAZE = new THREE.Color(0.62, 0.37, 0.21);
+const NIGHT_HAZE = new THREE.Color(0.035, 0.042, 0.075);
+const LUSH_HAZE = new THREE.Color(0.56, 0.69, 0.85);
+const GROW_HAZE = new THREE.Color(0.5, 0.66, 0.88);
+
+export function UniformSync({ J, shared, shockCenter }) {
+  const { scene, gl } = useThree();
+  const fog = useMemo(() => new THREE.FogExp2(HAZE.clone(), 0.0011), []);
+  const heroHaze = useMemo(() => new THREE.Color(), []);
+  useEffect(() => {
+    scene.fog = fog;
+    return () => {
+      scene.fog = null;
+    };
+  }, [scene, fog]);
+
+  useFrame((_, delta) => {
+    shared.uTime.value += Math.min(delta, 0.1);
+    // day ↔ night eases over ~1.5 s
+    const target = T.night ? 1 : 0;
+    shared.uNight.value += (target - shared.uNight.value) * (1 - Math.exp(-2.4 * Math.min(delta, 0.1)));
+    if (Math.abs(target - shared.uNight.value) < 1e-3) shared.uNight.value = target;
+    const night = shared.uNight.value;
+    shared.uCrackScale.value = T.crackScale;
+    shared.uCrackDepth.value = T.crackDepth;
+    if (shared.uCrackColor.userData !== T.crackColor) {
+      shared.uCrackColor.value.set(T.crackColor);
+      shared.uCrackColor.userData = T.crackColor;
+    }
+    shared.uRipple.value = T.rippleStrength;
+    // the photoscanned ripples: their tile's size (m) and strength
+    shared.uSandTex.value.x = T.sandRippleSize;
+    shared.uSandTex.value.y = T.sandRippleDepth;
+    // shockwave: out to the far edge of the sand (T.shockReach), still
+    // bright as it gets there, gone as it arrives (nothing before the blast)
+    // (on the breakup's own clock when it plays by itself: timeline.js stepBreak)
+    const shock = T.breakAuto ? J.shockAuto : J.shock;
+    shared.uShockR.value = shock * T.shockReach;
+    shared.uShockAmp.value = shock > 0 && shock < 1 ? Math.pow(1 - shock, 0.55) * T.shockStrength : 0;
+    if (shockCenter) shared.uShockPos.value.set(shockCenter.x, shockCenter.z);
+    shared.uLineWidth.value = T.lineWidth;
+    shared.uLineDepth.value = T.lineDepth;
+    // the oasis rising out of the desert (world/oasis.js REVEAL_ORIGIN)
+    shared.uOasisReveal.value.set(REVEAL_ORIGIN.x, REVEAL_ORIGIN.y, J.revealR, REVEAL_BAND);
+    shared.uOasisRing.value = T.revealRing;
+    // (the whiteout's uniforms stay at rest: shared.uWhite etc.)
+    // the land coming to life as the oasis is revealed: the dunes turn
+    // green-grey behind its front (materials.js), the sky and haze light blue
+    {
+      const span = Math.max(T.tlRevealEnd - T.tlRevealStart, 0.002) * T.lushSpan;
+      const x = Math.min(Math.max((J.progress - T.tlRevealStart) / span, 0), 1);
+      shared.uLush.value = x * x * (3 - 2 * x) * T.lushAmount;
+    }
+    // ...and as the tree grows, the sky deepens to a clear blue with clouds
+    // drifting over (Sky.jsx), the haze cooling with it
+    {
+      const g0 = T.tlTreeGrowStart;
+      const g1 = g0 + Math.max(T.tlTreeGrowEnd - g0, 0.002) * T.growSkySpan;
+      const x = Math.min(Math.max((J.progress - g0) / (g1 - g0), 0), 1);
+      shared.uGrowSky.value = x * x * (3 - 2 * x) * T.growSky;
+    }
+    // (the hero's sunset: a warmer, denser haze between the dune ridges,
+    // easing back to the plain desert's on the run at the mark's opening)
+    // (and the valley's sunset scenes past the cut, in the same light: J.valleyK)
+    const desert = Math.max(desertOn(J.progress), J.valleyK ?? 0) * (1 - night);
+    if (heroHaze.userData !== T.heroHaze) {
+      heroHaze.set(T.heroHaze);
+      heroHaze.userData = T.heroHaze;
+    }
+    fog.color.copy(HAZE).lerp(heroHaze, desert).lerp(LUSH_HAZE, shared.uLush.value).lerp(GROW_HAZE, shared.uGrowSky.value * 0.8).lerp(NIGHT_HAZE, night);
+    fog.density = THREE.MathUtils.lerp(T.fogDensity, T.heroFog, desert);
+    // the captured environment is the sunset sky: dim it right down at night
+    scene.environmentIntensity = T.envIntensity * (1 - night * 0.8);
+    gl.toneMappingExposure = T.exposure;
+  });
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Lights: low sunset sun with shadows that follow the shot, sky/sand
+// hemisphere and a warm bounce on the face (the forge adds the core's light).
+// ---------------------------------------------------------------------------
+function setColor(light, hex) {
+  if (light && light.userData.hex !== hex) {
+    light.color.set(hex);
+    light.userData.hex = hex;
+  }
+}
+
+// Colour cache for blends that run every frame (hex → linear Color).
+const colorCache = new Map();
+function hexColor(hex) {
+  let c = colorCache.get(hex);
+  if (!c) colorCache.set(hex, (c = new THREE.Color(hex)));
+  return c;
+}
+const NIGHT_SKY = new THREE.Color("#1d2a4d");
+const NIGHT_GROUND = new THREE.Color("#0b0a12");
+
+// The desert's shadows are drawn only when they can change: the sun (and its
+// shadow area) follows the camera, snapped to a SHADOW_GRID m grid, so it
+// moves now and then rather than every frame; and through the forging event,
+// where the rock breaks and flies, every frame. (The garden draws its own
+// once, on the way in: WorldSwitch.)
+const SHADOW_GRID = 8;
+
+export function Lights({ J, tier, shared }) {
+  const sun = useRef();
+  const hemi = useRef();
+  const fill = useRef();
+  const ambient = useRef();
+  const { camera, scene, gl } = useThree();
+  const focus = useMemo(() => new THREE.Vector3(), []);
+  const fwd = useMemo(() => new THREE.Vector3(), []);
+  const shadow = useMemo(() => ({ key: "", eventT: -1, forge: false, version: -1 }), []);
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+    gl.shadowMap.needsUpdate = true;
+  }, [gl]);
+
+  // (the forge's world casts its shadows too)
+  useEffect(() => {
+    sun.current?.shadow.camera.layers.enable(FORGE_LAYER);
+    // (and the valley's: its trees and the Yggdrasil cast shadows too)
+    sun.current?.shadow.camera.layers.enable(VALLEY_LAYER);
+  }, []);
+  useEffect(() => {
+    const target = sun.current?.target;
+    if (!target) return;
+    scene.add(target);
+    return () => scene.remove(target);
+  }, [scene]);
+
+  useFrame(() => {
+    const night = shared.uNight.value;
+    const s = sun.current;
+    if (s) {
+      // (from the run in to the tree on, the box holds still over the whole
+      // lake — the camera going round the tree never moves it, so the
+      // oasis's plants aren't redrawn into it as it goes)
+      const atTree = J.progress >= T.tlBeamToTreeStart;
+      if (atTree) focus.set(TREE.x, 0, TREE.z);
+      else {
+        camera.getWorldDirection(fwd);
+        focus.copy(camera.position).addScaledVector(fwd.setY(0).normalize(), 70);
+        // (past the mark the box moves on in bigger steps: the oasis's plants
+        // are a lot to redraw — but through the valley's sunset scenes,
+        // before they grow, it follows the camera smoothly, snapped to the
+        // shadow map's own texels so the edges never crawl: the boulders'
+        // shadows glide with the light instead of jumping every 48 m)
+        const texel = (2 * (s.shadow.camera.right || 130)) / (s.shadow.mapSize.x || 2048);
+        const grid = (J.valleyK ?? 0) > 0.01 ? texel : J.progress > P.through ? 48 : SHADOW_GRID;
+        focus.set(Math.round(focus.x / grid) * grid, 0, Math.round(focus.z / grid) * grid);
+      }
+      const reach = atTree ? 235 : 130;
+      const sc = s.shadow.camera;
+      if (sc.right !== reach) {
+        sc.left = sc.bottom = -reach;
+        sc.right = sc.top = reach;
+        sc.updateProjectionMatrix();
+        gl.shadowMap.needsUpdate = true;
+      }
+      const key = `${focus.x},${focus.z}`;
+      // (and once the forge has arrived in the scene)
+      // (and whenever the event's clock moves: the pieces' shadows go with
+      // them, back to the whole slab's when scrolled back past the core)
+      // (and once the oasis's tree has arrived: OASIS_EVENT bumps J.sceneVersion)
+      if (key !== shadow.key || J.eventT !== shadow.eventT || J.forgeReady !== shadow.forge || J.sceneVersion !== shadow.version) gl.shadowMap.needsUpdate = true;
+      shadow.key = key;
+      shadow.eventT = J.eventT;
+      shadow.forge = J.forgeReady;
+      shadow.version = J.sceneVersion;
+      s.target.position.copy(focus);
+      s.position.copy(focus).addScaledVector(SUN_DIR, 320);
+      s.target.updateMatrixWorld();
+      // at night the same key light is the moon
+      s.intensity = THREE.MathUtils.lerp(T.sunIntensity, T.moonIntensity, night);
+      s.color.copy(hexColor(T.sunColor)).lerp(hexColor(T.moonColor), night);
+    }
+    // Lights at zero are hidden: a hidden light is left out of every
+    // material's shader, so by day (both at 0) they cost nothing.
+    if (hemi.current) {
+      // a faint cool skylight keeps the night readable
+      hemi.current.intensity = T.hemiIntensity * (1 - night) + 0.35 * night;
+      hemi.current.visible = hemi.current.intensity > 0.001;
+      hemi.current.color.copy(hexColor(T.hemiSky)).lerp(NIGHT_SKY, night);
+      hemi.current.groundColor.copy(hexColor(T.hemiGround)).lerp(NIGHT_GROUND, night);
+    }
+    // ...and an even ambient so the soil and stone aren't lost in the dark
+    if (ambient.current) {
+      ambient.current.intensity = T.nightAmbient * night;
+      ambient.current.visible = ambient.current.intensity > 0.001;
+      setColor(ambient.current, T.nightAmbientColor);
+    }
+    if (fill.current) {
+      fill.current.intensity = T.fillIntensity * (1 - night);
+      fill.current.visible = fill.current.intensity > 0.001;
+      setColor(fill.current, T.fillColor);
+    }
+  });
+
+  const size = tier.shadowMap;
+  return (
+    <>
+      <hemisphereLight ref={hemi} args={["#8d99ad", "#6e3a1a", 0]} visible={false} />
+      <ambientLight ref={ambient} args={["#8f8ea8", 0]} visible={false} />
+      <directionalLight
+        ref={sun}
+        color="#ffb27a"
+        intensity={2.8}
+        castShadow={size > 0}
+        shadow-mapSize={[size || 512, size || 512]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.06}
+        shadow-camera-left={-130}
+        shadow-camera-right={130}
+        shadow-camera-top={130}
+        shadow-camera-bottom={-130}
+        shadow-camera-near={10}
+        shadow-camera-far={800}
+      />
+      {/* warm bounce from the sand onto the logo face */}
+      <directionalLight ref={fill} color="#d4875a" intensity={0} position={[-30, 25, 120]} visible={false} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fine sand drifting on the wind, always in a box around the camera.
+// ---------------------------------------------------------------------------
+const DUST_VERTEX = /* glsl */ `
+uniform float uTime;
+uniform vec3 uCam;
+uniform float uScale;
+uniform float uDust;
+uniform vec2 uWind;
+varying float vA;
+void main() {
+  float B = 70.0;
+  vec3 drift = vec3(uWind.x, 0.04, uWind.y) * uTime * 1.4;
+  vec3 p = mod(position + drift - uCam + B * 0.5, B) - B * 0.5 + uCam;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  float dist = -mv.z;
+  vA = uDust * smoothstep(1.0, 6.0, dist) * (1.0 - smoothstep(20.0, 34.0, dist));
+  gl_PointSize = 0.045 * uScale / max(dist, 0.5);
+}
+`;
+const DUST_FRAGMENT = /* glsl */ `
+varying float vA;
+void main() {
+  float d = length(gl_PointCoord - 0.5);
+  float m = 1.0 - smoothstep(0.2, 0.5, d);
+  gl_FragColor = vec4(vec3(1.0, 0.7, 0.45) * 1.2, m * vA * 0.55);
+}
+`;
+
+export function Dust({ J, tier, shared }) {
+  const { gl, camera } = useThree();
+  const ref = useRef();
+  const built = useMemo(() => {
+    let a = 99;
+    const rng = () => ((a = (a * 16807) % 2147483647) / 2147483647);
+    const n = tier.dust;
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) pos.set([rng() * 70, rng() * 70, rng() * 70], i * 3);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: shared.uTime,
+        uWind: shared.uWind,
+        uCam: { value: new THREE.Vector3() },
+        uScale: { value: 500 },
+        uDust: { value: 1 },
+      },
+      vertexShader: DUST_VERTEX,
+      fragmentShader: DUST_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    return { geometry, material };
+  }, [tier, shared]);
+
+  useEffect(
+    () => () => {
+      built.geometry.dispose();
+      built.material.dispose();
+    },
+    [built]
+  );
+
+  useFrame(() => {
+    const u = built.material.uniforms;
+    u.uCam.value.copy(camera.position);
+    u.uScale.value = gl.domElement.height * 0.5;
+    // warm sunlit motes; only a few catch the moonlight
+    u.uDust.value = J.dust * T.dust * (1 - shared.uNight.value * 0.7);
+    if (ref.current) ref.current.visible = u.uDust.value > 0.001;
+  });
+
+  return <points ref={ref} geometry={built.geometry} material={built.material} frustumCulled={false} />;
+}
+
+// ---------------------------------------------------------------------------
+// Edge motion blur + chromatic aberration: the frame smears outwards and its
+// colours split towards the edges (the centre stays clean) — through the
+// forging event, from the impact until the logo stands.
+// Also the loader's opening (Loader.jsx): along the inside of its edge, as it
+// spreads from the centre to the screen's edges, the scene is warped (drawn
+// in towards the centre, as if stretched through the opening), smeared
+// outwards and split into its colours, settling to clean towards the centre.
+// ---------------------------------------------------------------------------
+const EDGE_FX = /* glsl */ `
+uniform float uAmount;
+uniform float uChroma;
+uniform float uOpen; // the loader's opening (0..1, as Loader.jsx draws it)
+uniform float uReveal; // ...how strongly its edge distorts the scene (0 = not at all)
+uniform float uRevealWarp;
+uniform float uRevealBlur;
+uniform float uRevealChroma;
+uniform float uAspect;
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec2 dir = uv - 0.5;
+  float edge = smoothstep(0.12, 0.72, length(dir * vec2(1.0, 0.8)) * 1.35);
+  float a = uAmount * edge;
+  // the opening's edge: the same radius the loader draws (screen heights)
+  float rv = 0.0;
+  if (uReveal > 0.001) {
+    vec2 p = dir * vec2(uAspect, 1.0);
+    float reach = length(vec2(0.5 * uAspect, 0.5)) + 0.45;
+    float inside = (uOpen * reach - 0.2) - length(p); // > 0 inside the opening
+    // strongest at the edge (and under its soft fray), fading inwards
+    rv = uReveal * smoothstep(-0.3, 0.0, inside) * (1.0 - smoothstep(0.0, 0.55, inside));
+  }
+  if (a < 0.0005 && rv < 0.0005) {
+    outputColor = inputColor;
+    return;
+  }
+  // the warp: sampled from nearer the centre, so the scene there stretches
+  // outwards towards the edge
+  vec2 base = uv - dir * rv * uRevealWarp * 0.22;
+  float len = a * 0.07 + rv * uRevealBlur * 0.11;
+  float chroma = uChroma * (a > 0.0005 ? 1.0 : 0.0) + rv * uRevealChroma * 0.9;
+  vec3 acc = vec3(0.0);
+  float w = 0.0;
+  // (6 taps: through the forging most of the frame runs this)
+  for (int i = 0; i < 6; i++) {
+    float t = float(i) / 5.0;
+    vec2 o = dir * t * len;
+    float k = 1.0 - t * 0.6;
+    // (kept on the screen: past its edge the image would smear)
+    acc.r += texture2D(inputBuffer, clamp(base - o * (1.0 + chroma), 0.001, 0.999)).r * k;
+    acc.g += texture2D(inputBuffer, clamp(base - o, 0.001, 0.999)).g * k;
+    acc.b += texture2D(inputBuffer, clamp(base - o * (1.0 - chroma), 0.001, 0.999)).b * k;
+    w += k;
+  }
+  outputColor = vec4(acc / w, inputColor.a);
+}
+`;
+class EdgeFxEffect extends Effect {
+  constructor() {
+    super("EdgeFxEffect", EDGE_FX, {
+      uniforms: new Map([
+        ["uAmount", new THREE.Uniform(0)],
+        ["uChroma", new THREE.Uniform(0.6)],
+        ["uOpen", new THREE.Uniform(0)],
+        ["uReveal", new THREE.Uniform(0)],
+        ["uRevealWarp", new THREE.Uniform(1)],
+        ["uRevealBlur", new THREE.Uniform(1)],
+        ["uRevealChroma", new THREE.Uniform(1)],
+        ["uAspect", new THREE.Uniform(1.6)],
+      ]),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Distance blur (the hero's aerial perspective, scene/hero): the far dunes
+// soften with distance, from uRange.x metres out to fully at uRange.y (the
+// slab, at ~155 m, stays sharp), a few
+// pixels at most. Each tap counts only as much as it is far itself, so
+// nothing near (the slab, the ruins, a dune's edge) bleeds into the blur, and
+// near pixels are left as they are.
+// ---------------------------------------------------------------------------
+const DISTANCE_BLUR = /* glsl */ `
+uniform float uAmount;
+uniform vec2 uRange;
+float dbFar(float depth) {
+  return smoothstep(uRange.x, uRange.y, -getViewZ(depth));
+}
+void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
+  float k = dbFar(depth) * uAmount;
+  // (near things, and the sky itself: the sun's disc stays crisp)
+  if (k < 0.02 || depth > 0.99999) {
+    outputColor = inputColor;
+    return;
+  }
+  vec3 acc = inputColor.rgb;
+  float w = 1.0;
+  float r = min(k, 3.0) * 2.6;
+  // (8 taps on a golden-angle spiral)
+  for (int i = 0; i < 8; i++) {
+    float a = float(i) * 2.39996 + 0.7;
+    vec2 o = vec2(cos(a), sin(a)) * r * sqrt((float(i) + 0.5) / 8.0) * texelSize;
+    float tw = dbFar(readDepth(uv + o));
+    acc += texture2D(inputBuffer, uv + o).rgb * tw;
+    w += tw;
+  }
+  outputColor = vec4(acc / w, inputColor.a);
+}
+`;
+// ---------------------------------------------------------------------------
+// Sun rays (the hero's sunset, scene/hero): light shafts fanning out from the
+// sun, a soft spill of its light through the dust over the dunes. From each
+// pixel near it, a march towards the sun's place on screen
+// gathers how much open sky lies along the way close to the disc (the depth
+// buffer: the sky is what nothing was drawn over) — so a dune ridge, a pillar
+// or a fragment in front of it cuts a shaft of shade out of the light.
+// ---------------------------------------------------------------------------
+const SUN_RAYS = /* glsl */ `
+uniform vec2 uSunUv;
+uniform float uRays;
+uniform float uAspect;
+uniform vec3 uRayColor;
+uniform float uClock;
+void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
+  outputColor = inputColor;
+  if (uRays < 0.001) return;
+  vec2 toSun = uSunUv - uv;
+  vec2 dA = toSun * vec2(uAspect, 1.0);
+  float dist = length(dA);
+  if (dist > 1.4) return;
+  const int N = 20;
+  vec2 st = toSun / float(N);
+  // (a jittered start: no banding)
+  vec2 p = uv + st * fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+  float acc = 0.0;
+  float wsum = 0.0;
+  float wt = 1.0;
+  for (int i = 0; i < N; i++) {
+    float sky = step(0.99999, readDepth(clamp(p, 0.001, 0.999)));
+    float lit = exp(-length((p - uSunUv) * vec2(uAspect, 1.0)) * 8.0);
+    acc += sky * lit * wt;
+    wsum += wt;
+    wt *= 0.95;
+    p += st;
+  }
+  float shaft = acc / wsum;
+  // (a soft spill, not a fan of streaks: only over the dust above the
+  // dunes, the open sky has its own glow — scene/Sky.jsx)
+  float overSky = step(0.99999, depth);
+  outputColor.rgb += uRayColor * shaft * exp(-dist * 1.8) * uRays * (1.0 - overSky);
+}
+`;
+class SunRaysEffect extends Effect {
+  constructor() {
+    super("SunRaysEffect", SUN_RAYS, {
+      attributes: EffectAttribute.DEPTH,
+      uniforms: new Map([
+        ["uSunUv", new THREE.Uniform(new THREE.Vector2(0.8, 0.5))],
+        ["uRays", new THREE.Uniform(0)],
+        ["uAspect", new THREE.Uniform(1.6)],
+        ["uRayColor", new THREE.Uniform(new THREE.Color(1.0, 0.5, 0.2))],
+        ["uClock", new THREE.Uniform(0)],
+      ]),
+    });
+  }
+}
+// where the sun is drawn in the hero's sky (scene/Sky.jsx: a touch above
+// the light it casts, so it sits on the horizon)
+const SUN_SEEN = SUN_DIR.clone().add(new THREE.Vector3(0, 0.035, 0)).normalize();
+
+class DistanceBlurEffect extends Effect {
+  constructor() {
+    super("DistanceBlurEffect", DISTANCE_BLUR, {
+      attributes: EffectAttribute.DEPTH,
+      uniforms: new Map([
+        ["uAmount", new THREE.Uniform(0)],
+        ["uRange", new THREE.Uniform(new THREE.Vector2(170, 750))],
+      ]),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The rendered frame made safe before the effects read it: a pixel that came
+// out NaN (a degenerate normal or view vector somewhere) becomes black, and
+// one that overflowed the half-float buffer (infinite) is capped. Otherwise
+// the bloom's blur would spread that one pixel over the whole frame — a
+// black flash, at the breakup's brightest moment.
+// ---------------------------------------------------------------------------
+function createSanitizePass() {
+  const material = new THREE.ShaderMaterial({
+    uniforms: { inputBuffer: { value: null } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = position.xy * 0.5 + 0.5;
+        gl_Position = vec4(position.xy, 1.0, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D inputBuffer;
+      varying vec2 vUv;
+      void main() {
+        vec4 c = texture2D(inputBuffer, vUv);
+        c = mix(c, vec4(0.0, 0.0, 0.0, 1.0), vec4(any(isnan(c)) ? 1.0 : 0.0));
+        gl_FragColor = clamp(c, 0.0, 4096.0);
+      }`,
+    depthTest: false,
+    depthWrite: false,
+  });
+  return new ShaderPass(material, "inputBuffer");
+}
+
+// ---------------------------------------------------------------------------
+// Post: restrained bloom for the core and the lit cracks, ACES, vignette
+// (the light opening onto the site at the end is a screen layer in
+// ForgingVid).
+// ---------------------------------------------------------------------------
+export function Post({ J, tier }) {
+  const bloom = useRef();
+  const vignette = useRef();
+  const { size, camera, clock } = useThree();
+  const edgeFx = useMemo(() => new EdgeFxEffect(), []);
+  useEffect(() => () => edgeFx.dispose(), [edgeFx]);
+  const distanceBlur = useMemo(() => new DistanceBlurEffect(), []);
+  useEffect(() => () => distanceBlur.dispose(), [distanceBlur]);
+  const sunRays = useMemo(() => new SunRaysEffect(), []);
+  useEffect(() => () => sunRays.dispose(), [sunRays]);
+  const sunAt = useMemo(() => ({ p: new THREE.Vector3(), fwd: new THREE.Vector3() }), []);
+  const sanitize = useMemo(() => createSanitizePass(), []);
+  useEffect(() => () => sanitize.dispose(), [sanitize]);
+  // the cut from the logo to the valley (CutTransition.jsx)
+  const cut = useMemo(() => createCutPass(), []);
+  useEffect(
+    () => () => {
+      cut.pass.dispose();
+      cut.material.dispose();
+    },
+    [cut]
+  );
+  // the change to the white site at the end (CutTransition.jsx)
+  const outro = useMemo(() => createOutroPass(), []);
+  useEffect(
+    () => () => {
+      outro.pass.dispose();
+      outro.material.dispose();
+    },
+    [outro]
+  );
+  // the cut's and the outro's shaders built ahead (behind the loader): drawn
+  // once off screen, so the cut and the end don't stall on their first frame
+  // (they are only used deep into the scroll)
+  const warm = useRef(0);
+  useFrame(({ gl }) => {
+    if (warm.current > 20) return;
+    if (++warm.current !== 20) return;
+    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+    quad.frustumCulled = false;
+    const tmp = new THREE.Scene();
+    tmp.add(quad);
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const prev = gl.getRenderTarget();
+    try {
+      for (const m of [cut.material, outro.material]) {
+        quad.material = m;
+        gl.setRenderTarget(target);
+        gl.render(tmp, cam);
+      }
+    } finally {
+      gl.setRenderTarget(prev);
+      quad.geometry.dispose();
+      target.dispose();
+    }
+  });
+  useFrame(() => {
+    // (the frame's clean-up only where a stray pixel can come out NaN — the
+    // breakup's flash, the shell sweeping past the camera — a full-screen
+    // pass the rest of the way saved)
+    sanitize.enabled = J.progress > P.core - 0.01 && J.progress < P.held;
+    // (the hero's sunset, and the valley's sunset scenes in the same light)
+    const sunset = Math.max(desertOn(J.progress), J.valleyK ?? 0);
+    distanceBlur.uniforms.get("uAmount").value = T.distanceBlur * sunset;
+    // the sun's rays: its place on screen (none while it is behind the view)
+    {
+      const r = sunRays.uniforms;
+      camera.getWorldDirection(sunAt.fwd);
+      const facing = sunAt.fwd.dot(SUN_SEEN);
+      sunAt.p.copy(camera.position).addScaledVector(SUN_SEEN, 2000).project(camera);
+      r.get("uSunUv").value.set(sunAt.p.x * 0.5 + 0.5, sunAt.p.y * 0.5 + 0.5);
+      r.get("uAspect").value = size.width / Math.max(size.height, 1);
+      r.get("uClock").value = clock.elapsedTime;
+      r.get("uRays").value = facing > 0.2 ? T.sunRays * sunset * (1 - T.night * 1) * THREE.MathUtils.smoothstep(facing, 0.2, 0.5) : 0;
+    }
+    const fx = edgeFx.uniforms;
+    fx.get("uAmount").value = Math.max(rewinding(J) ? 0 : J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
+    fx.get("uChroma").value = T.edgeChroma;
+    // the loader opening over the scene (eases in as it starts, out as it
+    // reaches the corners)
+    const open = J.reveal;
+    fx.get("uOpen").value = open;
+    fx.get("uReveal").value = open > 0 && open < 1 ? THREE.MathUtils.smoothstep(open, 0, 0.08) * (1 - THREE.MathUtils.smoothstep(open, 0.72, 1)) : 0;
+    fx.get("uRevealWarp").value = T.revealWarp;
+    fx.get("uRevealBlur").value = T.revealBlur;
+    fx.get("uRevealChroma").value = T.revealChroma;
+    fx.get("uAspect").value = size.width / Math.max(size.height, 1);
+    if (bloom.current) {
+      bloom.current.intensity = (J.bloom + J.breakBurst * 0.8 * T.breakImpact) * T.bloomIntensity;
+      bloom.current.luminanceMaterial.threshold = T.bloomThreshold;
+      if (bloom.current.mipmapBlurPass) bloom.current.mipmapBlurPass.radius = T.bloomRadius;
+    }
+    // (none on the white at the end)
+    if (vignette.current) vignette.current.darkness = J.vignette * T.vignette * (1 - J.outro);
+  });
+  return (
+    <>
+    <CutPass J={J} cut={cut} samples={tier.multisampling} />
+    <OutroPass J={J} outro={outro} />
+    <EffectComposer multisampling={tier.multisampling} enableNormalPass={false}>
+      <primitive object={sanitize} dispose={null} />
+      <primitive object={cut.pass} dispose={null} />
+      {/* (the distance blur, the edge blur and the bloom in one full-screen pass) */}
+      <primitive object={distanceBlur} dispose={null} />
+      <primitive object={sunRays} dispose={null} />
+      <primitive object={edgeFx} dispose={null} />
+      <Bloom ref={bloom} mipmapBlur levels={6} intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
+      <primitive object={outro.pass} dispose={null} />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      <Vignette ref={vignette} offset={0.32} darkness={0.6} />
+    </EffectComposer>
+    </>
+  );
+}

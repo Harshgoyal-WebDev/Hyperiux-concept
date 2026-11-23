@@ -181,6 +181,11 @@ syncSequence();
 // well ahead of the camera, which gathers pace towards the slab.
 export const beamFootP = () => 0.02 + (P.climb - 0.02) * Math.min(Math.max(T.beamFootAt, 0.05), 1);
 
+// Scrolled back past the break while the broken rock is still flying home
+// (on its own clock): the beam's merge with the core — its jolt, flash and
+// smeared edges, on the scroll — waits for the rock, and doesn't play over it.
+export const rewinding = (J) => T.breakAuto && J.breakClock > 0 && J.eventT < T.breakStart;
+
 // The breakup playing by itself (T.breakAuto), on its own clock once the
 // scroll has brought the beam into the core and the rock breaks — not
 // scrubbed by the scroll: a great expansion (the blast throwing the pieces
@@ -206,6 +211,9 @@ export function stepBreak(J, dt) {
   // end, higher = slowing more and more as the rocks settle)
   else if (c >= A) f = fb + (1 - fb) * (1 - Math.pow(1 - (c - A) / B, Math.max(T.breakSettleEase, 1)));
   J.fracture = f;
+  // the hero beam goes as the slab blasts apart — and, scrolled back, comes
+  // back only once the rock has gathered back into the slab (the clock at 0)
+  J.beamFade = c > 0 ? 1 - Math.cos((Math.min(c / 0.08, 1) * Math.PI) / 2) : 0;
   // the shockwave over the dunes on the same clock (T.shockTime s, easing
   // out): scrolled back, it runs back in step with the rocks — not before them
   const sx = Math.min(c / Math.max(T.shockTime, 0.1), 1);
@@ -220,8 +228,8 @@ export function deriveBreak(J) {
   const end = Math.max(T.breakEnd, start + 0.02);
   const t = J.eventT;
   if (T.breakAuto) {
-    // (the breakup itself plays on its own clock: stepBreak)
-    J.beamFade = 1 - Math.cos((Math.min(Math.max((t - start) / Math.max(T.beamBlastFade, 0.001), 0), 1) * Math.PI) / 2);
+    // (the breakup itself — and the beam going with it — plays on its own
+    // clock: stepBreak)
     J.orbitSpeed = t <= start ? 0 : 0.35 + 0.65 * sineOut((t - start) / (1 - start));
     return;
   }

@@ -12,7 +12,7 @@ import { magnet } from "../world/magnet";
 import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
 import { grainProgress, pieceFlight, setFlowGround, syncFlow } from "../world/breakup";
-import { stepBreak } from "../timeline";
+import { rewinding, stepBreak } from "../timeline";
 import { stirPiece } from "../world/windField";
 
 // The forging monolith: the authored slab (logo core + excess chunks), its
@@ -596,12 +596,26 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
   useFrame(({ camera }, delta) => {
     if (!built) return;
     const { U, stages, halo, point } = built;
-    U.uCrackSpread.value = J.crackSpread * T.crackSpread;
+    // (the merge's flash: not while the broken rock is still flying home)
+    const pulse = rewinding(J) ? 0 : J.pulse;
+    // (while the breakup plays — or plays back — on its own clock, the
+    // broken rock's cracks stay lit as they were at the break, whatever the
+    // scroll: scrolled back, they don't go dark while the pieces fly home)
+    const held = T.breakAuto && J.breakClock > 0;
+    const bs = Math.min(Math.max(T.breakStart, 0), 1);
+    const xs = Math.min(bs / 0.32, 1);
+    const crackSpread = held ? Math.max(J.crackSpread, 1 - (1 - xs) * (1 - xs)) : J.crackSpread;
+    const crackGlow = held ? Math.max(J.crackGlow, 1 + 0.15 * Math.min(Math.max((bs - 0.04) / 0.46, 0), 1)) : J.crackGlow;
+    U.uCrackSpread.value = crackSpread * T.crackSpread;
     // (the core, its cracks and the light in the mark's openings glow the
     // same by night as by day)
     const lit = 1;
     // the light filling the cube outline's openings (from the forging on)
-    const fillK = J.innerGlow * T.innerGlow * (0.35 + 0.65 * lit);
+    // (lit from the break on: on the breakup's own clock when it plays by
+    // itself — scrolled back, it stays lit until the rock has gathered back
+    // into the slab)
+    const inner = T.breakAuto && J.breakClock > 0 ? Math.max(J.innerGlow, Math.min(J.breakClock / 0.12, 1)) : J.innerGlow;
+    const fillK = inner * T.innerGlow * (0.35 + 0.65 * lit);
     // (drawn from the start, at nothing until it glows: hidden, its shader
     // compiled the frame it first showed — a two-second stall at the break)
     built.fill.visible = true;
@@ -647,11 +661,11 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     U.uFissureGlow.value = T.fissureGlow;
     U.uSurge.value = Math.min(J.sphere / 2, 1);
     built.coreLevel.value = J.logoCrackGlow;
-    built.excessLevel.value = J.crackGlow;
+    built.excessLevel.value = crackGlow;
     U.uEngrave.value = T.engrave;
-    U.uHeat.value = (J.sphere * J.sphere * 0.9 + J.pulse * 1.6) * T.pocketHeat;
+    U.uHeat.value = (J.sphere * J.sphere * 0.9 + pulse * 1.6) * T.pocketHeat;
 
-    const head = J.crackSpread > 0 && J.crackSpread * 1.25 < 1 ? 1 : 0;
+    const head = crackSpread > 0 && crackSpread * 1.25 < 1 ? 1 : 0;
     for (const name of CRACK_STAGES) {
       const s = stages[name];
       if (!s) continue;
@@ -666,9 +680,9 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
         s.uStageGlow.value = J.spineGlow * T.crackGlow * on;
         continue;
       }
-      s.uSpread.value = J.crackSpread * 1.25;
+      s.uSpread.value = crackSpread * 1.25;
       s.uHead.value = head * T.crackGlow;
-      s.uStageGlow.value = (name === "LogoCore" ? J.logoCrackGlow : J.crackGlow) * T.crackGlow;
+      s.uStageGlow.value = (name === "LogoCore" ? J.logoCrackGlow : crackGlow) * T.crackGlow;
     }
 
     // Excess rock: blasted off round the mark, revolving faster and faster
@@ -729,10 +743,10 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     point.visible = halo.visible = on > 0.001;
     const r = 0.3 * forge.scale;
     // the point: small and white-hot; the halo: wide and orange
-    point.scale.setScalar(r * (0.9 + 1.3 * Math.min(glow, 2.4) + 3 * J.pulse));
-    point.material.opacity = Math.min(0.35 + glow * 0.5 + J.pulse, 1) * on * lit;
-    halo.scale.setScalar(r * (3 + 4 * Math.min(glow, 2.4) + 8 * J.pulse));
-    halo.material.opacity = Math.min(0.2 + glow * 0.45 + J.pulse * 0.8, 1) * on * lit;
+    point.scale.setScalar(r * (0.9 + 1.3 * Math.min(glow, 2.4) + 3 * pulse));
+    point.material.opacity = Math.min(0.35 + glow * 0.5 + pulse, 1) * on * lit;
+    halo.scale.setScalar(r * (3 + 4 * Math.min(glow, 2.4) + 8 * pulse));
+    halo.material.opacity = Math.min(0.2 + glow * 0.45 + pulse * 0.8, 1) * on * lit;
     halo.material.color.set(T.crackColor);
 
     // the impact: the shell bursts out and fades, the core flares
@@ -747,7 +761,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       point.material.opacity = Math.min(point.material.opacity + burst, 1);
     }
     if (coreLight.current) {
-      coreLight.current.intensity = ((40 * on + glow * glow * 520 + J.pulse * 1800) * (0.15 + 0.85 * lit) + burst * 4000 * T.breakImpact) * T.coreLight;
+      coreLight.current.intensity = ((40 * on + glow * glow * 520 + pulse * 1800) * (0.15 + 0.85 * lit) + burst * 4000 * T.breakImpact) * T.coreLight;
       coreLight.current.color.set(T.crackColor);
     }
   });

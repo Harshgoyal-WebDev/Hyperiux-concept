@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "../world/layout";
 import { T } from "../tuning";
+import { cubeHexagon } from "../world/forgeAsset";
 import { SABER_FRAGMENT_PARS, SABER_VERTEX_BODY, SABER_VERTEX_PARS, STRAND_FRAGMENT, STRAND_VERTEX, createSaberCap, saberUniforms, streakUniforms, syncSaber, syncStreaks } from "./saber";
 
 // The energy beam: one single beam, laid along the sand. It runs in over
@@ -80,8 +81,15 @@ function uAtZ(curve, z) {
 
 export function buildBeamPath(forge, terrain) {
   const { world } = forge;
-  // straight in at the Spine's start (bottom centre of the face)
-  const x = world.root.x;
+  // straight in under the cube outline's centre joint, and straight up it:
+  // one vertical line from the slab's foot to the junction where the cube's
+  // three inner edges meet (its lowest corner's x; the joint is upright)
+  const hex = cubeHexagon();
+  const S = forge.scale;
+  const o = forge.object.position;
+  const low = hex.reduce((a, b) => (b.y < a.y ? b : a));
+  const junction = hex[4].clone().add(hex[2]).sub(hex[3]);
+  const x = o.x + low.x * S;
   const face = world.frontZ;
   // along the sand: the plan line, sampled every ~2 m so the beam lies on
   // the ground's every rise and dip, to the slab's foot
@@ -105,13 +113,25 @@ export function buildBeamPath(forge, terrain) {
     const a = (i / 8) * (Math.PI / 2);
     pts.push(new THREE.Vector3(x, g + R - R * Math.cos(a), face + gap + R - R * Math.sin(a)));
   }
-  const top = core.y - 0.8;
+  // up to the cube outline's lowest corner, then on up its centre joint
+  // (the line between the two lower faces) to the junction where the three
+  // inner edges meet — centred on the joint, ending right at the junction
+  // (the junction: the top face's near corner — its far corner, the top,
+  // mirrored through its side corners)
+  const lowW = new THREE.Vector2(x, o.y + low.y * S);
+  const junW = new THREE.Vector2(x, o.y + junction.y * S - T.beamEndGap);
   const from = g + R;
-  const rise = Math.max(top - from, 0.5);
+  const rise = Math.max(lowW.y - from, 0.5);
   const steps = Math.max(Math.ceil(rise / 1), 2);
   for (let i = 1; i <= steps; i++) {
     const k = i / steps;
-    pts.push(new THREE.Vector3(THREE.MathUtils.lerp(x, core.x, k * k), from + rise * k, face + gap));
+    pts.push(new THREE.Vector3(x, from + rise * k, face + gap));
+  }
+  const up = Math.max(junW.y - lowW.y, 0.1);
+  const upSteps = Math.max(Math.ceil(up / 0.5), 2);
+  for (let i = 1; i <= upSteps; i++) {
+    const k = i / upSteps;
+    pts.push(new THREE.Vector3(x, lowW.y + up * k, face + gap));
   }
   const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
   // (where along it the beam reaches the slab's foot: the bend's start)
@@ -170,6 +190,16 @@ export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6, cou
           hot: s < 2 ? 1 : rng() * 0.3,
         }
   );
+  // (the bundle centred on its line: its strands' offsets averaged to zero —
+  // at random they leaned it off to one side)
+  if (count > 1) {
+    const ma = strands.reduce((a, st) => a + st.across, 0) / count;
+    const mv = strands.reduce((a, st) => a + st.vertical, 0) / count;
+    for (const st of strands) {
+      st.across -= ma;
+      st.vertical -= mv;
+    }
+  }
   const pos = [];
   const tan = [];
   const sideAttr = [];
@@ -245,6 +275,7 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
         uTime: shared.uTime,
         uFootU: { value: path.userData.foot },
         uFaceSpread: { value: 0.5 },
+        uFaceMerge: { value: 0.04 },
         fogColor: { value: new THREE.Color() },
         fogDensity: { value: 0 },
         fogNear: { value: 1 },
@@ -252,9 +283,9 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
       },
       // (up the slab's face the bundle drawn thinner: T.beamFaceSpread × its
       // thickness on the sand)
-      vertexShader: STRAND_VERTEX.replace("uniform float uSpread;", "uniform float uSpread;\nuniform float uFootU;\nuniform float uFaceSpread;").replace(
+      vertexShader: STRAND_VERTEX.replace("uniform float uSpread;", "uniform float uSpread;\nuniform float uFootU;\nuniform float uFaceSpread;\nuniform float uFaceMerge;").replace(
         "vec3 p = position + aOffset * uSpread;",
-        "vec3 p = position + aOffset * uSpread * mix(1.0, uFaceSpread, smoothstep(uFootU - 0.01, uFootU + 0.01, aU));"
+        "vec3 p = position + aOffset * uSpread * mix(1.0, uFaceSpread, smoothstep(uFootU - uFaceMerge, uFootU + 0.004, aU));"
       ),
       fragmentShader: STRAND_FRAGMENT,
       transparent: true,
@@ -330,6 +361,8 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     // the streaks: the same head
     const su = built.streaks.material.uniforms;
     su.uFaceSpread.value = T.beamFaceSpread;
+    // (drawn together over the last metres of sand: T.beamFaceMerge m)
+    su.uFaceMerge.value = Math.max(T.beamFaceMerge, 0.5) / built.length;
     su.uHead.value = h;
     su.uTail.value = 0;
     syncStreaks(su, J.beamVis * (1 - gone), u.uPixel.value);

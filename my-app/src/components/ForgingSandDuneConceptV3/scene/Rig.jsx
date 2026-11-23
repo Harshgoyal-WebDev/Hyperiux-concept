@@ -12,6 +12,7 @@ import { valleyShot } from "./valleyShot";
 import { REVEAL_BAND, REVEAL_ORIGIN, TREE, WATER_Y } from "../world/oasis";
 import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
 import { T } from "../tuning";
+import { rewinding } from "../timeline";
 import { attachPointer } from "../pointer";
 import { applyMagnet, stepMagnet } from "../world/magnet";
 
@@ -88,7 +89,7 @@ export function CameraRig({ J, opening }) {
     }
     // the jolt as the beam merges into the core
     // (and the rock blasting off)
-    const jolt = Math.max(J.jolt, J.breakBurst * 1.3 * T.breakImpact) * T.shockShake;
+    const jolt = Math.max(rewinding(J) ? 0 : J.jolt, J.breakBurst * 1.3 * T.breakImpact) * T.shockShake;
     if (jolt > 0.001) {
       const t = performance.now() * 0.001;
       v.p.x += Math.sin(t * 61) * Math.sin(t * 17) * jolt;
@@ -571,7 +572,7 @@ export function Post({ J, tier }) {
     // pass the rest of the way saved)
     sanitize.enabled = J.progress > P.core - 0.01 && J.progress < P.held;
     const fx = edgeFx.uniforms;
-    fx.get("uAmount").value = Math.max(J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
+    fx.get("uAmount").value = Math.max(rewinding(J) ? 0 : J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
     fx.get("uChroma").value = T.edgeChroma;
     // the loader opening over the scene (eases in as it starts, out as it
     // reaches the corners)

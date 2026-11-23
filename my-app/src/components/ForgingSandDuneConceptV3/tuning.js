@@ -6,8 +6,38 @@ export const T = {
   // Audio (generated live; switched on from the header's Sound toggle)
   masterVolume: 0.8,
   musicVolume: 0.8, // the abyss: drone, pad, wind, bells
-  natureVolume: 0.9, // the light nature score the music turns into as the tree grows
-  natureTempo: 66, // ...its pace (BPM of its quarter notes)
+  natureVolume: 0.44, // the light nature score the music turns into as the oasis is revealed
+  natureTempo: 79, // ...its pace (BPM of its quarter notes)
+  // Music — make it your own (audio.js): the first scene's score...
+  musicProgression: "Dm Bb Gm A (dark)", // its chords
+  musicKey: 0, // ...shifted this many semitones
+  droneVolume: 1.0, // the deep drone
+  padVolume: 1.0, // the chord pad
+  padBright: 1.0, // ...how bright it is (its filter, × )
+  windVolume: 1.0, // the low wind
+  arpPattern: "up-down", // the arpeggio's order of chord notes
+  arpDensity: 1.0, // ...how many of its notes play (0 = only the downbeat)
+  arpOctave: 1, // ...octaves above the chords
+  musicEcho: 0.38, // the echo's feedback (how long it repeats)
+  musicReverb: 1.0, // how much of it goes into the reverb (space)
+  bellVolume: 1.0, // far-off bells
+  bellEvery: 13, // ...one every this many seconds (about)
+  bellScale: "minor pentatonic", // ...the notes they pick from
+  // ...and the nature score it turns into
+  natureFadeSpan: 0.04, // the crossfade from the first score to it, from the reveal's start (share of the scroll)
+  natureProgression: "Dm7 Gm7 (twilight)", // its chords
+  natureKey: 6, // ...shifted this many semitones
+  natureChordBars: 6, // bars per chord
+  naturePadVolume: 1.43, // the warm pad
+  natureScale: "major pentatonic", // the melody's scale
+  natureMelodyVolume: 1.1, // the melody (soft plucks)
+  natureMelodyDensity: 0.67, // ...how many notes it plays (0 = none, 1 = most beats)
+  natureMelodyOctave: 0, // ...octave shift
+  pluckDecay: 2.75, // ...how long each note rings (s)
+  pluckBright: 1.28, // ...how bright each note is (its overtone)
+  natureEcho: 0.31, // the melody's echo feedback
+  birdVolume: 1.95, // birds far off
+  birdRate: 15.5, // ...about this many calls a minute
   musicTempo: 84, // BPM of the slow pulse
   pulseDepth: 0.35, // how much the pad breathes on each beat
   arpVolume: 0.6, // the quiet arpeggio
@@ -21,6 +51,8 @@ export const T = {
   breakVolume: 0.8, // the rock wearing away into sand and gravel
   swirlVolume: 0.6, // the sand and gravel sweeping round the mark
   lightVolume: 0.6, // the airy swell (a close-up opening, the light onto the site)
+  outroHiss: 0.4, // the airy hiss as the scene turns to the white site (× : 1 = as it was)
+  soundFadeIn: 4, // s the sound takes to fade in once the experience is entered
   vanishVolume: 0.6, // the score washing out at the end of the hero
   vanishStart: 0.9741, // story time where the music starts to vanish
   vanishEnd: 1.0, // ...and is gone
@@ -98,6 +130,8 @@ export const T = {
   heroBeamBehind: -8, // where the hero beam's head starts, metres behind the camera (negative: ahead of it — just under the bottom of the frame, so it comes into view with the first scroll)
   sandInteract: false, // the sand's trail under the cursor (the water's ripples stay)
   beamUpFace: true, // the beam goes on up the slab's face from its foot to the core (no crack growing)
+  beamEndGap: 0, // the climbing beam stops this far (m) below the cube's centre junction (where its three inner edges meet)
+  beamFaceMerge: 14, // ...the bundle of streaks drawn together into it over this many metres of sand before the slab
   beamFaceSpread: 0.3, // the beam climbing the slab: its thickness × its thickness on the sand (1 = as thick, 0.5 = half, 0 = one line)
   beamFaceWidth: 2.0, // the beam up the slab's face: × its width on the sand (so it reads as thick there)
   beamFaceGap: 0.32, // ...how far off the face it runs (m)
@@ -120,7 +154,7 @@ export const T = {
   transWobble: 0.1, // the fluid wobble of the picture round the discs' rims
   transBulge: 0.115, // how much the front rises in the middle (a dome)
   paceEven: 0.6, // how fully the scroll's pace is evened out over the whole way (pace.js: 0 = the same scroll speed everywhere, 1 = the picture changes at one rate everywhere)
-  paceApproach: 1.5, // a hand trim: the pace × this from the blast's end until the cut lands (the approach and the cut)
+  paceApproach: 2.0, // a hand trim: the pace × this from the blast's end until the cut lands (the approach and the cut)
   camFromBlast: true, // the camera sets off for the logo as soon as the blast is over (else: once the broken rock has settled)
   paceValley: 1, // ...and × this from the cut until the beam runs on into the core (the valley)
   valleyBeamFrom: 0.5, // the valley's beam is drawn out from this share of the cut (it shows through the hexagons)...
@@ -298,7 +332,7 @@ export const T = {
   eyeLake: 8.5, // ...and over the lake, coming in to the tree
   // the camera magnet, both scenes: the camera swings round a point ahead of it, towards the cursor
   magnet: 1.0, // overall amount (0 = off)
-  magnetValley: 0.3, // ...× this in the second scene (the valley, the oasis): much calmer there
+  magnetValley: 0.65, // ...× this in the second scene (the valley, the oasis): much calmer there
   magnetValleyOrbit: 0.2, // ...and how much of it moves the camera there rather than turning it (low: it stays over the beam)
   magnetYaw: 6.4, // degrees left/right at the screen's edge
   magnetPitch: 3.2, // degrees up/down

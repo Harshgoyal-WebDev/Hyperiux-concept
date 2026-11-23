@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import gsap from "gsap";
 import { T } from "./tuning";
 import { loadProgress, startLoading } from "./loading";
+import { prepareSound } from "./audio";
 
 // The loader: the Hyperiux wordmark in white on #111, a slim orange bar under it
 // filling as the scene's assets come in (loading.js) — only full once the
@@ -113,6 +114,15 @@ export default function Loader({ J, problem, onEnter, onGone }) {
   const [ready, setReady] = useState(false);
   const [gone, setGone] = useState(false);
   const entering = useRef(false);
+  // (the sound built ahead, quietly, once everything is in — so "Enter"
+  // only has to start it, fading in, with no wait)
+  useEffect(() => {
+    if (!ready) return;
+    const idle = window.requestIdleCallback ?? ((f) => setTimeout(f, 200));
+    const cancel = window.cancelIdleCallback ?? clearTimeout;
+    const id = idle(() => prepareSound(), { timeout: 1500 });
+    return () => cancel(id);
+  }, [ready]);
   const problemRef = useRef(problem);
   useEffect(() => {
     problemRef.current = problem;

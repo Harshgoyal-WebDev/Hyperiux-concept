@@ -49,6 +49,17 @@ export function soundWanted() {
   }
 }
 
+// Built ahead, quietly (its reverb and noise are seconds of generated
+// audio: built on the click itself, the sound came in late and all at once).
+// The context starts suspended — no sound until a click turns it on.
+export function prepareSound() {
+  if (engine || typeof window === "undefined") return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  engine = new AudioEngine(new Ctx());
+  engine.ctx.suspend?.();
+}
+
 // Call from a user gesture.
 export function setSound(on) {
   try {
@@ -76,25 +87,57 @@ const smoothstep = (x, a, b) => {
   return t * t * (3 - 2 * t);
 };
 
-// D minor, low and open. Each chord glides into the next.
-const CHORDS = [
-  [50, 53, 57, 64], // Dm(add9)
-  [46, 50, 53, 57], // B♭maj7
-  [43, 46, 50, 57], // Gm(add9)
-  [45, 50, 52, 57], // Asus4
-];
-const BASS = [38, 34, 31, 33]; // chord roots, an octave or two down
-const ARP = [0, 1, 2, 3, 2, 1, 3, 2]; // chord-tone order over a bar of 8ths
-const BELLS = [74, 77, 79, 81, 84, 86]; // D minor pentatonic, high
-// the nature score: D major, open and warm (each chord glides into the next)
-const N_CHORDS = [
-  [50, 57, 62, 66, 69], // D(add9 voicing): D A D F# A
-  [43, 50, 59, 62, 66], // Gmaj7: G D B D F#
-  [47, 54, 59, 62, 66], // Bm7: B F# B D F#
-  [45, 52, 57, 61, 64], // A(sus): A E A C# E
-];
-// its melody: D major pentatonic, a gentle phrase over each chord
-const N_SCALE = [74, 76, 78, 81, 83, 86, 88];
+// The scores' material — every part of it chosen in the panel (tuning.js
+// Music): the first scene's abyss (four-voice chords and their bass) and the
+// nature score the tree grows to (five-voice chords, a scale for its
+// melody), each with a key shift (semitones).
+// The abyss, low and open. Each chord glides into the next.
+export const MUSIC_PROGRESSIONS = {
+  "Dm Bb Gm A (dark)": { chords: [[50, 53, 57, 64], [46, 50, 53, 57], [43, 46, 50, 57], [45, 50, 52, 57]], bass: [38, 34, 31, 33] },
+  "Dm F C Bb (epic)": { chords: [[50, 53, 57, 62], [48, 53, 57, 60], [48, 52, 55, 60], [46, 50, 53, 58]], bass: [38, 41, 36, 34] },
+  "Dm C Bb C (heroic)": { chords: [[50, 53, 57, 62], [48, 52, 55, 60], [46, 50, 53, 58], [48, 52, 55, 64]], bass: [38, 36, 34, 36] },
+  "Dm Gm (drone)": { chords: [[50, 53, 57, 64], [43, 50, 55, 58]], bass: [38, 31] },
+  "Dm Am Bb F (sad)": { chords: [[50, 53, 57, 62], [45, 52, 57, 60], [46, 50, 53, 58], [45, 48, 53, 57]], bass: [38, 33, 34, 29] },
+  "Dsus2 Bbmaj7 (ambient)": { chords: [[50, 52, 57, 62], [46, 50, 53, 57]], bass: [38, 34] },
+  "Dm Bb F C (cinematic)": { chords: [[50, 53, 57, 62], [46, 50, 53, 58], [45, 48, 53, 57], [48, 52, 55, 60]], bass: [38, 34, 29, 36] },
+};
+export const ARP_PATTERNS = {
+  "up-down": [0, 1, 2, 3, 2, 1, 3, 2],
+  up: [0, 1, 2, 3, 0, 1, 2, 3],
+  down: [3, 2, 1, 0, 3, 2, 1, 0],
+  broken: [0, 2, 1, 3, 0, 2, 1, 3],
+  pedal: [0, 3, 0, 2, 0, 3, 0, 1],
+  random: null,
+};
+const BELL_STEPS = { "minor pentatonic": [0, 3, 5, 7, 10], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], "major pentatonic": [0, 2, 4, 7, 9] };
+// the nature score: open and warm (each chord glides into the next)
+export const NATURE_PROGRESSIONS = {
+  "D Gmaj7 Bm7 A (warm)": [[50, 57, 62, 66, 69], [43, 50, 59, 62, 66], [47, 54, 59, 62, 66], [45, 52, 57, 61, 64]],
+  "D A Bm G (uplifting)": [[50, 57, 62, 66, 69], [45, 52, 57, 61, 64], [47, 54, 59, 62, 66], [43, 50, 55, 59, 62]],
+  "Dmaj7 Gmaj7 (dreamy)": [[50, 57, 61, 66, 69], [43, 50, 59, 62, 66]],
+  "D Em7 G A (gentle)": [[50, 57, 62, 66, 69], [52, 59, 62, 67, 71], [43, 50, 55, 59, 62], [45, 52, 57, 61, 64]],
+  "Dadd9 Bm7 Gmaj7 Asus (hopeful)": [[50, 57, 64, 66, 69], [47, 54, 59, 62, 69], [43, 50, 59, 62, 66], [45, 52, 57, 62, 64]],
+  "D G (pastoral)": [[50, 57, 62, 66, 69], [43, 50, 59, 62, 67]],
+  "Dm7 Gm7 (twilight)": [[50, 57, 60, 65, 69], [43, 50, 58, 62, 65]],
+};
+export const MELODY_SCALES = {
+  "major pentatonic": [0, 2, 4, 7, 9],
+  major: [0, 2, 4, 5, 7, 9, 11],
+  lydian: [0, 2, 4, 6, 7, 9, 11],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  "minor pentatonic": [0, 3, 5, 7, 10],
+  "natural minor": [0, 2, 3, 5, 7, 8, 10],
+};
+const pick = (table, key) => table[key] ?? Object.values(table)[0];
+const musicChords = () => pick(MUSIC_PROGRESSIONS, T.musicProgression);
+const natureChords = () => pick(NATURE_PROGRESSIONS, T.natureProgression);
+// the melody's notes: its scale over two octaves from D5 (+ key, octave)
+const natureScale = () => {
+  const steps = pick(MELODY_SCALES, T.natureScale);
+  const base = 74 + Math.round(T.natureKey) + 12 * Math.round(T.natureMelodyOctave);
+  return [...steps.map((s) => base + s), ...steps.map((s) => base + 12 + s)].slice(0, Math.max(steps.length + 2, 7));
+};
 
 class AudioEngine {
   constructor(ctx) {
@@ -244,6 +287,7 @@ class AudioEngine {
     const droneFilter = this.filter("lowpass", 190, 0.8);
     this.lfo(0.031, 80, droneFilter.frequency);
     const drone = this.gain(0.14);
+    this.droneGain = drone;
     droneFilter.connect(drone).connect(this.musicLevel);
     for (const [f, cents] of [
       [midi(26), -6],
@@ -263,11 +307,13 @@ class AudioEngine {
     // pad: four voices gliding between chords; its level breathes with
     // the beat (padPulse)
     this.padFilter = this.filter("lowpass", 680, 1.4);
+    this.padBase = 680;
     this.lfo(0.019, 260, this.padFilter.frequency);
     this.padPulse = this.gain(1);
     const pad = this.gain(0.07);
+    this.padGain = pad;
     this.padFilter.connect(this.padPulse).connect(pad).connect(this.musicLevel);
-    this.voices = CHORDS[0].map((n) =>
+    this.voices = musicChords().chords[0].map((n) =>
       [
         ["sawtooth", -9],
         ["sawtooth", 8],
@@ -287,6 +333,7 @@ class AudioEngine {
     // arpeggio and bass go through a soft echo (dotted 8th), low-passed
     this.echo = ctx.createDelay(2);
     const fb = this.gain(0.38);
+    this.echoFb = fb;
     const echoTone = this.filter("lowpass", 1600, 0.5);
     this.echo.connect(echoTone).connect(fb).connect(this.echo);
     this.arpBus = this.gain(1);
@@ -300,6 +347,7 @@ class AudioEngine {
     const windFilter = this.filter("bandpass", 420, 0.7);
     this.lfo(0.023, 180, windFilter.frequency);
     const windGain = this.gain(0.03);
+    this.windGain = windGain;
     this.lfo(0.041, 0.022, windGain.gain);
     wind.connect(windFilter).connect(windGain).connect(this.musicLevel);
 
@@ -321,9 +369,10 @@ class AudioEngine {
     this.nPadFilter = this.filter("lowpass", 1500, 0.4);
     this.lfo(0.05, 500, this.nPadFilter.frequency);
     const pad = this.gain(0.05);
+    this.nPadGain = pad;
     this.lfo(0.08, 0.012, pad.gain);
     this.nPadFilter.connect(pad).connect(this.natureLevel);
-    this.nPad = N_CHORDS[0].map((n, i) => {
+    this.nPad = natureChords()[0].map((n, i) => {
       const o = ctx.createOscillator();
       o.type = i % 2 ? "sine" : "triangle";
       o.frequency.value = midi(n);
@@ -337,6 +386,7 @@ class AudioEngine {
     this.nEcho = ctx.createDelay(2);
     this.nEcho.delayTime.value = 0.54;
     const fb = this.gain(0.32);
+    this.nEchoFb = fb;
     const tone = this.filter("lowpass", 2600, 0.5);
     this.nEcho.connect(tone).connect(fb).connect(this.nEcho);
     tone.connect(this.gain(0.45)).connect(this.natureLevel);
@@ -357,19 +407,20 @@ class AudioEngine {
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, t);
     env.gain.linearRampToValueAtTime(level, t + 0.012);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    const decay = Math.max(T.pluckDecay, 0.2);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + decay);
     const a = ctx.createOscillator();
     a.frequency.value = midi(n);
     const b = ctx.createOscillator();
     b.frequency.value = midi(n) * 2.0;
-    const bg = this.gain(0.12);
+    const bg = this.gain(0.12 * T.pluckBright);
     a.connect(env);
     b.connect(bg).connect(env);
     env.connect(this.nMelody);
     a.start(t);
     b.start(t);
-    a.stop(t + 2.7);
-    b.stop(t + 2.7);
+    a.stop(t + decay + 0.1);
+    b.stop(t + decay + 0.1);
   }
 
   // a bird far off: a few quick whistled glides, mostly in the reverb
@@ -386,7 +437,7 @@ class AudioEngine {
       o.frequency.exponentialRampToValueAtTime(f0 * (Math.random() < 0.5 ? 1.35 : 0.75), t0 + 0.07);
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, t0);
-      env.gain.linearRampToValueAtTime(0.012, t0 + 0.01);
+      env.gain.linearRampToValueAtTime(0.012 * T.birdVolume, t0 + 0.01);
       env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
       o.connect(env).connect(this.natureLevel);
       o.start(t0);
@@ -396,23 +447,26 @@ class AudioEngine {
 
   // one step of the nature score (quarter notes at its own, slower pace)
   scheduleNature(t, step) {
-    const stepsPerChord = 16;
+    const stepsPerChord = 4 * Math.max(1, Math.round(T.natureChordBars));
+    const chords = natureChords();
+    const key = Math.round(T.natureKey);
     if (step % stepsPerChord === 0) {
-      this.nChord = (step / stepsPerChord) % N_CHORDS.length;
-      N_CHORDS[this.nChord].forEach((n, i) => this.nPad[i].frequency.setTargetAtTime(midi(n), t, 1.2));
+      this.nChord = Math.floor(step / stepsPerChord) % chords.length;
+      chords[this.nChord].forEach((n, i) => this.nPad[i]?.frequency.setTargetAtTime(midi(n + key), t, 1.2));
     }
+    const scale = natureScale();
     // the melody: a gentle walk through the scale, resting often, a phrase
     // to each chord (leaning to its tones on the strong beats)
     const strong = step % 4 === 0;
-    if (Math.random() < (strong ? 0.75 : 0.32)) {
-      this.nNote = Math.min(Math.max(this.nNote + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)], 0), N_SCALE.length - 1);
-      let n = N_SCALE[this.nNote];
+    if (T.natureMelodyVolume > 0 && Math.random() < (strong ? 0.75 : 0.32) * T.natureMelodyDensity * 1.33) {
+      this.nNote = Math.min(Math.max(this.nNote + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)], 0), scale.length - 1);
+      let n = scale[this.nNote];
       if (strong) {
         // (on the beat: the nearest chord tone, up in the melody's range)
-        const tones = N_CHORDS[this.nChord].map((c) => c + 24);
+        const tones = chords[this.nChord % chords.length].map((c) => c + 24 + key + 12 * Math.round(T.natureMelodyOctave));
         n = tones.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
       }
-      this.pluck(t + (Math.random() - 0.5) * 0.02, n, strong ? 0.05 : 0.032);
+      this.pluck(t + (Math.random() - 0.5) * 0.02, n, (strong ? 0.05 : 0.032) * T.natureMelodyVolume);
     }
   }
 
@@ -424,13 +478,16 @@ class AudioEngine {
     const inBar = step % 8;
 
     // chord change on the bar line, gliding
+    const prog = musicChords();
+    const key = Math.round(T.musicKey);
     if (step % stepsPerChord === 0) {
-      this.chord = (step / stepsPerChord) % CHORDS.length;
-      CHORDS[this.chord].forEach((n, i) => {
-        for (const o of this.voices[i]) o.frequency.setTargetAtTime(midi(n), t, 0.6);
+      this.chord = Math.floor(step / stepsPerChord) % prog.chords.length;
+      prog.chords[this.chord].forEach((n, i) => {
+        for (const o of this.voices[i] ?? []) o.frequency.setTargetAtTime(midi(n + key), t, 0.6);
       });
     }
-    const tones = CHORDS[this.chord];
+    this.chord %= prog.chords.length;
+    const tones = prog.chords[this.chord].map((n) => n + key);
 
     // pad breathes on every beat
     if (inBar % 2 === 0) {
@@ -442,7 +499,7 @@ class AudioEngine {
     // soft bass on beats 1 and 3
     if (inBar === 0 || inBar === 4) {
       const o = ctx.createOscillator();
-      o.frequency.value = midi(BASS[this.chord]);
+      o.frequency.value = midi(prog.bass[this.chord % prog.bass.length] + key);
       const g = ctx.createGain();
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(0.11 * T.bassVolume, t + 0.03);
@@ -455,8 +512,9 @@ class AudioEngine {
 
     // quiet arpeggio of the chord tones, an octave up; a few steps rest so
     // it never turns into a sequence
-    if (T.arpVolume > 0 && (inBar === 0 || Math.random() > 0.22)) {
-      const n = tones[ARP[inBar]] + 12 + (inBar >= 6 ? 12 : 0);
+    if (T.arpVolume > 0 && (inBar === 0 || Math.random() > 1 - 0.78 * T.arpDensity)) {
+      const pat = ARP_PATTERNS[T.arpPattern];
+      const n = tones[pat ? pat[inBar] : Math.floor(Math.random() * 4)] + 12 * Math.round(T.arpOctave) + (inBar >= 6 ? 12 : 0);
       const o = ctx.createOscillator();
       o.type = "sawtooth";
       o.frequency.value = midi(n);
@@ -478,10 +536,11 @@ class AudioEngine {
 
   bell(t) {
     const { ctx } = this;
-    const f = midi(BELLS[Math.floor(Math.random() * BELLS.length)]);
+    const steps = pick(BELL_STEPS, T.bellScale);
+    const f = midi(74 + Math.round(T.musicKey) + steps[Math.floor(Math.random() * steps.length)] + (Math.random() < 0.3 ? 12 : 0));
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(0.03, t + 0.02);
+    env.gain.linearRampToValueAtTime(0.03 * T.bellVolume, t + 0.02);
     env.gain.exponentialRampToValueAtTime(0.0001, t + 6);
     // soft FM bell, mostly reverb: it should sound far away
     const car = ctx.createOscillator();
@@ -687,7 +746,7 @@ class AudioEngine {
     const out = this.gain(T.lightVolume);
     out.connect(this.sfx);
     out.connect(this.gain(1.4)).connect(this.reverb);
-    this.noiseHit(t, out, { type: "highpass", freq: 7000, to: 900, q: 0.7, peak: 0.3, attack: 0.12, decay: 3 });
+    this.noiseHit(t, out, { type: "highpass", freq: 7000, to: 900, q: 0.7, peak: 0.3 * T.outroHiss, attack: 0.12, decay: 3 });
     for (const n of [62, 69, 74]) this.tone(t, out, { f0: midi(n), peak: 0.05, attack: 0.25, decay: 3.5 });
   }
 
@@ -730,12 +789,23 @@ class AudioEngine {
     const { ctx } = this;
     this.enabled = on;
     const t = ctx.currentTime;
+    if (on) this.enabledAt = t;
     this.master.gain.cancelScheduledValues(t);
     this.master.gain.setValueAtTime(this.master.gain.value, t);
     if (on) {
-      ctx.resume();
-      this.nextStep = Math.max(this.nextStep, t + 0.1);
-      this.master.gain.linearRampToValueAtTime(T.masterVolume, t + 2.5);
+      // (faded in gently, from silence, once the context is running — its
+      // clock only moves once resumed; the music's first beat a little in)
+      const start = () => {
+        const t1 = ctx.currentTime;
+        const g = this.master.gain;
+        g.cancelScheduledValues(t1);
+        g.setValueAtTime(Math.max(g.value, 0.0001), t1);
+        g.setTargetAtTime(T.masterVolume, t1 + 0.05, Math.max(T.soundFadeIn, 0.1) / 3);
+        this.nextStep = Math.max(this.nextStep, t1 + 0.8);
+        this.nNext = Math.max(this.nNext ?? 0, t1 + 0.8);
+      };
+      if (ctx.state === "running") start();
+      else ctx.resume().then(start, start);
     } else {
       this.master.gain.linearRampToValueAtTime(0, t + 0.8);
       clearTimeout(this.suspendTimer);
@@ -751,7 +821,8 @@ class AudioEngine {
     const dt = Math.max(delta, 1e-3);
     const smooth = (param, value, tc = 0.12) => param.setTargetAtTime(value, t, tc);
 
-    smooth(this.master.gain, T.masterVolume, 0.3);
+    // (after the fade in: following the panel's volume)
+    if (t - (this.enabledAt ?? 0) > T.soundFadeIn) smooth(this.master.gain, T.masterVolume, 0.3);
 
     // vanish: from the white-out to the end of the dissolve the music
     // sinks, darkens and washes out into the reverb, then is gone
@@ -768,8 +839,8 @@ class AudioEngine {
     }
     this.echo.delayTime.setTargetAtTime((60 / T.musicTempo) * 0.75, t, 0.5);
     if (t >= this.nextBell) {
-      if (v < 0.5) this.bell(t + 0.05);
-      this.nextBell = t + 8 + Math.random() * 10;
+      if (v < 0.5 && T.bellVolume > 0) this.bell(t + 0.05);
+      this.nextBell = t + Math.max(T.bellEvery, 1) * (0.6 + Math.random() * 0.8);
     }
 
     // warp field: rises as the cube cracks, peaks as it tears open, and
@@ -785,8 +856,18 @@ class AudioEngine {
     // the nature score as the tree grows: the abyss gives way to it over a
     // long, slow crossfade (no moment where it changes), both following the
     // scroll
-    const grow = Math.max(T.tlTreeGrowEnd - T.tlTreeGrowStart, 0.002);
-    const nat = smoothstep(J.progress, T.tlTreeGrowStart - grow * 0.15, T.tlTreeGrowStart + grow * 0.6);
+    // (from the reveal's start: T.natureFadeSpan of the scroll — slow, so no
+    // moment where it changes)
+    const nat = smoothstep(J.progress, T.tlRevealStart, T.tlRevealStart + Math.max(T.natureFadeSpan, 0.005));
+    // every part's level and character, live (tuning.js Music)
+    smooth(this.droneGain.gain, 0.14 * T.droneVolume, 0.3);
+    smooth(this.padGain.gain, 0.07 * T.padVolume, 0.3);
+    this.padFilter.frequency.value = this.padBase * T.padBright;
+    smooth(this.windGain.gain, 0.03 * T.windVolume, 0.5);
+    smooth(this.echoFb.gain, Math.min(T.musicEcho, 0.9), 0.3);
+    smooth(this.nPadGain.gain, 0.05 * T.naturePadVolume, 0.5);
+    smooth(this.nEchoFb.gain, Math.min(T.natureEcho, 0.9), 0.3);
+    this.nEcho.delayTime.setTargetAtTime((60 / T.natureTempo) * 0.6, t, 0.5);
     smooth(this.natureLevel.gain, nat * T.natureVolume * left, 1.6);
     if (nat > 0.001 && v < 0.85) {
       if (this.nNext < t - 0.5) this.nNext = t + 0.05;
@@ -795,8 +876,8 @@ class AudioEngine {
         this.nNext += 60 / T.natureTempo;
       }
       if (t >= this.nNextBird) {
-        if (nat > 0.5) this.bird(t + 0.05);
-        this.nNextBird = t + 5 + Math.random() * 9;
+        if (nat > 0.5 && T.birdVolume > 0) this.bird(t + 0.05);
+        this.nNextBird = t + (60 / Math.max(T.birdRate, 0.5)) * (0.5 + Math.random());
       }
     } else this.nNext = t + 0.05;
 
@@ -804,10 +885,10 @@ class AudioEngine {
     // nature score, and vanishes
     smooth(this.musicLevel.gain, T.musicVolume * (1 - 0.55 * w) * (1 - 0.92 * nat) * left, 0.4);
     smooth(this.musicTone.frequency, 18000 * Math.pow(1 - v, 3) + 220, 0.4);
-    smooth(this.musicWet.gain, 0.55 + 1.4 * Math.sin(Math.PI * Math.min(v * 1.2, 1)), 0.5);
+    smooth(this.musicWet.gain, 0.55 * T.musicReverb + 1.4 * Math.sin(Math.PI * Math.min(v * 1.2, 1)), 0.5);
     this.sink = -v * 160; // cents: the held voices sink, new notes start there
     for (const { o, base } of this.musicDetuned) o.detune.setTargetAtTime(base + this.sink, t, 0.6);
-    smooth(this.vanishGain.gain, Math.sin(Math.PI * v) * T.vanishVolume * 0.18, 0.3);
+    smooth(this.vanishGain.gain, Math.sin(Math.PI * v) * T.vanishVolume * 0.18 * T.outroHiss, 0.3);
 
     // one boom as it breaks (scrolling forwards)
     if (this.prev.fracture < 0.03 && fr >= 0.03 && t - this.lastBoom > 2.5) {

@@ -56,6 +56,7 @@ export const T = {
   coreLight: 1.0, // the sphere's and the cracks' light on the stone and sand
 
   // Scattered rocks (procedural basalt)
+  rockTint: "#b3a89c", // the Blender rocks (public/models/rocks.glb): a tint over their baked colour (white = as baked)
   stoneColor: "#5e5044", // the rocks (after the reference: warm grey-brown, matte, faceted)
   stoneRoughness: 0.95, // (matte: high)
   stoneMoss: "#5f6232", // the olive moss / lichen on their tops...

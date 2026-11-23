@@ -141,7 +141,9 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
           <Sky shared={envSky} />
         </Environment>
         <Terrain shared={shared} geometry={terrainGeometry} />
-        <Rocks rockSet={rockSet} shared={shared} />
+        <Suspense fallback={null}>
+          <Rocks rockSet={rockSet} shared={shared} />
+        </Suspense>
         <ForgeLayer>
         {withForge && (
           <Suspense fallback={null}>

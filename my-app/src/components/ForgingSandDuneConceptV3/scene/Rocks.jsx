@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { createNoise3D } from "simplex-noise";
 import { mulberry32 } from "../world/layout";
 import { STONE_UNIFORMS, createStoneMaterial } from "../world/materials";
-import { boulderGeometry } from "../world/plants";
+import { useRockModels } from "../world/rockModels";
 import { T } from "../tuning";
 
 // Faceted basalt shard: a subdivided box tapered towards the top, leaned
@@ -47,10 +47,11 @@ function shardMatrix(l, terrain) {
 
 function scatterMatrix(r, terrain) {
   const m = new THREE.Matrix4();
-  // (sunk deeper on a slope, so no edge lifts off it)
+  // (standing on its base, its buried skirt in the sand — a little deeper
+  // on a slope, so no edge lifts off it)
   const h = terrain.height(r.position[0], r.position[2]);
   const g = Math.min(Math.hypot(terrain.height(r.position[0] + 1, r.position[2]) - h, terrain.height(r.position[0], r.position[2] + 1) - h), 1);
-  const y = h - r.scale * (0.15 + g * 0.4);
+  const y = h - r.scale * (0.04 + g * 0.3);
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r.rotation, 0));
   m.compose(new THREE.Vector3(r.position[0], y, r.position[2]), q, new THREE.Vector3(r.scale, r.scale * r.squash, r.scale * 1.1));
   return m;
@@ -61,12 +62,9 @@ function scatterMatrix(r, terrain) {
 export function buildRockSet(shards, scatter, terrain) {
   const groups = [
     ...[0, 1, 2, 3].map((i) => ({ geometry: shardGeometry(301 + i * 17), matrices: [] })),
-    // (the same faceted, water-worn stones as the oasis's: world/plants.js)
-    ...[
-      boulderGeometry(503, { lumpy: 0.24, flat: 0.8 }),
-      boulderGeometry(514, { lumpy: 0.3, flat: 0.7 }),
-      boulderGeometry(525, { lumpy: 0.18, flat: 0.9 }),
-    ].map((geometry) => ({ geometry, matrices: [] })),
+    // (the boulders: the Blender rocks, world/rockModels.js — their
+    // geometry filled in by Rocks once the model has loaded)
+    ...[0, 1, 3].map((model) => ({ geometry: null, model, matrices: [] })),
   ];
   shards.forEach((l, i) => groups[i % 4].matrices.push(shardMatrix(l, terrain)));
   scatter.forEach((r) => groups[4 + r.variant].matrices.push(scatterMatrix(r, terrain)));
@@ -75,11 +73,13 @@ export function buildRockSet(shards, scatter, terrain) {
 
 export default function Rocks({ rockSet, shared }) {
   const stone = useMemo(() => createStoneMaterial(shared), [shared]);
+  const models = useRockModels();
 
   useEffect(
     () => () => {
       stone.material.dispose();
-      rockSet.forEach((g) => g.geometry.dispose());
+      // (the model's geometries are shared: not ours to dispose)
+      rockSet.forEach((g) => g.geometry?.dispose());
     },
     [stone, rockSet]
   );
@@ -91,6 +91,11 @@ export default function Rocks({ rockSet, shared }) {
       m.userData.hex = T.stoneColor;
     }
     m.roughness = T.stoneRoughness;
+    // (the Blender rocks' tint, over their baked colour: every one of them)
+    if (models.material.userData.tint !== T.rockTint) {
+      models.material.color.set(T.rockTint);
+      models.material.userData.tint = T.rockTint;
+    }
     // (every stone's moss: the oasis's too)
     if (STONE_UNIFORMS.uMoss.userData !== T.stoneMoss) {
       STONE_UNIFORMS.uMoss.value.set(T.stoneMoss);
@@ -101,14 +106,18 @@ export default function Rocks({ rockSet, shared }) {
 
   return (
     <>
-      {rockSet.map((group, gi) => (
-        <RockGroup key={gi} group={group} stone={stone} />
-      ))}
+      {rockSet.map((group, gi) =>
+        group.model == null ? (
+          <RockGroup key={gi} group={group} geometry={group.geometry} material={stone.material} />
+        ) : (
+          <RockGroup key={gi} group={group} geometry={models.boulders[group.model]} material={models.material} />
+        )
+      )}
     </>
   );
 }
 
-function RockGroup({ group, stone }) {
+function RockGroup({ group, geometry, material }) {
   const ref = useRef();
   useLayoutEffect(() => {
     if (!ref.current) return;
@@ -120,7 +129,7 @@ function RockGroup({ group, stone }) {
   return (
     <instancedMesh
       ref={ref}
-      args={[group.geometry, stone.material, group.matrices.length]}
+      args={[geometry, material, group.matrices.length]}
       castShadow
       receiveShadow
     />

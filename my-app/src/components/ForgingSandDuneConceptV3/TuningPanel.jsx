@@ -129,6 +129,7 @@ const WORLD_SCHEMA = {
     fogDensity: [0, 0.004, 0.0001],
   },
   Rocks: {
+    rockTint: "color",
     stoneColor: "color",
     stoneRoughness: [0.2, 1, 0.01],
     stoneMoss: "color",

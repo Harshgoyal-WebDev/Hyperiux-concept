@@ -8,9 +8,9 @@ import { NO_MIRROR_LAYER, P, SUN_DIR } from "../../config";
 import { T } from "../../tuning";
 import { mulberry32 } from "../../world/layout";
 import { BASIN, S_ENTRANCE, S_RIM, WATER_Y, floorHalfWidth, oasisAt, route } from "../../world/oasis";
-import { blossomGeometry, boulderGeometry, buildBroadleaf, buildRoundTree, clumpGeometry, flowerClumpGeometry, frondTexture, rockGeometry, setGrowPace, tuftGeometry } from "../../world/plants";
+import { blossomGeometry, buildBroadleaf, buildRoundTree, clumpGeometry, flowerClumpGeometry, frondTexture, setGrowPace, tuftGeometry } from "../../world/plants";
 import { REVEAL_GLSL, revealStartAt } from "../../world/revealMap";
-import { createStoneMaterial } from "../../world/materials";
+import { useRockModels } from "../../world/rockModels";
 import { attachPointer } from "../../pointer";
 import { BLOOM_GLSL, createBloom, stepBloom } from "./bloom";
 
@@ -53,7 +53,6 @@ const ISLAND_GRASS_TALL = 2.1; // the island's grass: this much taller than the 
 const ISLAND_FLOWER_SCALE = 1.6; // ...and its flowers this much bigger (taller)
 const SHORE_BOULDERS = 90; // round the lake's outer shore
 const SHORE_PEBBLES = 520;
-const OASIS_ROCK_COLOR = "#4f443b"; // (water-worn, a little darker by the water: the reference's)
 // the valley (drawn from the first: the camera travels it before the reveal)
 const VALLEY_FROM = 770; // route m
 const VALLEY_TO = 1035;
@@ -62,7 +61,6 @@ const VALLEY_PEBBLES = 600;
 const VALLEY_CLEAR = 7; // m either side of the camera's line (and the beam along it) kept clear
 const VALLEY_CLUSTER_SHARE = 0.55; // of the boulders that have others round them
 const VALLEY_DUNE_REACH = 2.5; // m past the floor's edge they may still lie (none up the dunes: they keep round the way)
-const VALLEY_ROCK_COLOR = "#5e5044";
 const RIM_BOULDERS = 200; // ...and round the oasis's rim, at the dunes' feet (seen as the camera comes in, before the reveal)
 const RIM_REACH = [-10, 2]; // m: on the floor, in from the dunes' feet (not up them)
 // the entrance (the gap in the dunes the way comes in by): a wall of trees
@@ -183,7 +181,9 @@ export function scatterMore(terrain, veg, lists) {
   const rock = (list, x, z, sc, chunk) => {
     const y = terrain.height(x, z);
     const g = Math.min(Math.hypot(terrain.height(x + 1, z) - y, terrain.height(x, z + 1) - y), 1);
-    list.push({ x, y: y - sc * (0.18 + g * 0.45), z, sc, chunk, r: rng(), r2: rng(), r3: rng(), r4: rng() });
+    // (the Blender rocks stand on their base, a buried skirt below: only a
+    // little into the sand, more on a slope)
+    list.push({ x, y: y - sc * (0.04 + g * 0.3), z, sc, chunk, r: rng(), r2: rng(), r3: rng(), r4: rng() });
   };
   const ring = (r0, r1) => {
     const a = rng() * Math.PI * 2;
@@ -691,6 +691,8 @@ function flowerMaterial({ sway = 0.1, far = 0, rest = 0.3 } = {}, uniforms, bloo
 }
 
 export default function Vegetation({ J, tier, shared, terrain }) {
+  // the Blender rocks (world/rockModels.js): the boulders and pebbles
+  const rockModels = useRockModels();
   const group = useRef();
   const foliageAt = useRef(-1); // the brightness the plants' colours are at
   // the cursor's trail, for the flowers' bloom
@@ -725,12 +727,14 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       bushLeaf: foliage(new THREE.MeshStandardMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true, roughness: 0.9, color: new THREE.Color(0.3, 0.3, 0.3) }), { sway: 0.035, far: 300 }, uniforms),
       wood: matte(new THREE.MeshStandardMaterial({ map: barkMap, vertexColors: true, roughness: 0.95, color: new THREE.Color(0.32, 0.3, 0.28) }), uniforms),
       bark: matte(new THREE.MeshStandardMaterial({ map: barkMap, roughness: 0.95, color: new THREE.Color(0.28, 0.25, 0.22) }), uniforms),
-      rock: createStoneMaterial(shared, { color: "#5e5044" }).material,
+      rock: rockModels.material,
       // the valley's boulders and the oasis's dark water-worn ones: all
       // there from the first (the island's are seen before the beam
       // touches the orb), in the shared stone's matte look
-      valleyRock: createStoneMaterial(shared, { color: VALLEY_ROCK_COLOR }).material,
-      oasisRock: createStoneMaterial(shared, { color: OASIS_ROCK_COLOR }).material,
+      // (the Blender rocks' own baked material — shared with the model: kept
+      // out of the disposal below)
+      valleyRock: rockModels.material,
+      oasisRock: rockModels.material,
       // wild flowers, and the blossoms on the trees and bushes (swaying with
       // their leaves)
       flower: flowerMaterial({ sway: 0.1, far: FLOWER_FAR, rest: FLOWER_REST_OPEN }, uniforms, bloom.uniforms),
@@ -745,11 +749,11 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     const shrub = clumpGeometry({ cards: 10, radius: 0.9, height: 0.7, size: 0.95, lift: 0.1, seed: 37 });
     const tuft = tuftGeometry({ blades: 5, height: 0.8, seed: 9 });
     const reed = tuftGeometry({ blades: 6, height: 2.0, spread: 0.25, seed: 13 });
-    const rocks = [rockGeometry(1), rockGeometry(2)];
-    // boulders and pebbles (rounded, three and two shapes)
-    const boulders = [boulderGeometry(41, { flat: 0.72 }), boulderGeometry(43, { lumpy: 0.3, flat: 0.62 }), boulderGeometry(47, { lumpy: 0.18, flat: 0.85 })];
-    // (pebbles: a few pixels across — 20 facets each is plenty)
-    const pebbles = [boulderGeometry(53, { detail: 0, lumpy: 0.12, flat: 0.55, chips: 1 }), boulderGeometry(59, { detail: 0, lumpy: 0.16, flat: 0.7, chips: 1 })];
+    // (the sandstone rocks among the plants: the Blender rocks too)
+    const rocks = [rockModels.boulders[2], rockModels.boulders[3]];
+    // boulders and pebbles: the Blender rocks (four boulders, two small ones)
+    const boulders = rockModels.boulders;
+    const pebbles = rockModels.pebbles;
     // flowers: two clumps of wild flowers, blossoms over each tree's crown
     // and over the bushes
     const flowerClumps = [flowerClumpGeometry({ flowers: 4, height: 0.5, petals: 6, len: 0.14, width: 0.085, seed: 61 }), flowerClumpGeometry({ flowers: 3, height: 0.7, petals: 5, len: 0.17, width: 0.1, seed: 67 })];
@@ -896,7 +900,7 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       const items = lists.rocks.filter((_, i) => i % rocks.length === vi);
       add(rg, mats.rock, items, (it, p, qq, ss) => {
         const sc = it.r3 < 0.15 ? 2.2 + it.r2 * 2.5 : 0.45 + it.r2 * 1.3;
-        p.set(it.x, it.y - sc * 0.25, it.z);
+        p.set(it.x, it.y - sc * 0.06, it.z);
         qq.setFromEuler(new THREE.Euler((it.r - 0.5) * 0.5, it.r2 * 6.28, (it.r3 - 0.5) * 0.4));
         ss.set(sc, sc * (0.6 + it.r * 0.5), sc * (0.8 + it.r3 * 0.4));
       }, { shadow: true });
@@ -917,9 +921,10 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     scatterRocks(more.shorePebbles, pebbles, mats.oasisRock, { gate: false, far: PEBBLE_FAR });
     // (their base colours, for the brightness control)
     for (const m of Object.values(mats)) m.userData.base = m.color.clone();
-    const geometries = [...palms.flatMap((v) => [v.trunk, v.crown]), ...broad.flatMap((v) => [v.trunk, v.crown]), bush, shrub, tuft, reed, ...rocks, ...boulders, ...pebbles, ...flowerClumps, ...treeBlossoms, bushBlossom];
+    // (the rocks' geometries and material are the model's: not disposed here)
+    const geometries = [...palms.flatMap((v) => [v.trunk, v.crown]), ...broad.flatMap((v) => [v.trunk, v.crown]), bush, shrub, tuft, reed, ...flowerClumps, ...treeBlossoms, bushBlossom];
     return { meshes, mats, geometries, frond, uniforms, depth };
-  }, [terrain, tier, shared, atlas, barkMap, bloom]);
+  }, [terrain, tier, shared, atlas, barkMap, bloom, rockModels]);
 
   // (rebuilt plants start from their base colours)
   useEffect(() => {
@@ -929,13 +934,13 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     () => () => {
       built.meshes.forEach((m) => m.dispose());
       built.geometries.forEach((g) => g.dispose());
-      Object.values(built.mats).forEach((m) => m.dispose());
+      Object.values(built.mats).forEach((m) => m !== rockModels.material && m.dispose());
       Object.values(built.depth).forEach((m) => m.dispose());
       built.frond.dispose();
       atlas.dispose();
       barkMap.dispose();
     },
-    [built, atlas, barkMap]
+    [built, atlas, barkMap, rockModels]
   );
 
   useFrame((state) => {

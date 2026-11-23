@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/immutability -- R3F pattern: three.js uniforms/objects are mutated imperatively inside useFrame, outside React's render. */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { T } from "../../tuning";
@@ -113,8 +113,10 @@ export default function Oasis({ J, tier, shared, terrain, forge }) {
       <Water J={J} tier={tier} shared={shared} ground={ground} treePos={TREE.core} />
       <Rivulets J={J} reveal={reveal} paths={paths} terrain={terrain} shared={shared} tier={tier} />
       <CoreOrb J={J} shared={shared} tier={tier} paths={paths} rivulets={reveal.rivulets.length} />
-      <Rocks rockSet={rocks} shared={shared} />
-      <Vegetation J={J} tier={tier} shared={shared} terrain={terrain} />
+      <Suspense fallback={null}>
+        <Rocks rockSet={rocks} shared={shared} />
+        <Vegetation J={J} tier={tier} shared={shared} terrain={terrain} />
+      </Suspense>
       <Yggdrasil J={J} tier={tier} onReady={onTree} />
       {forge && <Streaks J={J} forge={forge} terrain={terrain} shared={shared} />}
     </>

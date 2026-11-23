@@ -92,7 +92,10 @@ void main() {
 }
 `;
 
-export default function DuneDust({ terrain }) {
+const DUST_DAY = new THREE.Color("#e6b182");
+const DUST_NIGHT = new THREE.Color("#7d88a6");
+
+export default function DuneDust({ terrain, shared }) {
   const mesh = useRef();
   const built = useMemo(() => {
     const rng = mulberry32(4242);
@@ -159,7 +162,10 @@ export default function DuneDust({ terrain }) {
     if (!on) return;
     const u = built.material.uniforms;
     u.uTime.value = clock.elapsedTime;
-    u.uGain.value = 0.22 * T.duneDust;
+    // (by night: a cool, faint moonlit grey — not the sunset's warm glow)
+    const night = shared?.uNight.value ?? 0;
+    u.uGain.value = 0.22 * T.duneDust * THREE.MathUtils.lerp(1, 0.45, night);
+    u.uColor.value.copy(DUST_DAY).lerp(DUST_NIGHT, night);
     u.uSpeed.value = T.duneDustWind;
     built.geometry.instanceCount = Math.round(built.count * Math.min(T.duneDustAmount, 1));
   });

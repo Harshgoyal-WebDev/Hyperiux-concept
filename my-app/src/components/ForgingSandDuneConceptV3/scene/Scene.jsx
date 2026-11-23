@@ -148,9 +148,9 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
         </Suspense>
         <ForgeLayer>
         {/* the dusk sky's floating islands (the first scene's backdrop) */}
-        <FlyingIslands />
+        <FlyingIslands shared={shared} />
         {/* sand blowing over the dunes and off their crests */}
-        <DuneDust terrain={terrain} />
+        <DuneDust terrain={terrain} shared={shared} />
         {withForge && (
           <Suspense fallback={null}>
             <Forge J={J} shared={shared} groundY={groundY} terrain={terrain} onReady={onReady} />

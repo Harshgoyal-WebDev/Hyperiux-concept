@@ -162,7 +162,14 @@ void main() {
 }
 `;
 
-export default function FlyingIslands() {
+const ROCK_DAY = new THREE.Color("#5a4636");
+const ROCK_NIGHT = new THREE.Color("#2c3140");
+const HAZE_DAY = new THREE.Color("#5a5468");
+const HAZE_NIGHT = new THREE.Color("#0d1428");
+const FALL_DAY = new THREE.Color("#e8a874");
+const FALL_NIGHT = new THREE.Color("#9aa8c8");
+
+export default function FlyingIslands({ shared }) {
   const group = useRef();
   const built = useMemo(() => {
     // (dark against the sky, as in the reference — the scene's haze would
@@ -225,8 +232,15 @@ export default function FlyingIslands() {
     if (!on) return;
     const t = clock.elapsedTime;
     built.fallMat.uniforms.uTime.value = t;
-    built.fallMat.uniforms.uGain.value = 0.9 * T.islandFalls;
-    built.stone.emissiveIntensity = T.islandHaze;
+    // (by night: the haze over them a deep blue, faint — silhouettes against
+    // the stars, rimmed by the moon — and the falls a pale, dim moonlit grey)
+    const night = shared?.uNight.value ?? 0;
+    built.fallMat.uniforms.uGain.value = 0.9 * T.islandFalls * THREE.MathUtils.lerp(1, 0.3, night);
+    built.fallMat.uniforms.uColor.value.copy(FALL_DAY).lerp(FALL_NIGHT, night);
+    built.stone.emissive.copy(HAZE_DAY).lerp(HAZE_NIGHT, night);
+    built.stone.emissiveIntensity = T.islandHaze * THREE.MathUtils.lerp(1, 0.35, night);
+    // (their rock, by moonlight: a cool, dark grey rather than warm sandstone)
+    built.stone.color.copy(ROCK_DAY).lerp(ROCK_NIGHT, night);
     for (const it of built.items) {
       // drifting: a slow bob and turn
       it.node.position.y = it.base + Math.sin(t * 0.18 + it.phase) * 3;

@@ -12,6 +12,7 @@ import { magnet } from "../world/magnet";
 import { CRACK_STAGES, FRONT_Z, MASK_RECT, SAND_NOISE_GLSL, SLAB_RECT, buildFractureMask, buildLogoMask, cubeHexagon, pieceProgress, prepareForge } from "../world/forgeAsset";
 import { NOISE } from "../world/glsl";
 import { grainProgress, pieceFlight, setFlowGround, syncFlow } from "../world/breakup";
+import { stepBreak } from "../timeline";
 import { stirPiece } from "../world/windField";
 
 // The forging monolith: the authored slab (logo core + excess chunks), its
@@ -102,7 +103,7 @@ function patchStone(material, U, local, pieces) {
         /* glsl */ `#include <emissivemap_fragment>
         // heat only on the pocket's inner walls, never the frame's front faces
         // the wearing edge is still warm from the energy
-        totalEmissiveRadiance += uCrackColor * sdEdge * 0.35 * uCrackLevel;
+        // (none: a piece shattering into gravel read as a glowing outline)
         float fgPocket = (1.0 - smoothstep(0.3, 1.0, length(vRest - uCoreAsset))) * (1.0 - smoothstep(0.95, 1.15, vRest.z));
         totalEmissiveRadiance += uCrackColor * fgPocket * fgPocket * uHeat;
         // the cube outline's openings lit right through: their walls (the
@@ -193,6 +194,7 @@ function patchFill(material, hex) {
     uFillScale: { value: new THREE.Vector3(1, 1, 1) },
     uFillDepth: { value: 1 },
     uFillDensity: { value: 0.25 },
+    uFillSolid: { value: 1 },
     uFillHex: { value: ccw(hex) },
   };
   material.onBeforeCompile = (shader) => {
@@ -207,6 +209,7 @@ function patchFill(material, hex) {
         uniform vec3 uFillCam;
         uniform float uFillDepth;
         uniform float uFillDensity;
+        uniform float uFillSolid; // 1 = a solid fill of light, 0 = a haze thinner where the view through it is short
         uniform vec2 uFillHex[6];
         varying vec3 vFillP;`
       )
@@ -230,7 +233,7 @@ function patchFill(material, hex) {
           }
           float through = (1.0 - clamp(enter, 0.0, 1.0)) * length(d);
           float full = 1.0 - exp(-uFillDepth * uFillDensity);
-          diffuseColor.a *= clamp((1.0 - exp(-through * uFillDensity)) / max(full, 1e-3), 0.0, 1.0);
+          diffuseColor.a *= mix(clamp((1.0 - exp(-through * uFillDensity)) / max(full, 1e-3), 0.0, 1.0), 1.0, uFillSolid);
         }`
       );
   };
@@ -448,7 +451,10 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     // as bright as the depth of the openings the view passes through to it —
     // so from in front the openings are full of it, and flying through them
     // the space ahead glows, not just the two ends: patchFill)
-    const fillMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.BackSide, toneMapped: false });
+    // (both sides: its front, just inside the mark's face, covers the
+    // openings' inner walls — drawn by its far side alone, they showed
+    // through — and its far side fills it once the camera is inside it)
+    const fillMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
     const fillU = patchFill(fillMat, hex);
     const fill = new THREE.Mesh(prism, fillMat);
     fill.position.z = forge.world.frontZ + T.fillFront;
@@ -600,7 +606,8 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     // compiled the frame it first showed — a two-second stall at the break)
     built.fill.visible = true;
     built.fill.material.color.set(T.innerGlowColor).multiplyScalar(0.6 + 1.0 * fillK);
-    built.fill.material.opacity = Math.min(fillK, 1) * 0.96;
+    built.fill.material.opacity = Math.min(fillK, 1);
+    built.fillU.uFillSolid.value = T.fillSolid;
     // (the openings' walls lit with it)
     U.uGapGlow.value.set(T.innerGlowColor).multiplyScalar(fillK * T.fillWallGlow);
     const tilt = J.logoTilt * T.logoParallax;
@@ -669,12 +676,14 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     // spins (world/breakup.js). Each reports where it is, how it is turned,
     // its own progress and how far it has ground away: the stone shader,
     // the sand and gravel it turns into and the swirl follow.
+    // (the breakup's own clock, when it plays by itself: timeline.js stepBreak)
+    stepBreak(J, Math.min(delta, 0.1));
     const f = J.fracture;
     // the streams the broken rock is carried round in: their clock (picking
     // up speed after the blast) and the panel's values
     // (held after the break, T.breakHoldOn: from T.breakHold on, scrolling
     // no longer changes the broken rock — it keeps revolving as it was)
-    const hold = T.breakHold ?? 1;
+    const hold = T.breakAuto ? 1 : (T.breakHold ?? 1);
     syncFlow(Math.min(delta, 0.1), Math.min(f, hold));
     if (f !== lastFracture.current || f > 0) {
       lastFracture.current = f;

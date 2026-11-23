@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CUT_FROM, CUT_TO, OPENING_NOMINAL as O, P, RUN_FROM_Z } from "../config";
-import { RUN_ARRIVAL, brokenAt } from "../timeline";
+import { RUN_ARRIVAL, cameraSetsOffAt } from "../timeline";
 import { T } from "../tuning";
 import { S_END, S_RIM, TREE, WATER_Y, route } from "./oasis";
 import { revealEnd } from "./revealMap";
@@ -36,7 +36,7 @@ export { CUT_FROM, CUT_TO };
 const runIn = (x) => 0.4 * x + 0.6 * (1 - Math.cos((x * Math.PI) / 2));
 const runInSlope = (x) => 0.4 + 0.6 * (Math.PI / 2) * Math.sin((x * Math.PI) / 2);
 const START_Z = 0.3;
-const runFrom = () => Math.min(brokenAt(), P.forged);
+const runFrom = () => Math.min(cameraSetsOffAt(), P.forged);
 function runPace(p) {
   const span = P.through - runFrom();
   const x = Math.min(Math.max((p - runFrom()) / span, 0), 1);
@@ -63,7 +63,7 @@ const N = 900;
 let cache = null;
 let cacheKey = "";
 function table() {
-  const key = `${P.through}:${P.held}:${P.canopy}:${brokenAt()}:${CUT_FROM()}:${CUT_TO()}`;
+  const key = `${P.through}:${P.held}:${P.canopy}:${cameraSetsOffAt()}:${CUT_FROM()}:${CUT_TO()}`;
   if (cache && key === cacheKey) return cache;
   const p0 = CUT_FROM();
   const p1 = P.canopy;

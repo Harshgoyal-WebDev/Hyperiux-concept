@@ -147,6 +147,7 @@ const WORLD_SCHEMA = {
     shockStrength: [0, 3, 0.01],
     shockShake: [0, 3, 0.01],
     shockReach: [200, 2000, 10],
+    shockTime: [0.5, 12, 0.1],
     shockSpan: [0.05, 0.8, 0.01],
     edgeBlur: [0, 3, 0.01],
     edgeChroma: [0, 2, 0.01],
@@ -250,6 +251,20 @@ const OASIS_SCHEMA = {
     strandPushRadius: [1, 40, 0.5],
   },
   "Camera to the core & round the tree": {
+    camBeamPace: "bool",
+    camTouchDist: [10, 200, 1],
+    camFollowBeam: [0, 1, 0.01],
+    camOverBeam: [0, 1, 0.01],
+    camOverLook: [10, 200, 1],
+    camSphereDist: [20, 200, 1],
+    camApproachCloser: [0, 0.8, 0.01],
+    camOverHeight: [0.5, 20, 0.1],
+    camHoldAfterTouch: [0, 0.15, 0.001],
+    camRide: "bool",
+    camRideBehind: [5, 80, 1],
+    camRideLift: [0, 20, 0.1],
+    camRideLead: [0, 0.1, 0.001],
+    camRideRelease: [0.005, 0.08, 0.001],
     camTurnSmooth: [0, 200, 1],
     camCoreDist: [5, 150, 0.5],
     camCoreLift: [-10, 30, 0.1],
@@ -265,6 +280,8 @@ const OASIS_SCHEMA = {
   },
   "Camera magnet (cursor, both scenes)": {
     magnet: [0, 3, 0.01],
+    magnetValley: [0, 1, 0.01],
+    magnetValleyOrbit: [0, 1, 0.01],
     magnetYaw: [0, 25, 0.1],
     magnetPitch: [0, 15, 0.1],
     magnetBank: [-10, 10, 0.1],
@@ -326,6 +343,8 @@ const FEEDBACK_SCHEMA = {
     beamBlastFade: [0.001, 0.1, 0.001],
     beamFootAt: [0.05, 1, 0.01],
     beamUpFace: "bool",
+    beamFaceSpread: [0, 1.5, 0.01],
+    beamFaceWidth: [0.5, 5, 0.05],
     beamFaceGap: [0, 1, 0.01],
     spineCrack: "bool",
   },
@@ -334,10 +353,20 @@ const FEEDBACK_SCHEMA = {
   },
   "Break": {
     breakBigVolume: [0, 11, 0.05],
+    breakAuto: "bool",
+    breakAutoBlast: [0.3, 5, 0.05],
+    breakAutoCirculate: [2, 30, 0.1],
+    breakSettleEase: [1, 6, 0.05],
+    breakAutoRewind: [0.5, 8, 0.1],
+    breakSpinFrom: [0, 3, 0.01],
+    breakSpinTo: [0, 5, 0.01],
+    breakSpinSettle: [0, 5, 0.01],
+    breakGrindShrink: [0, 1, 0.01],
     breakShatter: [0.1, 6, 0.01],
     breakShatterSpin: [0, 12, 0.1],
     edgeFxOffAt: [0.1, 1, 0.005],
     fillFront: [-0.5, 1, 0.005],
+    fillSolid: [0, 1, 0.01],
     fillDensity: [0.01, 2, 0.01],
     fillWallGlow: [0, 6, 0.05],
     fillDepth: [0, 14, 0.05],
@@ -360,6 +389,7 @@ const FEEDBACK_SCHEMA = {
   "Scroll pace": {
     scrollPace: [10, 300, 1],
     paceEven: [0, 1, 0.01],
+    camFromBlast: "bool",
     paceApproach: [0.3, 4, 0.01],
     paceValley: [0.2, 3, 0.01],
   },
@@ -435,7 +465,7 @@ const BREAK_SCHEMA = {
 // values the master timeline is built from (the beam's run, the camera's
 // keyframes): changing one rebuilds it (ForgingConcept)
 export const RETIME_EVENT = "forging-sand-dune-concept-v3:retime";
-const RETIME = new Set(["edgeFxOffAt", "shockSpan", "beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
+const RETIME = new Set(["camFromBlast", "breakShatter", "edgeFxOffAt", "shockSpan", "beamFootAt", "tlCutStart", "tlCutEnd", "tlBeamToTreeStart", "tlBeamToTreeEnd", "tlTreeLightEnd", "tlOutroStart", "tlOutroEnd", "cameraSettle", "seqBreak", "seqBreakEnd", "seqImpactEnd", "seqBlastEnd", "seqGrindEnd"]);
 
 // half as wide again as Leva's default (280 px), the extra all for the labels
 const PANEL_WIDTH = 420;

@@ -112,7 +112,12 @@ export function syncFlow(dt, f) {
   // drifting through the blast, the spin takes hold and races up to speed
   // (T.breakSpinStart → End of the breakup), and keeps on going
   if (f <= 0) u.uBreakAngle.value = 0;
-  else u.uBreakAngle.value += dt * T.breakSpin * (0.12 + 2.5 * smooth(f, T.breakSpinStart, T.breakSpinEnd));
+  else {
+    // (slow after the blast, picking up to speed, then calming as the rocks
+    // settle into gravel and sand: T.breakSpinFrom → To → Settle)
+    const up = THREE.MathUtils.lerp(T.breakSpinFrom, T.breakSpinTo, smooth(f, T.breakSpinStart, T.breakSpinEnd));
+    u.uBreakAngle.value += dt * T.breakSpin * THREE.MathUtils.lerp(up, T.breakSpinSettle, smooth(f, 0.8, 1));
+  }
   u.uStreams.value = Math.min(Math.max(Math.round(T.streams), 1), 8);
   u.uStreamRadius.value = T.streamRadius;
   u.uStreamTilt.value = T.streamTilt * DEG;
@@ -206,6 +211,9 @@ const shatterSpan = () => Math.max(T.breakBlastEnd * T.breakShatter, 0.005);
 // big one, its grind brought into its shatter (over the blast)
 export function grainProgress(c, u) {
   if (!T.breakSolid) return u;
+  // (worn down by shrinking — T.breakGrindShrink: the grains come off it all
+  // the way through, on its own progress)
+  if (T.breakGrindShrink > 0) return u;
   if (!isBigPiece(c)) return 0;
   return T.breakGrindStart + (u / shatterSpan()) * Math.max(T.breakGrindEnd - T.breakGrindStart, 0.01);
 }
@@ -233,9 +241,12 @@ export function pieceFlight(forge, c, u, out) {
   out.position.lerpVectors(rest, onStream, b);
   out.quaternion.setFromAxisAngle(c.axis, c.spin * (5 * b + U.uBreakAngle.value * 2 * T.breakTumble) * Math.max(T.breakTumble, 0.2));
   // a big rock spins up — faster and faster — as it shatters into sand
+  // (each rock turning on its own: T.breakShatterSpin turns from the blast
+  // until it is gone, quick at first and slowing — never a sudden whirl)
   if (T.breakSolid && isBigPiece(c)) {
-    const x = Math.min(u / shatterSpan(), 1);
-    spinUp.setFromAxisAngle(c.axis, Math.sign(c.spin || 1) * T.breakShatterSpin * Math.PI * 2 * x * x * x);
+    const x = Math.min(Math.max(u, 0), 1);
+    const turn = T.breakGrindShrink > 0 ? 1 - (1 - x) * (1 - x) : Math.pow(Math.min(u / shatterSpan(), 1), 3);
+    spinUp.setFromAxisAngle(c.axis, Math.sign(c.spin || 1) * T.breakShatterSpin * Math.PI * 2 * turn);
     out.quaternion.premultiply(spinUp);
   }
   // (never into the sand: a loop dipping below the dunes rolls along over them)
@@ -243,6 +254,15 @@ export function pieceFlight(forge, c, u, out) {
   // solid stone (T.breakSolid): the small pieces never wear away; the big
   // ones shatter into gravel and sand as the blast throws them (their grains
   // fly off: Forge.jsx grainProgress)
+  // ...or (T.breakGrindShrink) every piece wears down as it goes round: it
+  // shrinks, solid all the while (no hollow wearing, no glowing rims), as its
+  // gravel and sand come off it, until there is nothing left of it
+  if (T.breakSolid && T.breakGrindShrink > 0) {
+    const g = smooth(u, T.breakGrindStart, Math.max(T.breakGrindEnd, T.breakGrindStart + 0.01));
+    const left = 1 - T.breakGrindShrink * g * g * (3 - 2 * g);
+    out.scale.multiplyScalar(Math.max(left, 0.001));
+    return g >= 0.999 ? 1 : 0;
+  }
   if (T.breakSolid) return isBigPiece(c) ? THREE.MathUtils.clamp(u / shatterSpan(), 0, 1) : 0;
   // (only so much of it grinds away — each piece its own share round
   // T.breakSandShare — the rest rides on round the mark as a ragged chunk)

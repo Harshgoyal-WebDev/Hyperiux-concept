@@ -35,7 +35,9 @@ export function createJourneyState() {
     logoCrackGlow: 0, // ...on the logo core (they stay lit)
     crack: 0, // activation level (sound)
     eventT: 0, // the forging event's own clock (0 at the core → 1 forged)
-    fracture: 0, // breakup of the excess rock (0..1; see deriveBreak)
+    fracture: 0, // breakup of the excess rock (0..1; see deriveBreak / stepBreak)
+    breakClock: 0, // s into the breakup's own play (T.breakAuto: stepBreak)
+    shockAuto: 0, // the shockwave on the breakup's own clock (T.breakAuto)
     breakBurst: 0, // its impact: the burst of energy as the rock blasts off (0..1, dying away)
     orbitSpeed: 0, // pace of the swirl's sound once the rock breaks (0 → cruising)
     // through the mark, on into the oasis
@@ -117,6 +119,10 @@ export function blastedAt() {
   return eventAt(T.breakStart + Math.max(T.breakBurstEnd, T.breakBlastEnd) * (end - T.breakStart));
 }
 
+// Where the camera sets off for the logo after the blast (and the scroll's
+// approach pace starts: ForgingConcept paceScroll).
+export const cameraSetsOffAt = () => (T.camFromBlast ? blastedAt() : brokenAt());
+
 // the run at the opening: under way from the first scroll (a steady share),
 // gathering pace into the opening
 const runIn = (x) => 0.4 * x + 0.6 * (1 - Math.cos((x * Math.PI) / 2));
@@ -129,7 +135,10 @@ const shots = () => [
   // 02–03 from the first scroll, one uninterrupted rise and push in to the
   // still shot as the beam reaches the core
   [P.core, ...EVENT_SHOT, glide(0.08, Math.min(Math.max(T.cameraSettle, 0.01), 0.6))],
-  [Math.min(brokenAt(), P.forged), ...EVENT_SHOT], // 04–06 still, through the impact and the grinding
+  // 04–06 still through the impact — and setting off the moment the blast
+  // is over (T.camFromBlast; else once the broken rock has settled, which
+  // left the visitor scrolling for a while with nothing moving)
+  [Math.min(cameraSetsOffAt(), P.forged), ...EVENT_SHOT],
   // 07–13: as soon as the rock has ground to sand (the visitor scrolling
   // again), one straight run at the cube outline's opening — no swing, no
   // stop — gathering pace into it and on through
@@ -172,11 +181,50 @@ syncSequence();
 // well ahead of the camera, which gathers pace towards the slab.
 export const beamFootP = () => 0.02 + (P.climb - 0.02) * Math.min(Math.max(T.beamFootAt, 0.05), 1);
 
+// The breakup playing by itself (T.breakAuto), on its own clock once the
+// scroll has brought the beam into the core and the rock breaks — not
+// scrubbed by the scroll: a great expansion (the blast throwing the pieces
+// far out, big, slowing as they fly: T.breakAutoBlast s, eased out), then the
+// pieces drawn into the streams round the mark, which pick up from slow to
+// fast (T.breakAutoCirculate s, eased in and out) while the rocks wear down
+// into gravel and sand as they go round. Scrolled back before the break, it
+// plays back (T.breakAutoRewind × as fast). Called every frame (Forge).
+const cubicOut = (x) => 1 - Math.pow(1 - x, 3);
+export function stepBreak(J, dt) {
+  if (!T.breakAuto) return;
+  const A = Math.max(T.breakAutoBlast, 0.05);
+  const B = Math.max(T.breakAutoCirculate, 0.1);
+  const armed = J.eventT >= T.breakStart && J.progress > 0;
+  J.breakClock = Math.min(Math.max(J.breakClock + (armed ? dt : -dt * Math.max(T.breakAutoRewind, 0.1)), 0), A + B);
+  const c = J.breakClock;
+  const fb = Math.max(T.breakBurstEnd, T.breakBlastEnd);
+  let f = 0;
+  if (c > 0 && c < A) f = fb * cubicOut(c / A);
+  // (on at once after the blast — no hold — the spin's own ramp easing it
+  // up to speed: T.breakSpinFrom → To)
+  // (easing out into the settle — T.breakSettleEase: 1 = an even pace to the
+  // end, higher = slowing more and more as the rocks settle)
+  else if (c >= A) f = fb + (1 - fb) * (1 - Math.pow(1 - (c - A) / B, Math.max(T.breakSettleEase, 1)));
+  J.fracture = f;
+  // the shockwave over the dunes on the same clock (T.shockTime s, easing
+  // out): scrolled back, it runs back in step with the rocks — not before them
+  const sx = Math.min(c / Math.max(T.shockTime, 0.1), 1);
+  J.shockAuto = c > 0 ? Math.sin((sx * Math.PI) / 2) : 0;
+  // the impact: in at once, dissipating with the blast
+  J.breakBurst = f > 0 ? Math.min(f / 0.004, 1) * Math.pow(1 - Math.min(f / Math.max(T.breakBurstEnd, 0.01), 1), 2) : 0;
+}
+
 export function deriveBreak(J) {
   syncSequence();
   const start = T.breakStart;
   const end = Math.max(T.breakEnd, start + 0.02);
   const t = J.eventT;
+  if (T.breakAuto) {
+    // (the breakup itself plays on its own clock: stepBreak)
+    J.beamFade = 1 - Math.cos((Math.min(Math.max((t - start) / Math.max(T.beamBlastFade, 0.001), 0), 1) * Math.PI) / 2);
+    J.orbitSpeed = t <= start ? 0 : 0.35 + 0.65 * sineOut((t - start) / (1 - start));
+    return;
+  }
   J.fracture = Math.min(Math.max((t - start) / (end - start), 0), 1);
   // Past the blast (the auto-scroll's end) the broken rock, its sand and
   // gravel settle with the visitor's own scroll — slowly, over the whole

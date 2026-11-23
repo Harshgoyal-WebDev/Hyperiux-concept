@@ -32,11 +32,15 @@ const OVER_DUNES = [
 const OVER_SAND = 0.22; // the beam's height over the sand (m)
 const STRANDS = 1; // (one beam)
 
+// (up the slab's face the beam is drawn wider — T.beamFaceWidth — so it reads
+// as thick there as it does running along the sand to its foot)
 const VERTEX = /* glsl */ `
 ${SABER_VERTEX_PARS}
+uniform float uFootU;
+uniform float uFaceWiden;
 void main() {
   vec3 p = position;
-${SABER_VERTEX_BODY}
+${SABER_VERTEX_BODY.replaceAll("uWidth", "(uWidth * mix(1.0, uFaceWiden, smoothstep(uFootU - 0.006, uFootU + 0.006, aU)))")}
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
 }
 `;
@@ -88,30 +92,37 @@ export function buildBeamPath(forge, terrain) {
   );
   const n = Math.ceil(plan.getLength() / 2);
   const pts = plan.getSpacedPoints(n).map((p) => new THREE.Vector3(p.x, terrain.height(p.x, p.z) + OVER_SAND, p.z));
-  // the foot: it turns up off the sand onto the slab's face, and runs on
-  // straight up the face, close against it, to the core (T.beamUpFace)
+  // the foot: it turns up off the sand onto the slab's face in one round bend
+  // (a quarter circle, evenly sampled: no control points crowded together for
+  // the curve to loop back through — the knots of light it made there), and
+  // runs on straight up the face, close against it, to the cube's lower edge
+  // — ending there, not diving back into the stone to the core (a second knot)
   const g = pts[pts.length - 1].y;
   const gap = Math.max(T.beamFaceGap, 0.02);
   const core = world.target ?? world.core;
-  pts.push(new THREE.Vector3(x, g + 0.08, face + 1.2), new THREE.Vector3(x, g + 0.35, face + gap + 0.25));
-  const top = core.y - 0.8;
-  const rise = Math.max(top - (g + 1.2), 0.5);
-  const steps = Math.max(Math.ceil(rise / 2), 2);
-  for (let i = 0; i <= steps; i++) {
-    const k = i / steps;
-    pts.push(new THREE.Vector3(THREE.MathUtils.lerp(x, core.x, k * k), g + 1.2 + rise * k, face + gap));
+  const R = 1.1;
+  for (let i = 1; i <= 8; i++) {
+    const a = (i / 8) * (Math.PI / 2);
+    pts.push(new THREE.Vector3(x, g + R - R * Math.cos(a), face + gap + R - R * Math.sin(a)));
   }
-  pts.push(new THREE.Vector3(core.x, core.y, core.z));
+  const top = core.y - 0.8;
+  const from = g + R;
+  const rise = Math.max(top - from, 0.5);
+  const steps = Math.max(Math.ceil(rise / 1), 2);
+  for (let i = 1; i <= steps; i++) {
+    const k = i / steps;
+    pts.push(new THREE.Vector3(THREE.MathUtils.lerp(x, core.x, k * k), from + rise * k, face + gap));
+  }
   const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
-  // (where along it the beam reaches the slab's foot)
-  curve.userData = { foot: uAtZ(curve, face + 1.2) };
+  // (where along it the beam reaches the slab's foot: the bend's start)
+  curve.userData = { foot: uAtZ(curve, face + gap + R) };
   return curve;
 }
 
-// fans out over the long run, draws together into one line at the core
-const FORGE_SPREAD = (u) =>
-  (0.6 + 1.1 * THREE.MathUtils.smoothstep(u, 0.04, 0.3) * (1 - THREE.MathUtils.smoothstep(u, 0.55, 0.9))) *
-  THREE.MathUtils.lerp(1, 0.04, THREE.MathUtils.smoothstep(u, 0.86, 1));
+// fans out over the long run, and goes on up the slab's face as thick as it
+// runs along the sand at its foot (no thinning to a line on the face)
+// (its thickness up the slab's face is the shader's: T.beamFaceSpread, live)
+const FORGE_SPREAD = (u) => 0.6 + 1.1 * THREE.MathUtils.smoothstep(u, 0.04, 0.3);
 
 // The bundle's strands as ribbons along the path (`spreadAt`: how wide the
 // bundle is at u, `spacing`: metres between samples; `count`, `seed` and
@@ -125,6 +136,25 @@ export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6, cou
   const up = new THREE.Vector3(0, 1, 0);
   const side = new THREE.Vector3();
   const lift = new THREE.Vector3();
+  // each point's sideways direction, carried along the path (parallel
+  // transport): it turns with the path but never flips — where the beam
+  // turns up the slab's face, straight up, "sideways of up" has no meaning,
+  // and the bundle pinched into a knot there
+  const sides = [];
+  {
+    const sd = new THREE.Vector3().crossVectors(tangents[0], up);
+    if (sd.lengthSq() < 1e-6) sd.set(1, 0, 0);
+    sd.normalize();
+    for (const t of tangents) {
+      sd.addScaledVector(t, -sd.dot(t));
+      if (sd.lengthSq() < 1e-8) {
+        sd.crossVectors(t, up);
+        if (sd.lengthSq() < 1e-6) sd.set(1, 0, 0);
+      }
+      sd.normalize();
+      sides.push(sd.clone());
+    }
+  }
   const strands = Array.from({ length: count }, (_, s) =>
     // (one beam: a single ribbon on the line itself — scene/saber.js)
     count === 1
@@ -152,7 +182,7 @@ export function buildStrands(path, { spreadAt = FORGE_SPREAD, spacing = 0.6, cou
     for (let i = 0; i <= n; i++) {
       const u = i / n;
       const t = tangents[i];
-      side.crossVectors(t, up).normalize();
+      side.copy(sides[i]);
       lift.crossVectors(side, t).normalize();
       const spread = spreadAt(u);
       const sway = Math.sin(u * length * 0.035 + st.phase) * st.wave;
@@ -195,6 +225,8 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
         uHead: { value: 0 },
         uLength: { value: length },
         uFoot: { value: path.userData.foot },
+        uFootU: { value: path.userData.foot },
+        uFaceWiden: { value: 2 },
         uWall: { value: 1 },
         uTime: shared.uTime,
       },
@@ -208,8 +240,22 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     // ...or the same path as a bundle of streaks (T.beamStreaks)
     const bundle = buildStrands(path, { count: 18, spacing: 0.6, seed: 5 });
     const streakMaterial = new THREE.ShaderMaterial({
-      uniforms: { ...streakUniforms(bundle.length), uTime: shared.uTime, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 }, fogNear: { value: 1 }, fogFar: { value: 2000 } },
-      vertexShader: STRAND_VERTEX,
+      uniforms: {
+        ...streakUniforms(bundle.length),
+        uTime: shared.uTime,
+        uFootU: { value: path.userData.foot },
+        uFaceSpread: { value: 0.5 },
+        fogColor: { value: new THREE.Color() },
+        fogDensity: { value: 0 },
+        fogNear: { value: 1 },
+        fogFar: { value: 2000 },
+      },
+      // (up the slab's face the bundle drawn thinner: T.beamFaceSpread × its
+      // thickness on the sand)
+      vertexShader: STRAND_VERTEX.replace("uniform float uSpread;", "uniform float uSpread;\nuniform float uFootU;\nuniform float uFaceSpread;").replace(
+        "vec3 p = position + aOffset * uSpread;",
+        "vec3 p = position + aOffset * uSpread * mix(1.0, uFaceSpread, smoothstep(uFootU - 0.01, uFootU + 0.01, aU));"
+      ),
       fragmentShader: STRAND_FRAGMENT,
       transparent: true,
       depthWrite: false,
@@ -269,6 +315,7 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     u.uIntensity.value = T.beamIntensity * J.beamVis * (1 - gone);
     // (the part up the slab's face goes as the stone breaks away)
     u.uWall.value = 1 - J.beamFade;
+    u.uFaceWiden.value = T.beamFaceWidth;
     u.uPixel.value = (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / gl.domElement.height;
     syncSaber(u, T.beamWidth);
     // the round head, while it runs (not once it is in the core; on the
@@ -276,9 +323,13 @@ export default function ForgeBeam({ terrain, forge, J, shared }) {
     const h = u.uHead.value;
     const cu = built.cap.material.uniforms;
     built.path.getPointAt(Math.min(h, 1), cu.uHeadPos.value);
+    // (its own width: as wide as the beam where it is — wider up the face)
+    if (cu.uWidth === u.uWidth) cu.uWidth = { value: 1 };
+    cu.uWidth.value = T.beamWidth * THREE.MathUtils.lerp(1, T.beamFaceWidth, THREE.MathUtils.smoothstep(h, foot - 0.006, foot + 0.006));
     cu.uCapOn.value = h < 0.999 ? THREE.MathUtils.smoothstep(h, 0.0, 0.05) * (h > foot ? 1 - J.beamFade : 1) * (1 - gone) * (many ? 0 : 1) : 0;
     // the streaks: the same head
     const su = built.streaks.material.uniforms;
+    su.uFaceSpread.value = T.beamFaceSpread;
     su.uHead.value = h;
     su.uTail.value = 0;
     syncStreaks(su, J.beamVis * (1 - gone), u.uPixel.value);

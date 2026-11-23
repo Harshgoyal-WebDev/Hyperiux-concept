@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { ShaderPass } from "postprocessing";
 import { T } from "../tuning";
+import { valleyShot } from "./valleyShot";
 import { NO_MIRROR_LAYER, VALLEY_LAYER } from "../config";
 import { oasisCamera } from "../world/oasisCamera";
 import { applyMagnet } from "../world/magnet";
@@ -246,8 +247,10 @@ export function createCutPass() {
 export function CutPass({ J, cut, samples = 0 }) {
   const { gl, scene, camera, size } = useThree();
   const res = useMemo(() => {
-    // (anti-aliased as the frame itself is: tier.multisampling)
-    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples });
+    // (at the frame's full resolution, but not multisampled: seen through the
+    // glass hexagons, its edges are softened anyway — and a second
+    // multisampled full-screen render of the sand was the cut's lag)
+    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true, samples: Math.min(samples, T.cutSamples) });
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
     // (the valley's own layer, and not the forge's: config.js)
     cam.layers.enable(VALLEY_LAYER);
@@ -274,9 +277,10 @@ export function CutPass({ J, cut, samples = 0 }) {
     res.buf.floor();
     if (res.target.width !== res.buf.x || res.target.height !== res.buf.y) res.target.setSize(res.buf.x, res.buf.y);
     const { cam, pos, tgt } = res;
-    const fov = oasisCamera(J.progress, pos, tgt);
+    // (the valley's own shot: the very one the camera carries on in after)
+    const fov = valleyShot(J.progress, pos, tgt);
     // (the cursor's pull, as the CameraRig's camera will have it past the cut)
-    const roll = applyMagnet(pos, tgt, 1, WATER_Y + 1.5);
+    const roll = applyMagnet(pos, tgt, T.magnetValleyOrbit, WATER_Y + 1.5, T.magnetValley);
     cam.position.copy(pos);
     cam.lookAt(tgt);
     if (roll !== 0) cam.rotateZ(roll);

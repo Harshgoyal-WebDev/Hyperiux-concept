@@ -55,13 +55,13 @@ export function OasisCopy({ lineRefs }) {
           style={{ opacity: 0, visibility: "hidden" }}
         >
           <div className="max-w-[34vw] max-[64rem]:max-w-[64vw] max-[33.875rem]:max-w-full">
-            <p data-split="heading" className="font-[family-name:var(--font-aeonikpro)] text-[2.7vw] font-light leading-[1.08] tracking-[-0.015em] text-white [text-shadow:0_2px_28px_rgba(30,12,0,0.45)] max-[64rem]:text-[4.6vw] max-[33.875rem]:text-[7.4vw]">
+            <p data-split="heading" className="font-[family-name:var(--font-aeonikpro)] text-[2.7vw] font-light leading-[1.08] tracking-[-0.015em] text-white [text-shadow:0_2px_10px_rgba(30,12,0,0.4)] max-[64rem]:text-[4.6vw] max-[33.875rem]:text-[7.4vw]">
               {l.text}
             </p>
             {l.body && (
               <p
                 data-split="body"
-                className={`mt-[1.2vw] max-w-[26vw] font-[family-name:var(--font-aeonikpro)] text-[0.98vw] leading-[1.55] text-white/80 [text-shadow:0_1px_18px_rgba(30,12,0,0.55)] max-[64rem]:max-w-[56vw] max-[64rem]:text-[2vw] max-[33.875rem]:mt-3 max-[33.875rem]:max-w-full max-[33.875rem]:text-[3.8vw] ${
+                className={`mt-[1.2vw] max-w-[26vw] font-[family-name:var(--font-aeonikpro)] text-[0.98vw] leading-[1.55] text-white/80 [text-shadow:0_1px_8px_rgba(30,12,0,0.5)] max-[64rem]:max-w-[56vw] max-[64rem]:text-[2vw] max-[33.875rem]:mt-3 max-[33.875rem]:max-w-full max-[33.875rem]:text-[3.8vw] ${
                   l.place === "right" ? "ml-auto" : l.place === "left" ? "" : "mx-auto"
                 }`}
               >

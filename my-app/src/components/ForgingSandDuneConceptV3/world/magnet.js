@@ -45,8 +45,9 @@ const qPitch = new THREE.Quaternion();
 // apply about the camera's view once it is aimed. floorY: it never goes
 // below this.
 const up = new THREE.Vector3();
-export function applyMagnet(pos, tgt, orbit = 1, floorY = -Infinity) {
-  const amt = T.magnet;
+// (scale: × T.magnet — the valley's own, lower, T.magnetValley)
+export function applyMagnet(pos, tgt, orbit = 1, floorY = -Infinity, scale = 1) {
+  const amt = T.magnet * scale;
   if (amt <= 0.001) return 0;
   const cx = edgeCurve(magnet.x, T.magnetEdge);
   const cy = edgeCurve(magnet.y, T.magnetEdge);

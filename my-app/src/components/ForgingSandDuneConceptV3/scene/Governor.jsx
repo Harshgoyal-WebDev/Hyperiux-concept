@@ -12,7 +12,7 @@ import { LEVELS, Q, initialQualityLevel, setQualityLevel } from "../quality";
 // scene being built, a tab coming back) are ignored, and it is already at
 // work behind the loader, so most devices have settled before the visitor
 // is in.
-const SLOW_MS = 1000 / 48; // a frame slower than this is a slow frame
+const SLOW_MS = 1000 / 52; // a frame slower than this is a slow frame (steps down a little sooner: smooth scrolling first)
 const WINDOW = 90; // frames judged at a time
 const SETTLE_S = 2.5; // after a change (and at the start), wait this long
 

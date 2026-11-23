@@ -29,7 +29,7 @@ export function buildGroundMap(terrain) {
       const floor = smooth(14, -4, o.e); // the level floor (and the walls' foot)
       const wet = smooth(4.5, 0, o.w) * o.carve;
       // (the island under the tree is dark, root-bound mud, grass only at its rim)
-      const island = smooth(BASIN.island - 3, BASIN.island - 9, o.r);
+      const island = smooth(BASIN.island - 3, BASIN.island - 9, o.ri);
       const grass = o.life * smooth(18, 1.5, o.w) * smooth(-0.4, 0.6, o.w) * floor * (1 - island);
       const soil = o.life * smooth(36, 2, o.w) * floor;
       const depth = Math.min(Math.max((WATER_Y - ground) / 6, 0), 1);

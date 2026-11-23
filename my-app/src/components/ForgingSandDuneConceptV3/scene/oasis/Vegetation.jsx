@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { NO_MIRROR_LAYER, P, SUN_DIR } from "../../config";
 import { T } from "../../tuning";
 import { mulberry32 } from "../../world/layout";
-import { BASIN, S_ENTRANCE, S_RIM, WATER_Y, floorHalfWidth, oasisAt, route } from "../../world/oasis";
+import { BASIN, S_ENTRANCE, S_RIM, WATER_Y, floorHalfWidth, oasisAt, route, islandScale } from "../../world/oasis";
 import { blossomGeometry, buildBroadleaf, buildRoundTree, clumpGeometry, flowerClumpGeometry, frondTexture, setGrowPace, tuftGeometry } from "../../world/plants";
 import { REVEAL_GLSL, revealStartAt } from "../../world/revealMap";
 import { useRockModels } from "../../world/rockModels";
@@ -35,33 +35,33 @@ const bump = (x, a, b, c, d) => smooth(a, b, x) * (1 - smooth(c, d, x));
 // rocks)
 // ---------------------------------------------------------------------------
 // round the lake
-const BASIN_TREES = 540; // broadleaf and rounded trees (was 300; 720 was too heavy)
-const BASIN_BUSHES = 2800; // (was 2600; 3800 was too heavy)
+const BASIN_TREES = 460; // broadleaf and rounded trees (540 was still heavy; 720 too heavy)
+const BASIN_BUSHES = 2200; // (2800 was still heavy; 3800 too heavy)
 const BASIN_TREE_BAND = [2, 4.5, 34, 50]; // m from the water: in from … full … thinning … out
 const TREE_BLOSSOM_SHARE = 0.45; // of the trees that are in flower
 const BUSH_BLOSSOM_SHARE = 0.45; // of the bushes that are in flower
-const BANK_FLOWERS = 1100; // wild-flower clumps on the banks round the lake (in patches)
+const BANK_FLOWERS = 850; // wild-flower clumps on the banks round the lake (in patches)
 // the island (round the Yggdrasil's foot)
 const ISLAND_CLEAR = 10; // m round the trunk's foot left bare
-const ISLAND_GRASS = 5200; // grass tufts (taller: ISLAND_GRASS_TALL)
+const ISLAND_GRASS = 5400; // grass tufts (taller: ISLAND_GRASS_TALL)
 const ISLAND_FLOWERS = 1200; // wild-flower clumps (in patches)
 const ISLAND_BOULDERS = 75; // dark rounded boulders (some in clusters, some at the water's edge)
-const ISLAND_PEBBLES = 900;
+const ISLAND_PEBBLES = 600;
 const ISLAND_CENTER_BOULDERS = 60; // ...and more of them gathered in towards the middle, round the trunk's foot
 const ISLAND_CENTER_FROM = 6.5; // m from the centre they start at
 const ISLAND_GRASS_TALL = 2.1; // the island's grass: this much taller than the banks'...
 const ISLAND_FLOWER_SCALE = 1.6; // ...and its flowers this much bigger (taller)
 const SHORE_BOULDERS = 90; // round the lake's outer shore
-const SHORE_PEBBLES = 520;
+const SHORE_PEBBLES = 350;
 // the valley (drawn from the first: the camera travels it before the reveal)
 const VALLEY_FROM = 770; // route m
 const VALLEY_TO = 1035;
-const VALLEY_BOULDERS = 360;
-const VALLEY_PEBBLES = 600;
+const VALLEY_BOULDERS = 260;
+const VALLEY_PEBBLES = 400;
 const VALLEY_CLEAR = 7; // m either side of the camera's line (and the beam along it) kept clear
 const VALLEY_CLUSTER_SHARE = 0.55; // of the boulders that have others round them
 const VALLEY_DUNE_REACH = 2.5; // m past the floor's edge they may still lie (none up the dunes: they keep round the way)
-const RIM_BOULDERS = 200; // ...and round the oasis's rim, at the dunes' feet (seen as the camera comes in, before the reveal)
+const RIM_BOULDERS = 140; // ...and round the oasis's rim, at the dunes' feet (seen as the camera comes in, before the reveal)
 const RIM_REACH = [-10, 2]; // m: on the floor, in from the dunes' feet (not up them)
 // the entrance (the gap in the dunes the way comes in by): a wall of trees
 // and bushes, a lane left clear for the camera
@@ -81,8 +81,8 @@ const BLOOM_GLOW = 1.6; // how much it lights up
 const FLOWER_FAR = 210; // m: the wild flowers aren't drawn beyond
 const GRASS_FAR = 170; // ...the grass and reeds (as their material's own cut-off)
 const BUSH_FAR = 300; // ...the bushes and shrubs
-const PEBBLE_FAR = 130; // ...the pebbles (too small to see further off)
-const CELL = 110; // m: the cells the small plants are drawn in (each skipped whole when past its distance)
+const BLOSSOM_FAR = 240; // ...the trees' blossoms (specks further off)
+const CELL = 220; // m: the cells the small plants are drawn in (each skipped whole when past its distance; bigger = fewer draw calls)
 const FLOWER_COLORS = ["#f3eee2", "#f4c53f", "#ee7aa8", "#a57ae6", "#f08945", "#e04f4a", "#f6a6c8"];
 const TREE_BLOSSOM_COLORS = ["#f3a0c4", "#b88af0", "#f5efe6", "#f09a52", "#e8637d"];
 const BUSH_BLOSSOM_COLORS = ["#e7518a", "#f4c53f", "#f3eee2", "#ad7de8", "#ef7f45"];
@@ -92,14 +92,14 @@ const BUSH_BLOSSOM_COLORS = ["#e7518a", "#f4c53f", "#f3eee2", "#ad7de8", "#ef7f4
 const SEEN_FROM = 470; // route metres
 
 const KINDS = {
-  grass: { n: 12000, at: (o) => Math.pow(o.life, 0.7) * bump(o.w, 0.1, 0.6, 6, 15) * (o.e < 3 ? 1 : 0) * (o.r < BASIN.island - 5 ? 0 : 1) },
-  reeds: { n: 1200, at: (o) => o.life * bump(o.w, -1.4, -0.6, 0.8, 2.4) * (o.r > BASIN.island + 2 ? 1 : 0) },
-  bushes: { n: BASIN_BUSHES, at: (o) => o.life * bump(o.w, 0.8, 2, 12, 28) * (o.e < 5 ? 1 : 0) * (o.r > BASIN.island + 8 ? 1 : 0) },
+  grass: { n: 9000, at: (o) => Math.pow(o.life, 0.7) * bump(o.w, 0.1, 0.6, 6, 15) * (o.e < 3 ? 1 : 0) * (o.ri < BASIN.island - 5 ? 0 : 1) },
+  reeds: { n: 1200, at: (o) => o.life * bump(o.w, -1.4, -0.6, 0.8, 2.4) * (o.ri > BASIN.island + 2 ? 1 : 0) },
+  bushes: { n: BASIN_BUSHES, at: (o) => o.life * bump(o.w, 0.8, 2, 12, 28) * (o.e < 5 ? 1 : 0) * (o.ri > BASIN.island + 8 ? 1 : 0) },
   shrubs: { n: 260, at: (o) => (o.s > S_ENTRANCE - 50 ? 1 : 0) * (0.25 + 0.75 * (1 - o.life)) * bump(o.e, -40, -20, 8, 20) * (o.w > 3 ? 1 : 0) * 0.5 },
   // (by the stream, broadleaf and rounded shade trees; the palms stand back
   // from the water, towards the dunes, and ring the lake)
-  palms: { n: 0, at: (o) => (o.s > 220 || o.basin ? 1 : 0) * Math.pow(o.life, 1.3) * bump(o.w, o.basin ? 4 : 16, o.basin ? 7 : 22, 40, 60) * (o.e < 2 ? 1 : 0) * (o.d > 9 ? 1 : 0) * (o.r > BASIN.island + 12 ? 1 : 0) },
-  broadleaf: { n: BASIN_TREES, at: (o) => (o.s > 160 || o.basin ? 1 : 0) * smooth(0.15, 0.6, o.life) * bump(o.w, ...BASIN_TREE_BAND) * (o.e < 4 ? 1 : 0) * (o.d > 13 ? 1 : 0) * (o.r > BASIN.island + 16 ? 1 : 0) },
+  palms: { n: 0, at: (o) => (o.s > 220 || o.basin ? 1 : 0) * Math.pow(o.life, 1.3) * bump(o.w, o.basin ? 4 : 16, o.basin ? 7 : 22, 40, 60) * (o.e < 2 ? 1 : 0) * (o.d > 9 ? 1 : 0) * (o.ri > BASIN.island + 12 ? 1 : 0) },
+  broadleaf: { n: BASIN_TREES, at: (o) => (o.s > 160 || o.basin ? 1 : 0) * smooth(0.15, 0.6, o.life) * bump(o.w, ...BASIN_TREE_BAND) * (o.e < 4 ? 1 : 0) * (o.d > 13 ? 1 : 0) * (o.ri > BASIN.island + 16 ? 1 : 0) },
   rocks: { n: 170, at: (o) => (o.s > 90 ? 1 : 0) * bump(o.e, -60, -30, 10, 26) * (0.35 + 0.65 * (1 - o.life * 0.7)) * (o.w > -1.4 ? 1 : 0) * (o.d > 4 ? 1 : 0) * 0.6 },
 };
 
@@ -289,12 +289,18 @@ export function scatterMore(terrain, veg, lists) {
   // patches, dark boulders (a few clusters, some out at the water's edge)
   // and pebbles round them
   const isle = BASIN.island;
+  // (a point placed round the island's middle as on a circle, carried out
+  // onto its wavy outline: world/oasis.js islandScale)
+  const onIsle = ([x, z]) => {
+    const k = islandScale(x, z);
+    return [BASIN.x + (x - BASIN.x) * k, BASIN.z + (z - BASIN.z) * k];
+  };
   // (the island is small: one chunk)
   const iChunk = () => "i";
   const nGrass = Math.round(ISLAND_GRASS * veg);
   guard = 0;
   while (out.islandGrass.length < nGrass && guard++ < nGrass * 4) {
-    const [x, z] = ring(ISLAND_CLEAR, isle + 0.5);
+    const [x, z] = onIsle(ring(ISLAND_CLEAR, isle + 0.5));
     // (a little patchy: a thinner sward here and there)
     const patch = 0.6 + 0.4 * Math.sin(x * 0.31 + Math.sin(z * 0.23) * 2) * Math.sin(z * 0.27 - x * 0.11);
     if (rng() > patch) continue;
@@ -305,7 +311,7 @@ export function scatterMore(terrain, veg, lists) {
   const nFl = Math.round(ISLAND_FLOWERS * veg);
   guard = 0;
   while (out.islandFlowers.length < nFl && guard++ < 4000) {
-    const [cx, cz] = ring(ISLAND_CLEAR + 2, isle - 2);
+    const [cx, cz] = onIsle(ring(ISLAND_CLEAR + 2, isle - 2));
     const k = 6 + Math.floor(rng() * 16);
     const col = Math.floor(rng() * FLOWER_COLORS.length);
     for (let j = 0; j < k && out.islandFlowers.length < nFl; j++) {
@@ -314,7 +320,7 @@ export function scatterMore(terrain, veg, lists) {
       const x = cx + Math.cos(a) * d;
       const z = cz + Math.sin(a) * d;
       const r = Math.hypot(x - BASIN.x, z - BASIN.z);
-      if (r < ISLAND_CLEAR + 1 || r > isle) continue;
+      if (r < ISLAND_CLEAR + 1 || r > isle * islandScale(x, z)) continue;
       // (a patch is mostly one colour)
       out.islandFlowers.push(item(x, z, iChunk(x, z), { col: rng() < 0.8 ? col : Math.floor(rng() * FLOWER_COLORS.length) }));
     }
@@ -322,7 +328,7 @@ export function scatterMore(terrain, veg, lists) {
   guard = 0;
   while (out.islandBoulders.length < ISLAND_BOULDERS && guard++ < 4000) {
     const edge = rng() < 0.35;
-    const [x, z] = edge ? ring(isle - 4, isle + 5) : ring(ISLAND_CLEAR + 2, isle - 3);
+    const [x, z] = onIsle(edge ? ring(isle - 4, isle + 5) : ring(ISLAND_CLEAR + 2, isle - 3));
     const big = 0.45 + Math.pow(rng(), 1.4) * (edge ? 1.6 : 1.3);
     rock(out.islandBoulders, x, z, big, iChunk(x, z));
     const k = rng() < 0.6 ? 1 + Math.floor(rng() * 4) : 0;
@@ -371,7 +377,7 @@ export function scatterMore(terrain, veg, lists) {
     }
   }
   while (out.islandPebbles.length < ISLAND_PEBBLES) {
-    const [x, z] = ring(ISLAND_CLEAR - 1, isle + 3);
+    const [x, z] = onIsle(ring(ISLAND_CLEAR - 1, isle + 3));
     rock(out.islandPebbles, x, z, 0.06 + Math.pow(rng(), 2) * 0.3, iChunk(x, z));
   }
 
@@ -750,15 +756,15 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     const tuft = tuftGeometry({ blades: 5, height: 0.8, seed: 9 });
     const reed = tuftGeometry({ blades: 6, height: 2.0, spread: 0.25, seed: 13 });
     // (the sandstone rocks among the plants: the Blender rocks too)
-    const rocks = [rockModels.boulders[2], rockModels.boulders[3]];
+    const rocks = [rockModels.bouldersLight[2], rockModels.bouldersLight[3]];
     // boulders and pebbles: the Blender rocks (four boulders, two small ones)
     const boulders = rockModels.boulders;
     const pebbles = rockModels.pebbles;
     // flowers: two clumps of wild flowers, blossoms over each tree's crown
     // and over the bushes
     const flowerClumps = [flowerClumpGeometry({ flowers: 4, height: 0.5, petals: 6, len: 0.14, width: 0.085, seed: 61 }), flowerClumpGeometry({ flowers: 3, height: 0.7, petals: 5, len: 0.17, width: 0.1, seed: 67 })];
-    const treeBlossoms = broad.map((b, i) => blossomGeometry(b.crown, { share: 0.55, len: 0.4, width: 0.24, petals: 5, seed: 71 + i }));
-    const bushBlossom = blossomGeometry(bush, { share: 0.8, len: 0.2, width: 0.12, petals: 5, seed: 79 });
+    const treeBlossoms = broad.map((b, i) => blossomGeometry(b.crown, { share: 0.35, len: 0.4, width: 0.24, petals: 5, seed: 71 + i }));
+    const bushBlossom = blossomGeometry(bush, { share: 0.55, len: 0.2, width: 0.12, petals: 5, seed: 79 });
     // how long each kind takes to grow, and may wait its turn (the reveal's clock)
     for (const b of broad) {
       setGrowPace(b.trunk, 120, 45);
@@ -792,10 +798,13 @@ export default function Vegetation({ J, tier, shared, terrain }) {
     // (far: the small plants, drawn only within this many metres — in cells
     // of CELL m, so a whole cell past it is skipped, not run through the
     // shader for nothing)
-    const add = (geometry, material, items, place, { shadow = false, tint, gate = true, mirror = shadow, far = 0 } = {}) => {
+    // (whole: one mesh for all of them — the rocks, light enough that culling
+    // them in pieces cost more in draw calls than it saved)
+    const add = (geometry, material, items, place, { shadow = false, tint, gate = true, mirror = shadow, far = 0, whole = false } = {}) => {
+      if (!items.length) return;
       const chunks = new Map();
       for (const it of items) {
-        const key = far > 0 ? `${it.chunk}|${Math.floor(it.x / CELL)},${Math.floor(it.z / CELL)}` : it.chunk;
+        const key = whole ? "all" : far > 0 ? `${it.chunk}|${Math.floor(it.x / CELL)},${Math.floor(it.z / CELL)}` : it.chunk;
         if (!chunks.has(key)) chunks.set(key, []);
         chunks.get(key).push(it);
       }
@@ -852,7 +861,7 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       add(bv.trunk, mats.bark, items, place, { shadow: true });
       add(bv.crown, mats.leaf, items, place, { shadow: true, tint: (it, c) => c.setRGB(0.3 + it.r * 0.1, 0.55 + it.r2 * 0.12, 0.2) });
       // (some of them in flower)
-      add(treeBlossoms[vi], mats.blossom, items.filter((it) => it.r4 < TREE_BLOSSOM_SHARE), place, { tint: (it, c) => c.copy(pick(TREE_BLOSSOM_COLORS, it.r4 / TREE_BLOSSOM_SHARE)) });
+      add(treeBlossoms[vi], mats.blossom, items.filter((it) => it.r4 < TREE_BLOSSOM_SHARE), place, { far: BLOSSOM_FAR, tint: (it, c) => c.copy(pick(TREE_BLOSSOM_COLORS, it.r4 / TREE_BLOSSOM_SHARE)) });
     });
     const bushPlace = (it, p, qq, ss) => {
       p.set(it.x, it.y - 0.2, it.z);
@@ -912,13 +921,16 @@ export default function Vegetation({ J, tier, shared, terrain }) {
       ss.set(it.sc * (0.9 + it.r4 * 0.3), it.sc * (0.75 + it.r * 0.5), it.sc * (0.8 + it.r3 * 0.4));
     };
     const scatterRocks = (list, geoms, material, opts) => geoms.forEach((g, vi) => add(g, material, list.filter((_, i) => i % geoms.length === vi), rockPlace, opts));
-    scatterRocks(more.valleyBoulders, boulders, mats.valleyRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.valleyPebbles, pebbles, mats.valleyRock, { gate: false, far: PEBBLE_FAR });
-    // (the island's and the shore's too: there before the reveal)
-    scatterRocks(more.islandBoulders, boulders, mats.oasisRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.islandPebbles, pebbles, mats.oasisRock, { gate: false, far: PEBBLE_FAR });
-    scatterRocks(more.shoreBoulders, boulders, mats.oasisRock, { shadow: true, mirror: false, gate: false });
-    scatterRocks(more.shorePebbles, pebbles, mats.oasisRock, { gate: false, far: PEBBLE_FAR });
+    // (boulders: the big ones at full detail, the rest — most of them —
+    // light; the valley's, the island's and the shore's all in one mesh per
+    // shape: there from the first, and a draw call each)
+    const BIG = 1.6;
+    const allBoulders = [...more.valleyBoulders, ...more.islandBoulders, ...more.shoreBoulders];
+    const allPebbles = [...more.valleyPebbles, ...more.islandPebbles, ...more.shorePebbles];
+    const rockOpts = { shadow: true, mirror: false, gate: false, whole: true };
+    scatterRocks(allBoulders.filter((it) => it.sc >= BIG), boulders, mats.oasisRock, rockOpts);
+    scatterRocks(allBoulders.filter((it) => it.sc < BIG), rockModels.bouldersLight, mats.oasisRock, rockOpts);
+    scatterRocks(allPebbles, pebbles, mats.oasisRock, { gate: false, whole: true });
     // (their base colours, for the brightness control)
     for (const m of Object.values(mats)) m.userData.base = m.color.clone();
     // (the rocks' geometries and material are the model's: not disposed here)

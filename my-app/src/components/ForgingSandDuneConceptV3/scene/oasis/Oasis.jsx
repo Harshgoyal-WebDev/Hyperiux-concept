@@ -93,8 +93,9 @@ export default function Oasis({ J, tier, shared, terrain, forge }) {
     // (the plants growing: redraw the shadows as the oasis comes up, every
     // so often on its clock, while it is still coming up)
     const growing = J.revealR > 0 && J.revealR < reveal.end + 160;
-    // (every ~80 m of it: each redraw is all the oasis's trees and rocks again)
-    if (growing && Math.abs(J.revealR - shadowAt.current) > 80) {
+    // (every ~160 m of it: each redraw is all the oasis's trees and rocks
+    // again — a hitch while scrolling)
+    if (growing && Math.abs(J.revealR - shadowAt.current) > 160) {
       shadowAt.current = J.revealR;
       J.sceneVersion += 1;
     }
@@ -114,7 +115,7 @@ export default function Oasis({ J, tier, shared, terrain, forge }) {
       <Rivulets J={J} reveal={reveal} paths={paths} terrain={terrain} shared={shared} tier={tier} />
       <CoreOrb J={J} shared={shared} tier={tier} paths={paths} rivulets={reveal.rivulets.length} />
       <Suspense fallback={null}>
-        <Rocks rockSet={rocks} shared={shared} />
+        <Rocks rockSet={rocks} shared={shared} light />
         <Vegetation J={J} tier={tier} shared={shared} terrain={terrain} />
       </Suspense>
       <Yggdrasil J={J} tier={tier} onReady={onTree} />

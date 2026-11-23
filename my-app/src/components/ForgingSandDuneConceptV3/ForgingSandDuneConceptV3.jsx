@@ -17,7 +17,7 @@ import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
-import { blastedAt, brokenAt, buildMasterTimeline, createJourneyState, deriveBreak } from "./timeline";
+import { blastedAt, buildMasterTimeline, cameraSetsOffAt, createJourneyState, deriveBreak } from "./timeline";
 import { deriveReveal } from "./world/oasisCamera";
 import { paceAt } from "./pace";
 import { ASSETS, CUT_TO, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
@@ -117,7 +117,7 @@ function paceScroll(lenis, J) {
   const boost = () => {
     const p = J.progress;
     let k = paceAt(p);
-    if (p >= brokenAt() && p < CUT_TO()) k *= T.paceApproach;
+    if (p >= cameraSetsOffAt() && p < CUT_TO()) k *= T.paceApproach;
     else if (p >= CUT_TO() && p < T.tlBeamToTreeStart) k *= T.paceValley;
     return k;
   };
@@ -440,12 +440,17 @@ function Journey({ env }) {
       if (heading.length) {
         const sp = SplitText.create(heading, { type: "words,chars" });
         splits.push(sp);
-        tl.from(sp.chars, { opacity: 0, filter: "blur(14px)", yPercent: 18, duration: 0.8, ease: "power3.out", stagger: { each: 0.028, from: "random" } }, 0);
+        // (each character its own GPU layer: moved, faded and blurred by the
+        // compositor rather than repainted — with its shadow — every frame,
+        // which stalled the WebGL frame behind it for hundreds of ms)
+        gsap.set(sp.chars, { willChange: "transform, opacity, filter", force3D: true });
+        tl.from(sp.chars, { opacity: 0, filter: "blur(9px)", yPercent: 18, force3D: true, duration: 0.8, ease: "power3.out", stagger: { each: 0.028, from: "random" } }, 0);
       }
       if (body) {
         const sp = SplitText.create(body, { type: "words" });
         splits.push(sp);
-        tl.from(sp.words, { opacity: 0, filter: "blur(8px)", y: 10, duration: 0.6, ease: "power2.out", stagger: 0.04 }, 0.3);
+        gsap.set(sp.words, { willChange: "transform, opacity, filter", force3D: true });
+        tl.from(sp.words, { opacity: 0, filter: "blur(6px)", y: 10, force3D: true, duration: 0.6, ease: "power2.out", stagger: 0.04 }, 0.3);
       }
       return tl;
     };

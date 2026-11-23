@@ -71,7 +71,8 @@ export function buildRockSet(shards, scatter, terrain) {
   return groups.filter((g) => g.matrices.length);
 }
 
-export default function Rocks({ rockSet, shared }) {
+// (light: the light copies of the Blender rocks — the valley's many small ones)
+export default function Rocks({ rockSet, shared, light = false }) {
   const stone = useMemo(() => createStoneMaterial(shared), [shared]);
   const models = useRockModels();
 
@@ -110,7 +111,7 @@ export default function Rocks({ rockSet, shared }) {
         group.model == null ? (
           <RockGroup key={gi} group={group} geometry={group.geometry} material={stone.material} />
         ) : (
-          <RockGroup key={gi} group={group} geometry={models.boulders[group.model]} material={models.material} />
+          <RockGroup key={gi} group={group} geometry={(light ? models.bouldersLight : models.boulders)[group.model]} material={models.material} />
         )
       )}
     </>

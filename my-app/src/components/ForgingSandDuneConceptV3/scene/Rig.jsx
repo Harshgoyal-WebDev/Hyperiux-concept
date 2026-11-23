@@ -7,7 +7,8 @@ import * as THREE from "three";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
 import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
-import { CUT_TO, oasisCamera, runOnPast } from "../world/oasisCamera";
+import { CUT_TO, oasisCamera, routeDistance, runOnPast } from "../world/oasisCamera";
+import { valleyShot } from "./valleyShot";
 import { REVEAL_BAND, REVEAL_ORIGIN, TREE, WATER_Y } from "../world/oasis";
 import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
 import { T } from "../tuning";
@@ -44,7 +45,7 @@ export function CameraRig({ J, opening }) {
     let lens = J.fov;
     // past the cut: the valley shot (and nothing of the forge's world)
     const valley = J.progress >= CUT_TO();
-    if (valley) lens = oasisCamera(J.progress, v.p, v.t);
+    if (valley) lens = valleyShot(J.progress, v.p, v.t);
     else if (J.progress > P.through) {
       // (while the cut runs, the logo shot keeps going at its pace, on
       // through the opening)
@@ -71,7 +72,9 @@ export function CameraRig({ J, opening }) {
     // the cursor's pull (world/magnet.js): all the way, turning the camera
     // in place through the logo's opening (J.orbit)
     stepMagnet(delta);
-    const roll = applyMagnet(v.p, v.t, valley ? 1 : J.orbit, valley ? WATER_Y + 1.5 : -Infinity);
+    // (in the valley, much less, and mostly turning in place: the camera
+    // stays sitting over the beam — T.magnetValley / T.magnetValleyOrbit)
+    const roll = applyMagnet(v.p, v.t, valley ? T.magnetValleyOrbit : J.orbit, valley ? WATER_Y + 1.5 : -Infinity, valley ? T.magnetValley : 1);
 
     // entering: the whole scene comes in from far off to the camera's place
     // (pulled back along its view and lifted, closing in quickly then
@@ -144,8 +147,10 @@ export function UniformSync({ J, shared, shockCenter }) {
     shared.uSandTex.value.y = T.sandRippleDepth;
     // shockwave: out to the far edge of the sand (T.shockReach), still
     // bright as it gets there, gone as it arrives (nothing before the blast)
-    shared.uShockR.value = J.shock * T.shockReach;
-    shared.uShockAmp.value = J.shock > 0 && J.shock < 1 ? Math.pow(1 - J.shock, 0.55) * T.shockStrength : 0;
+    // (on the breakup's own clock when it plays by itself: timeline.js stepBreak)
+    const shock = T.breakAuto ? J.shockAuto : J.shock;
+    shared.uShockR.value = shock * T.shockReach;
+    shared.uShockAmp.value = shock > 0 && shock < 1 ? Math.pow(1 - shock, 0.55) * T.shockStrength : 0;
     if (shockCenter) shared.uShockPos.value.set(shockCenter.x, shockCenter.z);
     shared.uLineWidth.value = T.lineWidth;
     shared.uLineDepth.value = T.lineDepth;

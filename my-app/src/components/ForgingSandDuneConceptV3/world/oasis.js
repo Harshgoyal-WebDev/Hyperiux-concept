@@ -28,7 +28,18 @@ export const WATER_Y = -0.6;
 
 // The round oasis at the end: its centre, the radius of its level floor
 // (the dunes rise beyond it), the lake, and the island the tree stands on.
-export const BASIN = { x: 170, z: -1044, floor: 188, lake: 150, island: 55 };
+// (set a little to the left of the way's last bend, so that on the way in
+// the orb — and the beam running into it — sit straight ahead, not off right)
+export const BASIN = { x: 149, z: -1065, floor: 188, lake: 150, island: 72 };
+
+// The island's outline: not a circle — a smooth, wavy edge, out to about
+// 1.2× BASIN.island here and in to 0.87× there (no corners). islandScale is
+// its radius there over BASIN.island; o.ri (oasisAt) a point's distance from
+// the island's middle on that scale (the edge at o.ri = BASIN.island).
+export function islandScale(x, z) {
+  const a = Math.atan2(z - BASIN.z, x - BASIN.x);
+  return 1.04 + 0.09 * Math.sin(3 * a + 1.1) + 0.05 * Math.sin(5 * a + 2.3) + 0.03 * Math.sin(2 * a + 0.4);
+}
 
 // The Yggdrasil (a placeholder is built until public/models/yggdrasil.glb
 // exists): its foot, height, and its core — where the streaks meet, in the
@@ -195,7 +206,8 @@ export function oasisAt(x, z, o = {}) {
   o.e = Math.min(passage, basin);
   // the water: only the lake round the island, in the oasis's circle (no
   // stream along the passage)
-  o.w = Math.max(o.r - BASIN.lake - noiseB(x * 0.012, z * 0.012) * 10, BASIN.island - o.r);
+  o.ri = o.r / islandScale(x, z);
+  o.w = Math.max(o.r - BASIN.lake - noiseB(x * 0.012, z * 0.012) * 10, BASIN.island - o.ri);
   // (none round the mark; fading out into the open desert far off)
   o.carve = carveAt(s) * (1 - smooth(380, 520, o.e));
   o.life = Math.max(lifeAt(s) * smooth(60, 0, passage), smooth(BASIN.floor + 40, BASIN.floor - 30, o.r));
@@ -217,7 +229,7 @@ function floorHeight(o, x, z) {
   let h = WATER_Y + 0.03 + 1.4 * smooth(0, 22, o.w);
   h += noiseA(x * 0.08, z * 0.08) * 0.25 * smooth(0, 3, o.w);
   // the island: barely above the lake, rising a little into the trunk's foot
-  if (o.r < BASIN.island) h = Math.min(h, WATER_Y + 0.08 + 0.7 * smooth(BASIN.island, 6, o.r));
+  if (o.ri < BASIN.island) h = Math.min(h, WATER_Y + 0.08 + 0.7 * smooth(BASIN.island, 6, o.ri));
   return h;
 }
 

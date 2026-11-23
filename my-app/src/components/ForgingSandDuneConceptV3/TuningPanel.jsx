@@ -150,6 +150,13 @@ const WORLD_SCHEMA = {
     stars: [0, 3, 0.01],
   },
   "Lighting & atmosphere": {
+    heroClouds: [0, 2, 0.01],
+    duneDust: [0, 3, 0.01],
+    duneDustAmount: [0, 1, 0.01],
+    duneDustWind: [0, 20, 0.1],
+    flyingIslands: [0, 2, 0.01],
+    islandFalls: [0, 3, 0.01],
+    islandHaze: [0, 1.5, 0.01],
     growSky: [0, 1, 0.01],
     growSkySpan: [0.1, 1.5, 0.01],
     growClouds: [0, 1, 0.01],

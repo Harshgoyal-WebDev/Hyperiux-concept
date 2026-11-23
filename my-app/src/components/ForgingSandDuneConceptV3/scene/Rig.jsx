@@ -567,10 +567,10 @@ export function Post({ J, tier }) {
     }
   });
   useFrame(() => {
-    // (the frame's clean-up only where a stray pixel can come out NaN — the
-    // breakup's flash, the shell sweeping past the camera — a full-screen
-    // pass the rest of the way saved)
-    sanitize.enabled = J.progress > P.core - 0.01 && J.progress < P.held;
+    // (the frame's clean-up through the first scene — where a stray pixel
+    // can come out NaN: the breakup's flash, the shell sweeping past the
+    // camera, the islands' far edges — a full-screen pass saved past it)
+    sanitize.enabled = J.progress < P.held;
     const fx = edgeFx.uniforms;
     fx.get("uAmount").value = Math.max(rewinding(J) ? 0 : J.edgeFx, J.breakBurst * T.breakImpact) * T.edgeBlur;
     fx.get("uChroma").value = T.edgeChroma;

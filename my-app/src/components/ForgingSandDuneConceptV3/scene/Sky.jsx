@@ -26,6 +26,7 @@ export default function Sky({ shared }) {
           uGrowSky: shared.uGrowSky ?? { value: 0 },
           uTime: shared.uTime ?? { value: 0 },
           uClouds: { value: 0.6 },
+          uHeroClouds: { value: 1 },
           uWhite: shared.uWhite,
           uWhiteLevel: shared.uWhiteLevel,
           uStars: { value: 1 },
@@ -45,6 +46,7 @@ export default function Sky({ shared }) {
           uniform float uGrowSky;
           uniform float uTime;
           uniform float uClouds;
+          uniform float uHeroClouds;
           uniform float uStars;
           uniform float uWhite;
           uniform float uWhiteLevel;
@@ -100,18 +102,23 @@ export default function Sky({ shared }) {
             float star = step(0.975, r) * (1.0 - smoothstep(0.0, 0.11, dist));
             star *= mix(0.4, 2.2, ncHash3(cell + 9.0)) * smoothstep(0.03, 0.3, h) * (1.0 - pow(sun, 40.0));
             col += vec3(0.85, 0.9, 1.0) * star * uStars;
-            if (h < 0.0) col = mix(col, vec3(0.03, 0.03, 0.05), smoothstep(0.0, -0.08, h));
+            if (h < 0.0) col = mix(col, vec3(0.03, 0.03, 0.05), (1.0 - smoothstep(-0.08, 0.0, h)));
             return col;
           }
           void main() {
             vec3 d = normalize(vDir);
             float h = d.y;
             float sun = max(dot(d, uSunDir), 0.0);
-            vec3 zenith = vec3(0.13, 0.17, 0.25);
-            vec3 upper = vec3(0.30, 0.33, 0.40);
+            // (dusk, after the reference: a deep slate blue overhead, through
+            // a soft lavender grey, into warm peach and amber at the horizon —
+            // warmest round the sun)
+            vec3 zenith = vec3(0.05, 0.075, 0.16);
+            vec3 upper = vec3(0.2, 0.21, 0.3);
+            vec3 peach = vec3(0.82, 0.5, 0.33);
             vec3 horizon = vec3(0.95, 0.50, 0.24);
-            vec3 col = mix(horizon, upper, smoothstep(-0.01, 0.2, h));
-            col = mix(col, zenith, smoothstep(0.2, 0.75, h));
+            vec3 col = mix(horizon, peach, smoothstep(0.0, 0.07, h));
+            col = mix(col, upper, smoothstep(0.05, 0.28, h));
+            col = mix(col, zenith, smoothstep(0.25, 0.8, h));
             // warm band strongest on the sun side of the horizon
             float band = 1.0 - smoothstep(0.0, 0.32, abs(h));
             col += vec3(1.0, 0.42, 0.12) * pow(sun, 5.0) * band * 0.9;
@@ -119,14 +126,48 @@ export default function Sky({ shared }) {
             // the disc: round and clean-edged (bright enough to glow, not to
             // bloom into a blob)
             col = mix(col, vec3(1.0, 0.94, 0.8) * 3.4, ncDisc(d, uSunDir, 0.03));
-            if (h < 0.0) col = mix(col, vec3(0.62, 0.33, 0.17), smoothstep(0.0, -0.08, h));
+            // clouds, after the reference: long, soft banks lying level across
+            // the sky (in layers, thinning and lifting into feathered wisps
+            // higher up), lit gold and rose underneath on the sun's side, cool
+            // slate on the other
+            if (h > 0.0 && uHeroClouds > 0.001) {
+              float el = h;
+              // (on a flat layer high overhead, seen in perspective: banks run
+              // straight, crowding together towards the horizon — not bent
+              // round the view)
+              vec2 cp = d.xz / (h + 0.035);
+              // (only a little longer than they are deep: loose, drifting forms)
+              vec2 q = vec2(cp.x * 0.42 + uTime * 0.004, cp.y * 0.95);
+              // (warped twice, strongly: the forms swirl, curl and break up
+              // into tatters rather than running in straight bars)
+              vec2 w1 = vec2(ncCloudFbm(q * 0.6 + 5.0), ncCloudFbm(q * 0.6 + 9.0)) - 0.5;
+              q += w1 * vec2(1.4, 0.7);
+              vec2 w2 = vec2(ncCloudFbm(q * 1.3 + 2.0), ncCloudFbm(q * 1.3 + 17.0)) - 0.5;
+              q += w2 * 0.45;
+              float bank = ncCloudFbm(q * vec2(0.9, 1.2));
+              // (fuller puffs here and there)
+              bank = max(bank, ncCloudFbm(q * 0.7 + 31.0) * 1.08 - 0.06);
+              float wisp = ncCloudFbm(q * vec2(2.6, 3.4) + 13.0);
+              // low: broad soft banks; higher: thin feathered wisps
+              float low = smoothstep(0.5, 0.75, bank + 0.12 * wisp) * (1.0 - smoothstep(0.12, 0.3, el));
+              float high = smoothstep(0.58, 0.85, bank * 0.6 + wisp * 0.55) * smoothstep(0.1, 0.22, el) * (1.0 - smoothstep(0.55, 0.85, el));
+              float cover = max(low, high * 0.75) * smoothstep(0.015, 0.06, el) * uHeroClouds;
+              float toSun = pow(sun, 2.5);
+              // (lit from below by the low sun: gold-rose on their undersides)
+              float under = smoothstep(0.35, 0.75, 1.0 - wisp);
+              vec3 lit = mix(vec3(0.85, 0.5, 0.42), vec3(1.2, 0.74, 0.46), toSun) * mix(0.7, 1.15, under);
+              vec3 shade = mix(vec3(0.2, 0.21, 0.3), vec3(0.42, 0.32, 0.34), (1.0 - smoothstep(0.05, 0.4, el)));
+              vec3 cloud = mix(shade, lit, clamp(toSun * 1.4 + (1.0 - smoothstep(0.0, 0.25, el)) * 0.55, 0.0, 1.0));
+              col = mix(col, cloud, cover * 0.8 * (1.0 - ncDisc(d, uSunDir, 0.04)));
+            }
+            if (h < 0.0) col = mix(col, vec3(0.62, 0.33, 0.17), (1.0 - smoothstep(-0.08, 0.0, h)));
             // the oasis come to life: the dusk gives way to a light blue sky
             if (uLush > 0.001) {
               // (a vivid, clear blue: pale at the horizon, deep overhead)
               vec3 day = mix(vec3(0.66, 0.80, 0.96), vec3(0.20, 0.46, 0.92), smoothstep(0.0, 0.55, h));
               day = mix(day, vec3(0.10, 0.30, 0.82), smoothstep(0.45, 0.95, h));
               day += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.3;
-              if (h < 0.0) day = mix(day, vec3(0.55, 0.6, 0.6), smoothstep(0.0, -0.08, h));
+              if (h < 0.0) day = mix(day, vec3(0.55, 0.6, 0.6), (1.0 - smoothstep(-0.08, 0.0, h)));
               col = mix(col, mix(day, vec3(1.0, 0.96, 0.86) * 3.4, ncDisc(d, uSunDir, 0.03)), uLush);
             }
             // the tree growing: a deeper, clearer blue overhead, and soft
@@ -136,7 +177,7 @@ export default function Sky({ shared }) {
               vec3 blue = mix(vec3(0.60, 0.78, 0.98), vec3(0.14, 0.40, 0.92), smoothstep(0.0, 0.5, h));
               blue = mix(blue, vec3(0.06, 0.24, 0.78), smoothstep(0.4, 0.95, h));
               blue += vec3(1.0, 0.92, 0.75) * pow(sun, 8.0) * 0.3;
-              if (h < 0.0) blue = mix(blue, vec3(0.55, 0.6, 0.62), smoothstep(0.0, -0.08, h));
+              if (h < 0.0) blue = mix(blue, vec3(0.55, 0.6, 0.62), (1.0 - smoothstep(-0.08, 0.0, h)));
               vec3 sky = mix(blue, vec3(1.0, 0.96, 0.86) * 3.4, ncDisc(d, uSunDir, 0.03));
               if (h > 0.0) {
                 vec2 cp = d.xz / (h + 0.12) * 1.6 + vec2(uTime * 0.012, uTime * 0.004);
@@ -162,6 +203,7 @@ export default function Sky({ shared }) {
   useFrame(() => {
     material.uniforms.uStars.value = T.stars;
     material.uniforms.uClouds.value = T.growClouds;
+    material.uniforms.uHeroClouds.value = T.heroClouds;
   });
 
   return (

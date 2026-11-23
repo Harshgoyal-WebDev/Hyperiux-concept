@@ -3,6 +3,7 @@
 import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
 import { useLenis } from "lenis/react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -10,7 +11,8 @@ import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import Scene from "./scene/Scene";
 import { AssetBadge, HeroOverlay, OasisCopy } from "./Overlays";
-import WhiteWebsite from "./WhiteWebsite";
+import SiteFooter from "./SiteFooter";
+import { FOOTER } from "./footer";
 import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
@@ -18,7 +20,7 @@ import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
 import Loader, { LoaderCover } from "./Loader";
 import { Q, QUALITY_EVENT } from "./quality";
 import { blastedAt, buildMasterTimeline, cameraSetsOffAt, createJourneyState, deriveBreak } from "./timeline";
-import { deriveReveal } from "./world/oasisCamera";
+import { deriveReveal, extraTurn } from "./world/oasisCamera";
 import { paceAt } from "./pace";
 import { ASSETS, CUT_TO, JOURNEY_VH, P, SCROLL_VH, STATES, detectTier, detectWebGL, zoneAt } from "./config";
 import { CTA, OASIS_LINES } from "./content";
@@ -72,6 +74,19 @@ class SceneBoundary extends Component {
 // Client capabilities, read once. null on the server so hydration matches.
 // the Leva tuning panels: loaded (and shown) only with ?leva
 const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
+// The Hyperiux homepage, Work to the FAQ (the forging concept's), after the
+// white transition
+const HomeSections = dynamic(() => import("@/components/HyperiuxHome/HomeSections"), { ssr: false });
+// (its sections lay themselves over the journey's last screen — mt -100vh —
+// as they do in the forging concept; here that screen is the white
+// transition itself, so they start below it instead)
+function SiteSections() {
+  return (
+    <div className="relative z-10 bg-white pt-[100vh]">
+      <HomeSections />
+    </div>
+  );
+}
 
 let clientEnv = null;
 const noopSubscribe = () => () => {};
@@ -176,12 +191,25 @@ function paceScroll(lenis, J) {
 export default function ForgingSandDuneConceptV3() {
   const env = useSyncExternalStore(noopSubscribe, getClientEnv, () => null);
 
+  // the site below the journey: mounted as its end comes near (three
+  // screens off), so its sections cost nothing through the scenes above
+  const [siteOpen, setSiteOpen] = useState(false);
+  useEffect(() => {
+    if (siteOpen) return;
+    const el = document.querySelector("[data-journey-end]");
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setSiteOpen(true), { rootMargin: "0px 0px 300% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [siteOpen, env]);
+
   if (env && !env.webgl) {
     return (
       <main className="w-full">
         <Header />
         <StaticJourney />
-        <WhiteWebsite />
+        <HomeSections />
+        <SiteFooter />
       </main>
     );
   }
@@ -190,7 +218,8 @@ export default function ForgingSandDuneConceptV3() {
       <main className="w-full">
         <Header />
         <ReducedStill tier={env.tier} />
-        <WhiteWebsite />
+        <HomeSections />
+        <SiteFooter />
       </main>
     );
   }
@@ -200,7 +229,8 @@ export default function ForgingSandDuneConceptV3() {
       {!env && <LoaderCover />}
       <Header nightToggle />
       <Journey env={env} />
-      <WhiteWebsite />
+      {siteOpen && <SiteSections />}
+      {siteOpen && <SiteFooter />}
     </main>
   );
 }
@@ -266,7 +296,8 @@ function useOverLight() {
   useEffect(() => {
     const check = () => {
       const site = document.querySelector("[data-white-site]");
-      setLight(!!site && site.getBoundingClientRect().top <= 80);
+      const footer = FOOTER.el;
+      setLight(!!site && site.getBoundingClientRect().top <= 80 && !(footer && footer.getBoundingClientRect().top <= 80));
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
@@ -356,6 +387,8 @@ function Journey({ env }) {
 
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
+  const [footerOn, setFooterOn] = useState(false); // the canvas pinned behind the footer
+  const [footerSeen, setFooterSeen] = useState(false); // ...and the footer on screen (only then is it drawn)
   const [dpr, setDpr] = useState(null);
   // the live quality's share of the device's pixel ratio (quality.js)
   useEffect(() => {
@@ -659,7 +692,32 @@ function Journey({ env }) {
           if (Math.abs(diff) > 0.04 || Math.abs(diff) < 1e-6) current = goal;
           else current += diff * (1 - Math.exp(-Math.min(deltaMs, 100) / 55));
         }
-        apply(current);
+        // The footer (footer.js): coming near (within two screens), the
+        // canvas is pinned behind the page — still covered by the sections —
+        // and holds the oasis at T.footerP, the Yggdrasil grown, settling
+        // while it's hidden, to be uncovered as the last section scrolls away
+        const fe = FOOTER.el;
+        const top = fe && !releaseOffscreen ? fe.getBoundingClientRect().top : Infinity;
+        const near = top < window.innerHeight * 2;
+        if (near !== D.footerNear) {
+          D.footerNear = near;
+          setFooterOn(near);
+          // (its own dark ground until the scene is behind it)
+          if (fe) fe.dataset.live = near ? "1" : "";
+        }
+        // (drawn only once the footer is on screen: behind the sections the
+        // scene is covered — nothing to draw)
+        const seen = near && top < window.innerHeight;
+        if (seen !== D.footerSeen) {
+          D.footerSeen = seen;
+          setFooterSeen(seen);
+        }
+        // ...and turning on round the tree as the footer is scrolled down to
+        // the bottom of the page (T.footerTurn degrees over it)
+        const below = fe ? Math.max(fe.offsetHeight - window.innerHeight, 1) : 1;
+        const fx = near ? Math.min(Math.max((window.innerHeight - top) / (window.innerHeight + below), 0), 1) : 0;
+        extraTurn.value = THREE.MathUtils.degToRad(T.footerTurn) * fx * fx * (3 - 2 * fx);
+        apply(near ? T.footerP : current);
         // (no post passes on the lowest tier: the change to the white site
         // is a plain fade there instead of the glass hexagons)
         if (fadeRef.current) {
@@ -753,7 +811,7 @@ function Journey({ env }) {
         tl.kill();
       };
     },
-    { scope: sectionRef, dependencies: [J, resizeKey, pToY] }
+    { scope: sectionRef, dependencies: [J, resizeKey, pToY, releaseOffscreen] }
   );
 
   // Rail / panel jumps to a scroll fraction. A rail jump glides there and
@@ -794,11 +852,12 @@ function Journey({ env }) {
   return (
     <section ref={sectionRef} data-journey className="group/journey relative w-full bg-[#0e0b09]" style={{ height: `${JOURNEY_VH}vh` }}>
       <div data-viewport className="sticky top-0 h-screen w-full overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-0">
+        {/* (pinned to the screen behind the page while the footer is near) */}
+        <div className={`pointer-events-none inset-0 z-0 ${footerOn ? "fixed" : "absolute"}`}>
           {env && tier && mounted && asset && (
             <Canvas
-              frameloop={rendering ? "always" : "never"}
-              dpr={dpr ?? tier.dpr}
+              frameloop={(rendering && !footerOn) || footerSeen ? "always" : "never"}
+              dpr={footerSeen ? Math.min(window.devicePixelRatio || 1, tier.dpr[1]) * (dpr ? Q.dpr : 1) * T.footerDpr : (dpr ?? tier.dpr)}
               shadows={tier.shadowMap > 0 ? "percentage" : false}
               gl={{ antialias: !tier.post, powerPreference: "high-performance", alpha: false }}
               camera={{ position: [J.camX, J.camY, J.camZ], fov: J.fov, near: 0.1, far: 4000 }}

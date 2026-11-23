@@ -35,15 +35,15 @@ const bump = (x, a, b, c, d) => smooth(a, b, x) * (1 - smooth(c, d, x));
 // rocks)
 // ---------------------------------------------------------------------------
 // round the lake
-const BASIN_TREES = 460; // broadleaf and rounded trees (540 was still heavy; 720 too heavy)
-const BASIN_BUSHES = 2200; // (2800 was still heavy; 3800 too heavy)
+const BASIN_TREES = 360; // broadleaf and rounded trees (540 was still heavy; 720 too heavy)
+const BASIN_BUSHES = 1650; // (2800 was still heavy; 3800 too heavy)
 const BASIN_TREE_BAND = [2, 4.5, 34, 50]; // m from the water: in from … full … thinning … out
-const TREE_BLOSSOM_SHARE = 0.45; // of the trees that are in flower
-const BUSH_BLOSSOM_SHARE = 0.45; // of the bushes that are in flower
-const BANK_FLOWERS = 850; // wild-flower clumps on the banks round the lake (in patches)
+const TREE_BLOSSOM_SHARE = 0.35; // of the trees that are in flower
+const BUSH_BLOSSOM_SHARE = 0.32; // of the bushes that are in flower
+const BANK_FLOWERS = 700; // wild-flower clumps on the banks round the lake (in patches)
 // the island (round the Yggdrasil's foot)
 const ISLAND_CLEAR = 10; // m round the trunk's foot left bare
-const ISLAND_GRASS = 5400; // grass tufts (taller: ISLAND_GRASS_TALL)
+const ISLAND_GRASS = 4200; // grass tufts (taller: ISLAND_GRASS_TALL)
 const ISLAND_FLOWERS = 1200; // wild-flower clumps (in patches)
 const ISLAND_BOULDERS = 75; // dark rounded boulders (some in clusters, some at the water's edge)
 const ISLAND_PEBBLES = 600;
@@ -92,7 +92,7 @@ const BUSH_BLOSSOM_COLORS = ["#e7518a", "#f4c53f", "#f3eee2", "#ad7de8", "#ef7f4
 const SEEN_FROM = 470; // route metres
 
 const KINDS = {
-  grass: { n: 9000, at: (o) => Math.pow(o.life, 0.7) * bump(o.w, 0.1, 0.6, 6, 15) * (o.e < 3 ? 1 : 0) * (o.ri < BASIN.island - 5 ? 0 : 1) },
+  grass: { n: 6800, at: (o) => Math.pow(o.life, 0.7) * bump(o.w, 0.1, 0.6, 6, 15) * (o.e < 3 ? 1 : 0) * (o.ri < BASIN.island - 5 ? 0 : 1) },
   reeds: { n: 1200, at: (o) => o.life * bump(o.w, -1.4, -0.6, 0.8, 2.4) * (o.ri > BASIN.island + 2 ? 1 : 0) },
   bushes: { n: BASIN_BUSHES, at: (o) => o.life * bump(o.w, 0.8, 2, 12, 28) * (o.e < 5 ? 1 : 0) * (o.ri > BASIN.island + 8 ? 1 : 0) },
   shrubs: { n: 260, at: (o) => (o.s > S_ENTRANCE - 50 ? 1 : 0) * (0.25 + 0.75 * (1 - o.life)) * bump(o.e, -40, -20, 8, 20) * (o.w > 3 ? 1 : 0) * 0.5 },

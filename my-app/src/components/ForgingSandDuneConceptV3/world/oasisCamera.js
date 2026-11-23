@@ -243,6 +243,11 @@ function smoothYaw(s) {
   return lerp(t[i], t[Math.min(i + 1, t.length - 1)], f - i);
 }
 
+// An extra turn round the tree (radians) on top of the orbit — set from the
+// page: the footer turns the camera on round the tree as it is scrolled
+// down to the bottom (ForgingConcept's follow loop, T.footerTurn)
+export const extraTurn = { value: 0 };
+
 export function oasisCamera(p, pos, tgt) {
   const s = routeDistance(p);
   routePoint(s, pos);
@@ -287,7 +292,7 @@ export function oasisCamera(p, pos, tgt) {
     const x = Math.min(Math.max((p - T.tlOrbitStart) / Math.max(T.tlOrbitEnd - T.tlOrbitStart, 0.002), 0), 1);
     const e = x * x * (3 - 2 * x);
     const r = lerp(T.camCoreDist, T.orbitRadius, e);
-    const a = away - orbitAngle(p);
+    const a = away - orbitAngle(p) - extraTurn.value;
     pos.set(CORE.x + Math.cos(a) * r, lerp(CORE.y + T.camCoreLift, WATER_Y + T.orbitRise, e), CORE.z + Math.sin(a) * r);
     fov = lerp(fov, T.orbitFov, e);
   }

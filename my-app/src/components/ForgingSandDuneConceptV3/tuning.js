@@ -57,6 +57,12 @@ export const T = {
   vanishStart: 0.9741, // story time where the music starts to vanish
   vanishEnd: 1.0, // ...and is gone
 
+  // The footer: the oasis held behind it
+  footerP: 0.938, // the journey's point shown behind the footer (the Yggdrasil grown, the camera going round it)
+  footerDim: 0.4, // how far the footer darkens it
+  footerTurn: 40, // degrees the camera turns on round the tree as the footer is scrolled to the bottom
+  footerDpr: 0.7, // ...its resolution there (× the screen's: dimmed under the type, it needs less)
+
   // Night mode: the sunset turns into a moonlit night (blends smoothly)
   night: false,
   moonIntensity: 1.6,
@@ -185,11 +191,18 @@ export const T = {
   syncFallReveal: false, // the reveal and the tree start the moment the orb's poured threads land (overrides tlRevealStart / tlTreeGrowStart and their ends)
   revealSpan: 0.1523, // ...the reveal's length then (share of the scroll)
   treeGrowSpan: 0.1735, // ...the tree's growth's length then
-  tlRevealStart: 0.685, // (= the orb's poured threads landing: tlBeamToTreeEnd + orbBurstSpan × ~0.08: as the orb's first sparks reach the ground — nothing runs out over the ground before the orb's own particles have spread) the oasis's reveal (threads of light running out, V2) sets off from under the core
+  tlRevealStart: 0.695, // (= the orb's poured threads landing: tlBeamToTreeEnd + orbBurstSpan × ~0.08: as the orb's first sparks reach the ground — nothing runs out over the ground before the orb's own particles have spread) the oasis's reveal (threads of light running out, V2) sets off from under the core
   tlRevealEnd: 1.0, // ...has spread over all of it
   tlTreeGrowStart: 0.7032, // the Yggdrasil starts growing, from the bottom up, strand by strand
   tlTreeGrowEnd: 0.9358, // ...fully grown, to the top of its crown
   tlTreeLightEnd: 0.9546, // the tree's light has climbed to the top of its crown
+  flyingIslands: 1.0, // the floating islands in the dusk sky (their size; 0 = none)
+  islandFalls: 1.0, // ...the sand pouring off them (brightness)
+  islandHaze: 0.45, // ...how much the distance haze softens them (0 = black silhouettes)
+  duneDust: 1.0, // sand blowing over the dunes and off their crests (how much it shows)
+  duneDustAmount: 1.0, // ...how many wisps (share)
+  duneDustWind: 4, // ...how fast it streams with the wind (m/s)
+  heroClouds: 1.0, // the dusk sky's wispy cirrus clouds (0 = clear)
   growSky: 1.0, // as the tree grows the sky deepens to a clear blue, with clouds (0 = stays as the reveal left it)
   growSkySpan: 0.6, // ...over this share of the tree's growth
   growClouds: 0.65, // ...how many clouds
@@ -332,8 +345,8 @@ export const T = {
   eyeLake: 8.5, // ...and over the lake, coming in to the tree
   // the camera magnet, both scenes: the camera swings round a point ahead of it, towards the cursor
   magnet: 1.0, // overall amount (0 = off)
-  magnetValley: 0.65, // ...× this in the second scene (the valley, the oasis): much calmer there
-  magnetValleyOrbit: 0.2, // ...and how much of it moves the camera there rather than turning it (low: it stays over the beam)
+  magnetValley: 1.0, // ...× this in the second scene (the valley, the oasis): much calmer there
+  magnetValleyOrbit: 0.4, // ...and how much of it moves the camera there rather than turning it (low: it stays over the beam)
   magnetYaw: 6.4, // degrees left/right at the screen's edge
   magnetPitch: 3.2, // degrees up/down
   magnetBank: 1.28, // degrees of roll into the move

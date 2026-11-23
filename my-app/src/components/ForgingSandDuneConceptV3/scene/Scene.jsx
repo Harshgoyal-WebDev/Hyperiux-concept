@@ -16,6 +16,8 @@ import ForgeBeam from "./ForgeBeam";
 import Oasis from "./oasis/Oasis";
 import CrumbleSand from "./CrumbleSand";
 import Gravel from "./Gravel";
+import FlyingIslands from "./FlyingIslands";
+import DuneDust from "./DuneDust";
 import BreakupStir from "./BreakupStir";
 import Rocks, { buildRockSet } from "./Rocks";
 import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
@@ -145,6 +147,10 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
           <Rocks rockSet={rockSet} shared={shared} />
         </Suspense>
         <ForgeLayer>
+        {/* the dusk sky's floating islands (the first scene's backdrop) */}
+        <FlyingIslands />
+        {/* sand blowing over the dunes and off their crests */}
+        <DuneDust terrain={terrain} />
         {withForge && (
           <Suspense fallback={null}>
             <Forge J={J} shared={shared} groundY={groundY} terrain={terrain} onReady={onReady} />

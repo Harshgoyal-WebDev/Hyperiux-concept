@@ -104,6 +104,10 @@ export const A = {
   portraitStrandRest: 0.3, // the strands' strength over it at rest (full while forming / changing)
   portraitFlowLight: 1, // light streaming down its lines
   portraitLightPass: 0.6, // a light passing across it now and then
+  portraitParticles: 70000, // REBUILD changing member: the particles it comes apart into (desktop)
+  portraitParticleSize: 1,
+  portraitParticleGlow: 0.6, // their glow in flight
+  portraitParticleSpread: 1, // how far out they swirl
   teamBloomIntensity: 0.55,
   teamBloomThreshold: 1.6,
 
@@ -113,5 +117,5 @@ export const A = {
   vignette: 0.62,
 };
 
-export const REBUILD = new Set(["streakCount", "beamFibers", "beamReach", "beamColumn", "beamBend", "beamHeight", "beamFiberWidth", "beamPoolRadius", "motesCount", "portraitColumns", "teamLines", "teamMotes"]);
+export const REBUILD = new Set(["streakCount", "beamFibers", "beamReach", "beamColumn", "beamBend", "beamHeight", "beamFiberWidth", "beamPoolRadius", "motesCount", "portraitColumns", "teamLines", "teamMotes", "portraitParticles"]);
 export const REBUILD_EVENT = "hyperiux-about:rebuild";

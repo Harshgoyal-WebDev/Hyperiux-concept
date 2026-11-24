@@ -111,6 +111,8 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the rebuild trigger
   const motes = useMemo(() => Math.round(A.motesCount * quality.scale), [quality.scale, version]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the rebuild trigger
+  const morphParticles = useMemo(() => Math.round(A.portraitParticles * quality.scale), [quality.scale, version]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the rebuild trigger
   const teamLines = useMemo(() => Math.round(A.teamLines * (quality.scale < 1 ? 0.7 : 1)), [quality.scale, version]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the rebuild trigger
   const teamMotes = useMemo(() => Math.round(A.teamMotes * quality.scale), [quality.scale, version]);
@@ -179,7 +181,7 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
       <EnergyBeams U={U} streaks={streaks} fibres={fibres} height={height} />
       {/* the team's own scene (its own layer: never in the hero's shot, and nothing of the hero in its) */}
       <TeamWorld U={U} S={S} stage={stage} lines={teamLines} motes={teamMotes}>
-        <LightPortrait U={U} columns={columns} segments={quality.segments} particles={quality.particles} stage={stage} S={S} />
+        <LightPortrait U={U} columns={columns} segments={quality.segments} particles={quality.particles} morphParticles={morphParticles} stage={stage} S={S} />
       </TeamWorld>
       <Post S={S} U={U} cut={cut} />
     </>

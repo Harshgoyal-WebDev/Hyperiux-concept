@@ -288,13 +288,14 @@ export default function AboutExperience() {
       const q = gsap.utils.selector(root);
       const tl = gsap.timeline({ onComplete: () => (busy.current = false) });
       tl.to(q("[data-swap]"), { y: -14, autoAlpha: 0, filter: "blur(10px)", duration: 0.5, stagger: 0.05, ease: "power2.in" }, 0);
-      // the same strands re-forming from this face into the next one, in a
-      // wave across the portrait (LightPortrait.jsx, uMorph); the copy turns
-      // over midway, and once it is done the next is simply the member
-      const dur = fast ? 0.6 : 2.1;
+      // a ripple from the centre out: the face comes apart into particles of
+      // light that settle back as the next (PortraitParticles.jsx, uMorph);
+      // the copy turns over on the way, and once it is done the next is
+      // simply the member
+      const dur = fast ? 0.7 : 1.7;
       tl.set(S, { morphTo: next, morph: 0 }, 0);
-      tl.to(S, { morph: 1, duration: dur, ease: "sine.inOut" }, 0);
-      tl.call(() => setIdx(next), null, dur * 0.42);
+      tl.to(S, { morph: 1, duration: dur, ease: "none" }, 0);
+      tl.call(() => setIdx(next), null, dur * 0.35);
       tl.call(
         () => {
           S.member = next;

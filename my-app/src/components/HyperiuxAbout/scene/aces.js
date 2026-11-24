@@ -30,8 +30,12 @@ export const INVERSE_ACES_GLSL = /* glsl */ `
   }
   // linear colour wanted on screen → the linear light to render
   vec3 inverseAces(vec3 target) {
-    vec3 c = uInvAcesOut * clamp(target, 0.0, 0.98);
-    c = invAcesFit(clamp(c, 0.0, 0.985));
+    vec3 c = max(uInvAcesOut * clamp(target, 0.0, 0.98), 0.0);
+    // (past the curve's top, scaled down as a whole — never one channel
+    // clipped alone, which turns a bright orange green)
+    float top = max(max(c.r, c.g), c.b);
+    if (top > 0.985) c *= 0.985 / top;
+    c = invAcesFit(c);
     c = uInvAcesIn * c;
     return max(c * 0.6, 0.0);
   }

@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "./util";
 import { INVERSE_ACES_GLSL, acesUniforms } from "./aces";
+import { MORPH_GLSL, PortraitParticles } from "./PortraitParticles";
 import { A } from "../tuning";
 
 // The team member, as a sculpture of light: a curtain of vertical amber
@@ -25,7 +26,7 @@ import { A } from "../tuning";
 export const PORTRAIT_H = 5.95;
 export const PORTRAIT_W = PORTRAIT_H * 0.8;
 
-export function LightPortrait({ U, columns, segments, particles, stage, S }) {
+export function LightPortrait({ U, columns, segments, particles, morphParticles, stage, S }) {
   const group = useRef(null);
   const size = useThree((s) => s.size);
 
@@ -126,7 +127,7 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
             float ms = u * 0.6 + aRnd.y * 0.28 + aRnd.x * 0.12;
             float mp = clamp((uMorph * 1.55 - ms) / 0.55, 0.0, 1.0);
             mp = mp * mp * (3.0 - 2.0 * mp);
-            float stir = sin(3.14159 * mp);
+            float stir = 0.0;
             // (depth read at each end, so a strand's segments join up;
             // from the one face, turning into the next's)
             vec4 m = mix(texture2D(uMap, vec2(u, v)), texture2D(uMapB, vec2(u, v)), mp);
@@ -145,15 +146,6 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
             p.y += d * (2.5 + aRnd.z * 9.0) + uv.y * d * (0.6 + aRnd.w * 3.5);
             p.x += sin(aRnd.y * 40.0 + uTime * 0.5) * d * 0.9;
             p.z += (aRnd.w - 0.35) * d * 4.0;
-            // ...re-forming: the strand's pieces break loose from each other,
-            // drift and sway on a current, come forward off the face, drawn
-            // out a little — then settle into the new face
-            p += vec3(
-              sin(v * 7.0 + uTime * 1.7 + aRnd.y * 25.0) * 0.22 + (aRnd.w - 0.5) * 0.45,
-              (aRnd.x - 0.5) * 0.8 + sin(u * 11.0 + uTime * 1.3 + aRnd.z * 6.0) * 0.22,
-              (aRnd.z - 0.5) * 2.0 + 0.5
-            ) * stir;
-            p.y += (uv.y - 0.5) * stir * (0.15 + aRnd.w * 0.3);
             // breathing
             p.x += sin(uTime * 0.7 + aRnd.y * 50.0 + v * 3.0) * 0.004;
             vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -163,12 +155,13 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
             gl_Position = projectionMatrix * mv;
             vMap = vec2(u, v);
             vX = uv.x;
-            vFade = (uStrandW / w) * mix(0.22, 1.0, r) * (1.0 - d * 0.9);
+            // (changing member, they fade while the particles carry it)
+            vFade = (uStrandW / w) * mix(0.22, 1.0, r) * (1.0 - d * 0.9) * (1.0 - sin(3.14159 * uMorph) * 0.9);
             vMorph = mp;
             vStir = stir;
             // (how alive it is: forming, changing or dissolving — at rest it
             // lies faint over the portrait image)
-            vActive = max(max(stir, 1.0 - r), d);
+            vActive = max(1.0 - r, d);
             vRnd = aRnd.y;
             vec4 wp = modelMatrix * vec4(p, 1.0);
             vScan = exp(-pow((wp.x - uScan) * 0.8, 2.0)) * uScanGlow;
@@ -280,6 +273,7 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
           uniform float uFlowLight;
           varying vec2 vUv;
           ${INVERSE_ACES_GLSL}
+          ${MORPH_GLSL}
           float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vnoise(vec2 p) {
             vec2 i = floor(p);
@@ -291,15 +285,16 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
             vec2 uv = vUv;
             // (column by column, as the strands go)
             float n = vnoise(vec2(uv.x * 70.0, uv.y * 3.0));
-            float ms = uv.x * 0.6 + n * 0.28 + 0.06;
-            float mp = clamp((uMorph * 1.55 - ms) / 0.55, 0.0, 1.0);
-            mp = mp * mp * (3.0 - 2.0 * mp);
-            float stir = sin(3.14159 * mp);
-            vec3 c = mix(srgbToLinear(texture2D(uImage, uv).rgb), srgbToLinear(texture2D(uImageB, uv).rgb), mp);
-            float on = mix(uOnA, uOnB, mp);
+            // changing member: this face comes apart into the particles here,
+            // and the next forms here as they land (PortraitParticles.jsx)
+            float gone = smoothstep(morphLeave(uv), morphLeave(uv) + 0.05, uMorph);
+            float back = smoothstep(morphArrive(uv) + 0.02, morphArrive(uv) + 0.09, uMorph);
+            if (uMorph <= 0.0005 || uMorph >= 0.9995) { gone = 0.0; back = 0.0; }
+            float wa = (1.0 - gone) * uOnA;
+            float wb = back * uOnB;
+            float on = wa + wb;
+            vec3 c = (srgbToLinear(texture2D(uImage, uv).rgb) * wa + srgbToLinear(texture2D(uImageB, uv).rgb) * wb) / max(on, 0.001);
             float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
-            // the light running through it as it changes
-            c *= 1.0 + stir * 0.9;
             // light streaming down its lines of light: each fine column its
             // own run of bright dashes, at its own pace — caught by the bright
             // lines and the glowing outline, not the dark between
@@ -491,7 +486,8 @@ export function LightPortrait({ U, columns, segments, particles, stage, S }) {
         <planeGeometry args={[PORTRAIT_W, PORTRAIT_H]} />
       </mesh>
       <mesh geometry={strands} material={strandMat} frustumCulled={false} renderOrder={2} />
-      <points geometry={dust} material={dustMat} frustumCulled={false} renderOrder={3} />
+      <PortraitParticles U={U} count={morphParticles} width={PORTRAIT_W} height={PORTRAIT_H} />
+      <points geometry={dust} material={dustMat} frustumCulled={false} renderOrder={4} />
     </group>
   );
 }

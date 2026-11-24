@@ -443,9 +443,12 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
         <mesh renderOrder={-9} frustumCulled={false} material={sky}>
           <sphereGeometry args={[2200, 32, 16]} />
         </mesh>
-        <mesh geometry={lines.geometry} material={lines.material} frustumCulled={false} renderOrder={1} />
-        <points geometry={motes.geometry} material={motes.material} frustumCulled={false} renderOrder={1} />
-        <mesh geometry={waves.geometry} material={waves.material} frustumCulled={false} renderOrder={3} />
+        {/* (all of it drawn before the portrait, always: in its own order, not
+        sorted by distance — which flipped as the pointer moved the camera,
+        drawing the lines over the image) */}
+        <mesh geometry={lines.geometry} material={lines.material} frustumCulled={false} renderOrder={-2} />
+        <points geometry={motes.geometry} material={motes.material} frustumCulled={false} renderOrder={-2} />
+        <mesh geometry={waves.geometry} material={waves.material} frustumCulled={false} renderOrder={-1} />
       </group>
       {children}
     </group>

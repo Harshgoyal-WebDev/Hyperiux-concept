@@ -82,6 +82,11 @@ const CONCEPTS = [
     description: "The about page in the V3 concept's language: a 200vh 3D hero where the monolith opens onto the forge, then the team (after lusion.co/about).",
   },
   {
+    href: "/contact-us",
+    title: "Contact Us — The Window",
+    description: "A scroll-driven 3D contact experience: a particle hand and a wireframe hand touch, open a portal, and the camera travels through it to the contact page.",
+  },
+  {
     href: "/forging-vid",
     title: "Forging Vid",
     description: "A separate copy of Forging Sand Dune Concept V3, with its own components, to change without touching V3.",

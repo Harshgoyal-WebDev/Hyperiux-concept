@@ -46,6 +46,7 @@ function patch(material, uniforms, pieces) {
         attribute vec4 aGravel; // piece, threshold, size (m), seed
         attribute vec4 aDrift; // puff direction, seed
         uniform float uGravelSize;
+        uniform float uTumble;
         uniform float uFade;
         uniform float uEmbers;
         uniform float uEmberGlow;
@@ -71,7 +72,7 @@ function patch(material, uniforms, pieces) {
           // tumbling as it goes round
           vec3 axis = normalize(vec3(sin(s * 12.9), cos(s * 7.3), sin(s * 3.1 + 1.0)) + 1e-4);
           // (and knocked round by the stir)
-          float ang = uTime * (0.5 + 1.6 * fract(s * 9.1)) + s * 40.0 + bkStirTurn;
+          float ang = uTime * uTumble * (0.5 + 1.6 * fract(s * 9.1)) + s * 40.0 + bkStirTurn;
           float c = cos(ang);
           float sn = sin(ang);
           float t = 1.0 - c;
@@ -135,6 +136,7 @@ export default function Gravel({ J, tier, shared, forge }) {
     const uniforms = {
       ...breakupUniforms(forge, shared),
       uGravelSize: { value: 1 },
+      uTumble: { value: 0.4 },
       uFade: { value: 1 },
       uHotColor: { value: new THREE.Color("#ff6a14") },
       uEmbers: { value: 0.3 },
@@ -175,6 +177,7 @@ export default function Gravel({ J, tier, shared, forge }) {
     if (!on) return;
     const u = built.uniforms;
     u.uGravelSize.value = T.gravelSize;
+    u.uTumble.value = T.gravelTumble;
     u.uStirAmount.value = T.breakStirGravel;
     u.uFade.value = 1;
     u.uHotColor.value.set(T.crackColor);

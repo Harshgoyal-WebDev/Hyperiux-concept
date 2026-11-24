@@ -80,9 +80,10 @@ const Work = () => {
           const tl = gsap.timeline({
             scrollTrigger: {
               trigger: "#work",
-              start: "2% top",
+              start: "12% top",
               end: "99% bottom",
               scrub: true,
+              // markers: true
             },
             defaults: { ease: "none" },
           });

@@ -142,7 +142,7 @@ export const T = {
   beamFaceWidth: 2.0, // the beam up the slab's face: × its width on the sand (so it reads as thick there)
   beamFaceGap: 0.32, // ...how far off the face it runs (m)
   spineCrack: false, // the Spine crack lighting up from the foot to the core
-  breakShatterSpin: 2.4, // turns each rock spins through on its own, from the blast until it has worn away (eased: quick, then slowing — not a burst)
+  breakShatterSpin: 0.5, // turns each rock spins through on its own, from the blast until it has worn away (eased: quick, then slowing — not a burst)
   edgeFxOffAt: 0.1, // the impact's motion blur at the frame's edges has settled by this share of the forging (the break is at 0.1)
   fillDepth: 12.0, // ...and how deep into the openings it fills (m; the slab is 12 m thick: right through)
   fillSolid: 1.0, // the light filling the cube outline's openings: 1 = solid, 0 = a see-through haze
@@ -150,6 +150,8 @@ export const T = {
   fillWallGlow: 1.2, // ...and how brightly the openings' walls glow with it
   fillFront: -0.1, // the light in the cube's openings: on the front face, this far in front of it (m)
   cutStyle: "bunq", // the logo → valley change: "bunq" (small glass hexagons growing up from the bottom) · "glass" (the earlier one)
+  outroDirection: "radial", // the change to the site: the way it sweeps — bottom, top, radial (out from the centre), diagonal, left, right, edges (in from them), random
+  outroReveal: true, // ...opening onto the page itself (the Work section already there beneath the scene), not a white screen
   outroStyle: "bunq", // the scene → white site change: the same choice
   // (bunqlabs.com's own transition settings)
   transCellPx: 11, // the discs' spacing (px)
@@ -196,7 +198,7 @@ export const T = {
   tlTreeGrowStart: 0.7032, // the Yggdrasil starts growing, from the bottom up, strand by strand
   tlTreeGrowEnd: 0.9358, // ...fully grown, to the top of its crown
   tlTreeLightEnd: 0.9546, // the tree's light has climbed to the top of its crown
-  flyingIslands: 1.0, // the floating islands in the dusk sky (their size; 0 = none)
+  flyingIslands: 0, // the floating islands in the dusk sky (their size; 0 = none) — hidden for now (was 1.0)
   islandFalls: 1.0, // ...the sand pouring off them (brightness)
   islandHaze: 0.45, // ...how much the distance haze softens them (0 = black silhouettes)
   duneDust: 1.0, // sand blowing over the dunes and off their crests (how much it shows)
@@ -276,6 +278,7 @@ export const T = {
   logoParallax: 2.5, // the forged logo turning towards the cursor (0 = still)
   logoYaw: 10, // ...degrees left/right at the screen's edge
   logoPitch: 6, // ...degrees up/down
+  logoStraighten: false, // ...squaring up again as the camera closes in (off: it holds the turn it has)
   // the core at the lake's heart: the orb (after hyperiux-concepts V6) with our cube in it
   orbRadius: 6, // the orb's radius (m)
   orbHeight: 9, // its centre's height over the water (m)
@@ -386,13 +389,13 @@ export const T = {
   seqBreak: 20, // the rock breaks (the impact)
   seqImpactEnd: 41.6, // the impact's energy has dissipated
   seqBlastEnd: 38, // the blast has thrown the pieces out (with seqImpactEnd: the auto-scroll hands back to the visitor here)
-  seqGatherStart: 34, // the pieces start to be drawn in towards the streams...
+  seqGatherStart: 24, // the pieces start to be drawn in towards the streams...
   seqGatherEnd: 130, // ...and are riding them
   seqSpinStart: 22, // the streams start to pick up speed...
   seqSpinEnd: 120, // ...and are up to full speed
-  seqGrindStart: 60, // the pieces start to grind away into sand and gravel...
-  seqGrindEnd: 190, // ...and are all sand
-  seqSandFlow: 70, // how long (vh) a grain takes to find its place in its stream
+  seqGrindStart: 30, // the pieces start to grind away into sand and gravel...
+  seqGrindEnd: 120, // ...and are all sand
+  seqSandFlow: 80, // how long (vh) a grain takes to find its place in its stream
   seqBreakEnd: 200, // the breakup is over
   seqHold: 60, // from here on the broken rock stays as it is — it keeps revolving, but scrolling on no longer changes it (breakHoldOn)
 
@@ -424,11 +427,12 @@ export const T = {
   breakSandShare: 1.0, // how much of each piece grinds into sand (1 = all of it; less leaves chunks riding round the mark)
   breakShrink: 0.4, // the pieces' size once broken off
   breakAuto: true, // the breakup plays by itself once the rock breaks (not scrubbed by the scroll)...
-  breakAutoBlast: 1.6, // ...s of the great expansion (thrown far out, big, slowing as they fly)
+  breakAutoBlast: 1.1, // ...s of the great expansion (thrown far out, big, slowing as they fly)
   breakAutoCirculate: 10, // ...s of circulating round the mark, picking up from slow to fast, wearing down into gravel and sand
-  breakSpinFrom: 0.07, // the streams' speed right after the blast (× breakSpin)...
-  breakSpinTo: 2.2, // ...up to this at full speed (× breakSpin): an easy pick-up, never racing
-  breakSpinSettle: 0.25, // ...and this (× breakSpin) once they have settled: the streams calming down as the rocks wear away
+  breakSpinFrom: 0.35, // the streams' speed right after the blast (× breakSpin)...
+  breakSpinTo: 1.0, // ...gaining up to this at full speed (× breakSpin), and holding there
+  breakSpinRamp: 7, // ...s it takes to gain that speed after the blast (on the breakup's own clock)
+  breakSpinSettle: 0.1, // (only when scrubbed by the scroll, breakAuto off) ...and this (× breakSpin) once settled
   breakSettleEase: 2.6, // ...how it eases out as the rocks settle (1 = even to the end; higher = slowing gently into the settle)
   breakAutoRewind: 3.0, // ...× as fast back, scrolled back before the break
   breakGrindShrink: 0.95, // the pieces wear down by shrinking as they go round (0 = the old shatter / erosion)
@@ -436,7 +440,7 @@ export const T = {
   breakSolid: true, // the pieces stay solid stone (no hollow wearing away); the big ones shatter into gravel and sand as the blast throws them
   breakBigVolume: 0, // ...how big a piece is to shatter (m³, the model's own; up to ~10)
   breakShatter: 0.3, // ...how soon they are gone (× the blast's length)
-  breakSpin: 2.0, // how fast the streams carry it round
+  breakSpin: 1.0, // how fast the streams carry it round
   breakTumble: 0, // how fast the pieces tumble as they go
   // when each stage runs, as shares of the breakup (a piece's own progress)
   // — set from the seq values above
@@ -459,6 +463,9 @@ export const T = {
   streamTail: 0.54, // how long each stream's tail is (share of a turn)
   streamWidth: 1.7, // metres: how wide a stream spreads (wider towards its tail)
   streamLoose: 1.0, // share of the grains drifting loose all round
+  grainAhead: 0.3, // ...the grains flow on ahead of their rock, with the stream (× its tail)
+  streamLooseArc: 0.25, // ...how far along the loop they spread from where they came off (turns; was a random 0–5 turns, whirling them round)
+  gravelTumble: 0.4, // how fast the gravel chips turn over as they go round
   // ...and the seconds the page takes to auto-scroll through it forwards
   // (core → forged logo), and back
   forgeDuration: 8.0,

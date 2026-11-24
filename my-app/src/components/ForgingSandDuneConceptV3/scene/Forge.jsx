@@ -577,6 +577,9 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       quat: node.quaternion.clone(),
       on: false,
       e: new THREE.Euler(0, 0, 0, "YXZ"),
+      // the cursor it follows (held where it was as the camera closes in)
+      mx: 0,
+      my: 0,
       qW: new THREE.Quaternion(),
       qL: new THREE.Quaternion(),
       parentQ: new THREE.Quaternion(),
@@ -607,6 +610,9 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     const crackSpread = held ? Math.max(J.crackSpread, 1 - (1 - xs) * (1 - xs)) : J.crackSpread;
     const crackGlow = held ? Math.max(J.crackGlow, 1 + 0.15 * Math.min(Math.max((bs - 0.04) / 0.46, 0), 1)) : J.crackGlow;
     U.uCrackSpread.value = crackSpread * T.crackSpread;
+    // (the logo's own cracks too: scrolled back, they stay lit until the rock
+    // has gathered back into the slab — not dark while it flies home)
+    const logoCrack = held ? Math.max(J.logoCrackGlow, crackGlow) : J.logoCrackGlow;
     // (the core, its cracks and the light in the mark's openings glow the
     // same by night as by day)
     const lit = 1;
@@ -624,7 +630,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     built.fillU.uFillSolid.value = T.fillSolid;
     // (the openings' walls lit with it)
     U.uGapGlow.value.set(T.innerGlowColor).multiplyScalar(fillK * T.fillWallGlow);
-    const tilt = J.logoTilt * T.logoParallax;
+    const tilt = J.logoTilt * T.logoParallax * (T.logoStraighten ? J.logoFollow : 1);
     const fillZ = forge.world.frontZ + T.fillFront;
     built.fill.scale.z = Math.max(T.fillDepth, 0.01);
     if (!logo?.on) built.fill.position.z = fillZ;
@@ -632,7 +638,12 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       logo.on = tilt > 1e-4;
       const L = logo;
       const core = forge.world.core;
-      L.e.set((-magnet.y * T.logoPitch * Math.PI * tilt) / 180, (magnet.x * T.logoYaw * Math.PI * tilt) / 180, 0);
+      // (as the camera closes on it, it stops following the cursor and holds
+      // the turn it has — not straightening up: T.logoStraighten)
+      const follow = T.logoStraighten ? 1 : J.logoFollow;
+      L.mx += (magnet.x - L.mx) * follow;
+      L.my += (magnet.y - L.my) * follow;
+      L.e.set((-L.my * T.logoPitch * Math.PI * tilt) / 180, (L.mx * T.logoYaw * Math.PI * tilt) / 180, 0);
       L.qW.setFromEuler(L.e);
       // (the same turn in the logo's parent space, about the core)
       const parent = L.node.parent;
@@ -660,7 +671,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     }
     U.uFissureGlow.value = T.fissureGlow;
     U.uSurge.value = Math.min(J.sphere / 2, 1);
-    built.coreLevel.value = J.logoCrackGlow;
+    built.coreLevel.value = logoCrack;
     built.excessLevel.value = crackGlow;
     U.uEngrave.value = T.engrave;
     U.uHeat.value = (J.sphere * J.sphere * 0.9 + pulse * 1.6) * T.pocketHeat;
@@ -682,7 +693,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
       }
       s.uSpread.value = crackSpread * 1.25;
       s.uHead.value = head * T.crackGlow;
-      s.uStageGlow.value = (name === "LogoCore" ? J.logoCrackGlow : crackGlow) * T.crackGlow;
+      s.uStageGlow.value = (name === "LogoCore" ? logoCrack : crackGlow) * T.crackGlow;
     }
 
     // Excess rock: blasted off round the mark, revolving faster and faster
@@ -698,7 +709,7 @@ export default function Forge({ J, shared, groundY, terrain, onReady }) {
     // (held after the break, T.breakHoldOn: from T.breakHold on, scrolling
     // no longer changes the broken rock — it keeps revolving as it was)
     const hold = T.breakAuto ? 1 : (T.breakHold ?? 1);
-    syncFlow(Math.min(delta, 0.1), Math.min(f, hold));
+    syncFlow(Math.min(delta, 0.1), Math.min(f, hold), T.breakAuto ? J.spinRamp : null);
     if (f !== lastFracture.current || f > 0) {
       lastFracture.current = f;
       const src = forge.swirlSource;

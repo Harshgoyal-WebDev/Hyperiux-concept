@@ -80,9 +80,14 @@ const HomeSections = dynamic(() => import("@/components/HyperiuxHome/HomeSection
 // (its sections lay themselves over the journey's last screen — mt -100vh —
 // as they do in the forging concept; here that screen is the white
 // transition itself, so they start below it instead)
+// (with T.outroReveal they sit under the journey's last stretch instead — the
+// transition opens onto them: the Work section is already there behind the
+// 3D scene as it starts, and scrolls on under it as it opens)
 function SiteSections() {
+  const behind = T.outroReveal;
+  const under = Math.max(1 - T.tlOutroStart, 0) * (JOURNEY_VH - 100);
   return (
-    <div className="relative z-10 bg-white pt-[100vh]">
+    <div className={behind ? "relative z-0 bg-white" : "relative z-10 bg-white pt-[100vh]"} style={behind ? { marginTop: `-${under.toFixed(2)}vh` } : undefined}>
       <HomeSections />
     </div>
   );
@@ -297,7 +302,10 @@ function useOverLight() {
     const check = () => {
       const site = document.querySelector("[data-white-site]");
       const footer = FOOTER.el;
-      setLight(!!site && site.getBoundingClientRect().top <= 80 && !(footer && footer.getBoundingClientRect().top <= 80));
+      // (with the page beneath the transition: dark type once it is half open)
+      const end = document.querySelector("[data-journey-end]");
+      const opened = !end || end.getBoundingClientRect().top <= window.innerHeight || document.documentElement.dataset.v3Outro === "1";
+      setLight(!!site && site.getBoundingClientRect().top <= 80 && opened && !(footer && footer.getBoundingClientRect().top <= 80));
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
@@ -388,6 +396,8 @@ function Journey({ env }) {
   const [mounted, setMounted] = useState(true); // canvas mounted (GPU resources alive)
   const [rendering, setRendering] = useState(true); // frameloop running
   const [footerOn, setFooterOn] = useState(false); // the canvas pinned behind the footer
+  const viewportRef = useRef(null);
+  const canvasWrapRef = useRef(null);
   const [footerSeen, setFooterSeen] = useState(false); // ...and the footer on screen (only then is it drawn)
   const [dpr, setDpr] = useState(null);
   // the live quality's share of the device's pixel ratio (quality.js)
@@ -720,9 +730,19 @@ function Journey({ env }) {
         apply(near ? T.footerP : current);
         // (no post passes on the lowest tier: the change to the white site
         // is a plain fade there instead of the glass hexagons)
-        if (fadeRef.current) {
+        {
           const w = Math.min(Math.max(J.outro, 0), 1);
-          fadeRef.current.style.opacity = String(w * w * (3 - 2 * w));
+          // (opening onto the page beneath: nothing of the journey's own
+          // ground behind the canvas; on the lowest tier the canvas fades)
+          const reveal = T.outroReveal && !near;
+          if (viewportRef.current) viewportRef.current.style.background = reveal && J.progress >= T.tlOutroStart - 0.002 ? "transparent" : "";
+          if (canvasWrapRef.current) canvasWrapRef.current.style.opacity = reveal && fadeRef.current ? String(1 - w * w * (3 - 2 * w)) : "";
+          if (fadeRef.current) fadeRef.current.style.opacity = reveal ? "0" : String(w * w * (3 - 2 * w));
+          const half = w > 0.5 ? "1" : "0";
+          if (document.documentElement.dataset.v3Outro !== half) {
+            document.documentElement.dataset.v3Outro = half;
+            window.dispatchEvent(new Event("scroll"));
+          }
         }
         // the hero's words: in after the loader, out (and back) with the
         // first of the scroll
@@ -850,16 +870,16 @@ function Journey({ env }) {
 
   const tier = env?.tier;
   return (
-    <section ref={sectionRef} data-journey className="group/journey relative w-full bg-[#0e0b09]" style={{ height: `${JOURNEY_VH}vh` }}>
-      <div data-viewport className="sticky top-0 h-screen w-full overflow-hidden">
+    <section ref={sectionRef} data-journey className="group/journey relative z-10 w-full" style={{ height: `${JOURNEY_VH}vh` }}>
+      <div ref={viewportRef} data-viewport className="sticky top-0 h-screen w-full overflow-hidden bg-[#0e0b09]">
         {/* (pinned to the screen behind the page while the footer is near) */}
-        <div className={`pointer-events-none inset-0 z-0 ${footerOn ? "fixed" : "absolute"}`}>
+        <div ref={canvasWrapRef} className={`pointer-events-none inset-0 z-0 ${footerOn ? "fixed" : "absolute"}`}>
           {env && tier && mounted && asset && (
             <Canvas
               frameloop={(rendering && !footerOn) || footerSeen ? "always" : "never"}
               dpr={footerSeen ? Math.min(window.devicePixelRatio || 1, tier.dpr[1]) * (dpr ? Q.dpr : 1) * T.footerDpr : (dpr ?? tier.dpr)}
               shadows={tier.shadowMap > 0 ? "percentage" : false}
-              gl={{ antialias: !tier.post, powerPreference: "high-performance", alpha: false }}
+              gl={{ antialias: !tier.post, powerPreference: "high-performance", alpha: true }}
               camera={{ position: [J.camX, J.camY, J.camZ], fov: J.fov, near: 0.1, far: 4000 }}
               style={{ pointerEvents: "none" }}
               aria-hidden="true"

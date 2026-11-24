@@ -58,6 +58,8 @@ export const FLOW_UNIFORMS = {
   uStreamTail: { value: 0.45 },
   uStreamWidth: { value: 6 },
   uStreamLoose: { value: 0.15 },
+  uLooseArc: { value: 0.35 }, // how far along the loop a loose grain spreads (turns)
+  uGrainAhead: { value: 0.5 }, // how far ahead of its rock a grain runs (× the tail)
   uGrind: { value: new THREE.Vector3(0.4, 0.84, 0.16) }, // grind start, end, sand flow
   // the dunes round the mark (a height map): nothing that broke off goes
   // into the sand — the loops that dip below it roll along over it instead
@@ -106,7 +108,7 @@ export function keepAboveGround(p, lift) {
   p.y = softAbove(p.y, groundSampler.height(p.x, p.z) + lift);
   return p;
 }
-export function syncFlow(dt, f) {
+export function syncFlow(dt, f, ramp = null) {
   const u = FLOW_UNIFORMS;
   u.uFlowTime.value += dt;
   // drifting through the blast, the spin takes hold and races up to speed
@@ -115,8 +117,13 @@ export function syncFlow(dt, f) {
   else {
     // (slow after the blast, picking up to speed, then calming as the rocks
     // settle into gravel and sand: T.breakSpinFrom → To → Settle)
-    const up = THREE.MathUtils.lerp(T.breakSpinFrom, T.breakSpinTo, smooth(f, T.breakSpinStart, T.breakSpinEnd));
-    u.uBreakAngle.value += dt * T.breakSpin * THREE.MathUtils.lerp(up, T.breakSpinSettle, smooth(f, 0.8, 1));
+    // (on the breakup's own clock — ramp, T.breakAuto: gaining speed from
+    // the blast up to full (T.breakSpin × To) and holding there)
+    if (ramp != null) u.uBreakAngle.value += dt * T.breakSpin * THREE.MathUtils.lerp(T.breakSpinFrom, T.breakSpinTo, ramp);
+    else {
+      const up = THREE.MathUtils.lerp(T.breakSpinFrom, T.breakSpinTo, smooth(f, T.breakSpinStart, T.breakSpinEnd));
+      u.uBreakAngle.value += dt * T.breakSpin * THREE.MathUtils.lerp(up, T.breakSpinSettle, smooth(f, 0.8, 1));
+    }
   }
   u.uStreams.value = Math.min(Math.max(Math.round(T.streams), 1), 8);
   u.uStreamRadius.value = T.streamRadius;
@@ -126,6 +133,8 @@ export function syncFlow(dt, f) {
   u.uStreamTail.value = T.streamTail;
   u.uStreamWidth.value = T.streamWidth;
   u.uStreamLoose.value = T.streamLoose;
+  u.uLooseArc.value = T.streamLooseArc;
+  u.uGrainAhead.value = T.grainAhead;
   u.uGrind.value.set(T.breakGrindStart, Math.max(T.breakGrindEnd, T.breakGrindStart + 0.01), Math.max(T.breakSandFlow, 0.01));
 }
 
@@ -140,6 +149,8 @@ uniform float uStreamHeight;
 uniform float uStreamTail;
 uniform float uStreamWidth;
 uniform float uStreamLoose;
+uniform float uLooseArc;
+uniform float uGrainAhead;
 uniform vec3 uGrind;
 // stream j's head, as an angle round its loop
 float streamHead(float j) { return uBreakAngle * (1.0 + 0.12 * j) + j * 2.4; }
@@ -245,7 +256,8 @@ export function pieceFlight(forge, c, u, out) {
   // until it is gone, quick at first and slowing — never a sudden whirl)
   if (T.breakSolid && isBigPiece(c)) {
     const x = Math.min(Math.max(u, 0), 1);
-    const turn = T.breakGrindShrink > 0 ? 1 - (1 - x) * (1 - x) : Math.pow(Math.min(u / shatterSpan(), 1), 3);
+    // (gaining speed as it goes, with the streams — not a quick whirl at first)
+    const turn = T.breakGrindShrink > 0 ? x * x : Math.pow(Math.min(u / shatterSpan(), 1), 3);
     spinUp.setFromAxisAngle(c.axis, Math.sign(c.spin || 1) * T.breakShatterSpin * Math.PI * 2 * turn);
     out.quaternion.premultiply(spinUp);
   }
@@ -424,19 +436,25 @@ float breakupFlow(int i, vec3 local, float threshold, vec4 drift, out vec3 pos) 
   float e = g * g * g * (g * (g * 6.0 - 15.0) + 10.0);
   vec4 PS = uPieceStream[i];
   vec3 from = uPiece[i].xyz + bkRot(uPieceQ[i], local) * uS * PS.z;
-  // its own place in its piece's stream: somewhere back along the tail
-  // (denser near the head), off the line by more the further back it is
+  // its own place in its piece's stream: somewhere on along it from its
+  // rock (denser near the rock), off the line by more the further on it is
   float back = pow(fract(drift.w * 3.71 + threshold), 1.4);
   vec3 o = (fract(vec3(drift.w * 17.3, drift.w * 31.7 + threshold, drift.w * 53.1)) - 0.5) * 2.0;
   float w = uStreamWidth * (0.15 + 1.2 * back);
   // in its rock's turning frame: from the rock's place on its (wider) loop,
-  // spiralling in to the stream's own loop and back along the tail
-  float lag = mix(PS.y, back * uStreamTail, e);
-  float phi = streamHead(PS.x) - lag * 6.2832;
-  float wide = mix(PS.w, 1.0, e);
+  // spiralling in to the stream's own loop
+  // (flowing on ahead of its rock, the way the stream goes — never sliding
+  // back against it while the stream is still picking up)
+  float phi = streamHead(PS.x) - PS.y * 6.2832 + e * back * uStreamTail * 6.2832 * uGrainAhead;
+  // (at its rock's own width on the loop, drawn in with it — not pulled in
+  // on its own as it comes off: that shot each patch of grains inwards)
+  float wide = PS.w;
   // a share drift loose, all round
+  // (spreading out a short way along the loop from where it came off — not
+  // whirled off to a far side of it: that raced the sand round several
+  // turns as it found its place)
   if (fract(drift.w * 91.7) < uStreamLoose) {
-    phi = mix(phi, streamHead(PS.x) * 0.35 + drift.w * 31.4, e);
+    phi += e * fract(drift.w * 7.31) * 6.2832 * uLooseArc;
     w *= mix(1.0, 3.5, e);
   }
   vec3 onLoop = uCenter + streamPath(PS.x, phi) * wide + o * w * e;

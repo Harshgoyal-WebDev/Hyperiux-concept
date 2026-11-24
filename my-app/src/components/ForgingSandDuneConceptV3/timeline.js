@@ -33,10 +33,12 @@ export function createJourneyState() {
     crackSpread: 0, // glow growing out from the core through the slab's cracks
     crackGlow: 0, // brightness of the lit cracks on the excess rock
     logoCrackGlow: 0, // ...on the logo core (they stay lit)
+    logoFollow: 1, // how closely the forged mark follows the cursor (held as the camera closes in)
     crack: 0, // activation level (sound)
     eventT: 0, // the forging event's own clock (0 at the core → 1 forged)
     fracture: 0, // breakup of the excess rock (0..1; see deriveBreak / stepBreak)
     breakClock: 0, // s into the breakup's own play (T.breakAuto: stepBreak)
+    spinRamp: 0, // the streams' pick-up to full speed on that clock (0..1)
     shockAuto: 0, // the shockwave on the breakup's own clock (T.breakAuto)
     breakBurst: 0, // its impact: the burst of energy as the rock blasts off (0..1, dying away)
     orbitSpeed: 0, // pace of the swirl's sound once the rock breaks (0 → cruising)
@@ -211,6 +213,11 @@ export function stepBreak(J, dt) {
   // end, higher = slowing more and more as the rocks settle)
   else if (c >= A) f = fb + (1 - fb) * (1 - Math.pow(1 - (c - A) / B, Math.max(T.breakSettleEase, 1)));
   J.fracture = f;
+  // the streams' pick-up: from the blast, slowly up to full speed over
+  // T.breakSpinRamp s (eased in and out), and holding there — not racing at
+  // first and slowing as the rocks settle (world/breakup.js syncFlow)
+  const r = Math.min(Math.max(c / Math.max(T.breakSpinRamp, 0.1), 0), 1);
+  J.spinRamp = c > 0 ? r * r * (3 - 2 * r) : 0;
   // the hero beam goes as the slab blasts apart — and, scrolled back, comes
   // back only once the rock has gathered back into the slab (the clock at 0)
   J.beamFade = c > 0 ? 1 - Math.cos((Math.min(c / 0.08, 1) * Math.PI) / 2) : 0;
@@ -417,9 +424,13 @@ export function buildMasterTimeline(J, dom) {
   seg(tl, J, "cut", 0, 1, CUT_FROM(), CUT_TO(), "none");
   // the forged mark turns towards the cursor from the moment the rock starts
   // breaking off it, until the camera closes on its opening (only ±1.4 m clear)
+  // (then, as the camera closes in, it stops following — J.logoFollow — and
+  // holds the turn it has; or, T.logoStraighten, squares up again: Forge)
   track(tl, J, "logoTilt", [
     [e(T.breakStart), 0],
     [e(Math.min(T.breakStart + 0.08, 0.99)), 1, "sine.out"],
+  ]);
+  track(tl, J, "logoFollow", [
     [approach(0.1), 1],
     [approach(0.4), 0, "sine.inOut"],
   ]);

@@ -77,6 +77,11 @@ const CONCEPTS = [
     description: "Third iteration of the forging and sand dune concept.",
   },
   {
+    href: "/about",
+    title: "About Hyperiux",
+    description: "The about page in the V3 concept's language: a 200vh 3D hero where the monolith opens onto the forge, then the team (after lusion.co/about).",
+  },
+  {
     href: "/forging-vid",
     title: "Forging Vid",
     description: "A separate copy of Forging Sand Dune Concept V3, with its own components, to change without touching V3.",

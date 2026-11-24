@@ -74,6 +74,8 @@ uniform float uBOvershoot;
 uniform float uBRefract;
 uniform float uBWobble;
 uniform float uBBulge;
+uniform float uBDir; // the way it sweeps: 0 from the bottom, 1 the top, 2 out from the centre, 3 diagonally, 4 from the left, 5 the right, 6 in from the edges, 7 at random
+uniform float uReveal; // 1: it opens onto the page beneath (transparent), not the next shot
 float bunqHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 const float DISC_TOUCH = 0.5;
 const float DISC_FULL = 0.57735027;
@@ -107,6 +109,28 @@ vec4 bunqImage(vec4 inputColor, vec2 uv) {
   float dome = 1.0 - abs(cuv.x - 0.5) * 2.0;
   dome = dome * dome * (3.0 - 2.0 * dome);
   float lead = (cuv.y - uBBulge * dome + uBBulge) / (1.0 + uBBulge);
+  // (its sweep: the direction chosen — each still with its gentle dome)
+  vec2 cq = (cuv - 0.5) * vec2(ratio, 1.0);
+  float rmax = length(vec2(0.5 * ratio, 0.5));
+  if (uBDir > 0.5 && uBDir < 1.5) {
+    lead = (1.0 - cuv.y - uBBulge * dome + uBBulge) / (1.0 + uBBulge);
+  } else if (uBDir > 1.5 && uBDir < 2.5) {
+    lead = length(cq) / rmax;
+  } else if (uBDir > 2.5 && uBDir < 3.5) {
+    lead = (cuv.x * ratio + cuv.y) / (ratio + 1.0);
+  } else if (uBDir > 3.5 && uBDir < 4.5) {
+    float dy = 1.0 - abs(cuv.y - 0.5) * 2.0;
+    dy = dy * dy * (3.0 - 2.0 * dy);
+    lead = (cuv.x - uBBulge * dy + uBBulge) / (1.0 + uBBulge);
+  } else if (uBDir > 4.5 && uBDir < 5.5) {
+    float dy = 1.0 - abs(cuv.y - 0.5) * 2.0;
+    dy = dy * dy * (3.0 - 2.0 * dy);
+    lead = (1.0 - cuv.x - uBBulge * dy + uBBulge) / (1.0 + uBBulge);
+  } else if (uBDir > 5.5 && uBDir < 6.5) {
+    lead = 1.0 - length(cq) / rmax;
+  } else if (uBDir > 6.5) {
+    lead = bunqHash(cell * 0.37 + 3.1);
+  }
   lead += (bunqHash(floor(cell * 2.0 + 0.5)) - 0.5) * uBJitter;
   lead = clamp(lead, 0.0, 1.0);
   float t = clamp(uT * (1.0 + uBSpread) - lead * uBSpread, 0.0, 1.0);
@@ -120,7 +144,7 @@ vec4 bunqImage(vec4 inputColor, vec2 uv) {
   vec3 n = bunqDiscNormal(gv, d, domeRad);
   n.xy *= lens * glass;
   float rim = length(n.xy);
-  float merge = smoothstep(0.0, 0.2, t) * smoothstep(1.0, 0.65, t);
+  float merge = smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.65, 1.0, t));
   uv += rim * sin(uv.y * 4.0 - uTime * 0.5) * merge * uBWobble;
   vec2 uvTo = uv + n.xy * (uBRefract / scale) * merge;
   uv = clamp(uv, 0.001, 0.999);
@@ -128,6 +152,9 @@ vec4 bunqImage(vec4 inputColor, vec2 uv) {
   vec3 fromC = vec3(0.0);
   vec3 toC = vec3(0.0);
   if (cut < 1.0) fromC = merge > 0.001 ? bunqFrom(uv, 0.002 * merge) : texture2D(inputBuffer, uv).rgb;
+  // (opening onto the page beneath: the discs clear — premultiplied, so the
+  // page shows through them as they grow and run together)
+  if (uReveal > 0.5) return vec4(fromC * (1.0 - cut), 1.0 - cut);
   if (cut > 0.0) toC = merge > 0.001 ? bunqTo(uvTo, 0.002 * merge) : bunqNext(uvTo);
   return vec4(mix(fromC, toC, cut), inputColor.a);
 }
@@ -220,6 +247,8 @@ export function createCutPass() {
     uBRefract: { value: 4 },
     uBWobble: { value: 0.1 },
     uBBulge: { value: 0.115 },
+    uBDir: { value: 0 },
+    uReveal: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -329,7 +358,7 @@ vec3 bunqNext(vec2 uv) { return uWhite; }
 ${FRAGMENT.slice(FRAGMENT.indexOf("// (bunqlabs.com's own"), FRAGMENT.indexOf("uniform float uHold"))}
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   if (uT <= 0.0005) { outputColor = inputColor; return; }
-  if (uT >= 0.9995) { outputColor = vec4(uWhite, inputColor.a); return; }
+  if (uT >= 0.9995) { outputColor = uReveal > 0.5 ? vec4(0.0) : vec4(uWhite, inputColor.a); return; }
   if (uStyle > 0.5) { outputColor = bunqImage(inputColor, uv); return; }
   vec2 sp = (uv - 0.5) * vec2(uAspect, 1.0);
   vec4 hx = cutHex(sp / uCell);
@@ -344,7 +373,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float gd = (far * 0.85 + rnd * 0.15) * max(uCover - RAMP, 0.0);
   float gIn = smoothstep(gd, gd + RAMP, uT);
   // the white: each tile its own moment, from the centre out mixed with chance
-  float order = mix(far, rnd2, uRandom);
+  float lin = uBDir < 0.5 ? 1.0 - uv.y : uBDir < 1.5 ? uv.y : uBDir < 2.5 ? far : uBDir < 3.5 ? (uv.x * uAspect + uv.y) / (uAspect + 1.0) : uBDir < 4.5 ? uv.x : uBDir < 5.5 ? 1.0 - uv.x : uBDir < 6.5 ? 1.0 - far : rnd2;
+  float order = mix(lin, rnd2, uRandom);
   float wd = uWhiteFrom + order * max(1.0 - uWhiteFrom - uWhiteFill, 0.0);
   float w = clamp((uT - wd) / max(uWhiteFill, 0.01), 0.0, 1.0);
   w = w * w * (3.0 - 2.0 * w);
@@ -364,6 +394,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   // from its middle)
   // (HDR white: blended where the tone mapping's own curve is — x / (1 + x) —
   // so the fade reads evenly, not white at its first touch)
+  if (uReveal > 0.5) { outputColor = vec4(col * (1.0 - w), 1.0 - w); return; }
   vec3 cy = col / (1.0 + col);
   vec3 wy = uWhite / (1.0 + uWhite);
   vec3 y = mix(cy, wy, w);
@@ -371,6 +402,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `;
 
+export const OUTRO_DIRS = ["bottom", "top", "radial", "diagonal", "left", "right", "edges", "random"];
 export function createOutroPass() {
   const uniforms = {
     inputBuffer: { value: null },
@@ -394,6 +426,8 @@ export function createOutroPass() {
     uBRefract: { value: 4 },
     uBWobble: { value: 0.1 },
     uBBulge: { value: 0.115 },
+    uBDir: { value: 0 },
+    uReveal: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -431,6 +465,8 @@ export function OutroPass({ J, outro }) {
     u.uWhiteFill.value = T.outroWhiteFill;
     u.uRandom.value = T.outroRandom;
     syncBunq(u, T.outroStyle, size);
+    u.uBDir.value = OUTRO_DIRS.indexOf(T.outroDirection) < 0 ? 0 : OUTRO_DIRS.indexOf(T.outroDirection);
+    u.uReveal.value = T.outroReveal ? 1 : 0;
     // (off until it starts; on from then, white once over)
     outro.pass.enabled = t > 0.0005;
   });

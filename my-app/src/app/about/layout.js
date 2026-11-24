@@ -1,33 +1,18 @@
 import localFont from "next/font/local";
 
-// The forging concept's typefaces (Aeonik Pro, Orbitron), scoped to this route
-// (the components use font-[family-name:var(--font-aeonikpro)] / --font-orbitron).
+// The site's typeface, scoped to this route: Aeonik Pro, as on the
+// forging-sand-dune-concept-v3 page.
 const aeonikPro = localFont({
   src: [
     { path: "../../components/ForgingSandDuneConceptV3/fonts/AeonikPro-Light.woff2", weight: "300" },
     { path: "../../components/ForgingSandDuneConceptV3/fonts/AeonikPro-Regular.woff2", weight: "400" },
     { path: "../../components/ForgingSandDuneConceptV3/fonts/AeonikPro-Medium.woff2", weight: "500" },
-    { path: "../../components/ForgingSandDuneConceptV3/fonts/AeonikPro-Bold.woff2", weight: "700" },
   ],
   variable: "--font-aeonikpro",
   display: "swap",
   fallback: ["Arial", "Helvetica", "sans-serif"],
 });
 
-const orbitron = localFont({
-  src: [
-    { path: "../../components/ForgingSandDuneConceptV3/fonts/Orbitron-Regular.woff2", weight: "400" },
-    { path: "../../components/ForgingSandDuneConceptV3/fonts/Orbitron-Medium.woff2", weight: "500" },
-  ],
-  variable: "--font-orbitron",
-  display: "swap",
-  fallback: ["Arial", "Helvetica", "sans-serif"],
-});
-
 export default function AboutLayout({ children }) {
-  return (
-    <div className={`${aeonikPro.variable} ${orbitron.variable} w-full bg-[#0e0b09] font-[family-name:var(--font-aeonikpro)] text-white`}>
-      {children}
-    </div>
-  );
+  return <div className={`${aeonikPro.variable} w-full bg-[#111111] font-[family-name:var(--font-aeonikpro)] text-white`}>{children}</div>;
 }

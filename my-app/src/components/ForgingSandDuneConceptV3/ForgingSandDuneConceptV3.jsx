@@ -870,7 +870,10 @@ function Journey({ env }) {
 
   const tier = env?.tier;
   return (
-    <section ref={sectionRef} data-journey className="group/journey relative z-10 w-full" style={{ height: `${JOURNEY_VH}vh` }}>
+    // (above the site while its last light opens onto it — the Work section
+    // under the scene — but under it once the footer is near: its canvas,
+    // pinned to the screen then, would cover the sections above the footer)
+    <section ref={sectionRef} data-journey className={`group/journey relative w-full ${footerOn ? "z-0" : "z-10"}`} style={{ height: `${JOURNEY_VH}vh` }}>
       <div ref={viewportRef} data-viewport className="sticky top-0 h-screen w-full overflow-hidden bg-[#0e0b09]">
         {/* (pinned to the screen behind the page while the footer is near) */}
         <div ref={canvasWrapRef} className={`pointer-events-none inset-0 z-0 ${footerOn ? "fixed" : "absolute"}`}>

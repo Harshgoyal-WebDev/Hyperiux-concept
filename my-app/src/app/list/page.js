@@ -78,8 +78,8 @@ const CONCEPTS = [
   },
   {
     href: "/about",
-    title: "About Hyperiux",
-    description: "The about page in the V3 concept's language: a 200vh 3D hero where the monolith opens onto the forge, then the team (after lusion.co/about).",
+    title: "About — Revealed by Light",
+    description: "A 400vh WebGL journey: a dark landscape, a field of vertical amber light, the team as light-strand portraits, then into white.",
   },
   {
     href: "/forging-vid",

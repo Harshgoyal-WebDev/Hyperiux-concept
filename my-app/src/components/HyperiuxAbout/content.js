@@ -1,127 +1,48 @@
-// All copy for the /about page. Lines marked "site" are Hyperiux's own words
-// (hyperiux-staging / the forging-sand-dune-concept-v3 content); the rest is
-// editorial copy written around that positioning — no dates, numbers or
-// claims that aren't on the live site.
+// Copy and team data for the /about experience ("Revealed by light").
 
-export const HERO = {
-  eyebrow: "About Hyperiux",
-  title: ["We are", "Hyperiux"],
-  body: "A growth and experience partner where human behaviour, design, technology and organic growth meet.", // site
-  cue: "Scroll to meet us",
-};
-
-// The lines told over the monolith as it opens (p = the hero's scroll, 0..1).
-export const HERO_LINES = [
-  {
-    id: "minds",
-    eyebrow: "Many minds",
-    text: "One forge.",
-    body: "Strategists, designers, engineers and marketers, shaping every idea in the same fire.",
-    from: 0.3,
-    to: 0.58,
-    place: "left",
-  },
-  {
-    id: "people",
-    eyebrow: "The people",
-    text: "Behind every pixel.",
-    body: "Meet the team that turns ambitious ideas into digital experiences.",
-    from: 0.6,
-    to: 0.86,
-    place: "right",
-  },
-];
-
+// 01 — on the hero, at the top of the scroll
 export const INTRO = {
-  index: "001",
-  label: "Who we are",
-  statement: "From concept to conversion, we're changing the face of web.", // site
-  body: "We unravel complex design challenges through meticulous user research, expert analysis, prototyping, and collaborative design with users and stakeholders. Harnessing the power of cutting edge tools and our proprietary approach we craft delightful and intuitive experiences.", // site
-  // the four meeting points of the site's positioning statement
-  pillars: [
-    { n: "01", title: "Human behaviour", body: "We start with people: emotion and neuromarketing shape every decision." },
-    { n: "02", title: "Design", body: "Strategic planning based on insight is the starting point of everything we do." }, // site
-    { n: "03", title: "Technology", body: "Helping brands thrive in today's fast-evolving digital landscape." }, // site (adapted)
-    { n: "04", title: "Organic growth", body: "Digital brand experiences that drive real results." }, // site
-  ],
+  title: ["The people", "behind the light"],
+  body: "Hyperiux is a digital experience design agency. Designers, developers and storytellers turning ideas into worlds people can step into.",
+  cue: "Scroll",
 };
 
-// ---------------------------------------------------------------------------
-// TEAM — PLACEHOLDERS. Replace every entry with the real people.
-// ---------------------------------------------------------------------------
-// photo: a path under /public (e.g. "/assets/images/about/team/jane.jpg"),
-//   portrait, ideally 4:5 and at least 900px wide. Leave it null and the card
-//   shows the dune placeholder portrait instead.
-// lead: true puts the person in the large leadership slider at the top; the
-//   whole team (leads included) is in the grid below it.
-// links: any of { linkedin, x, instagram, dribbble, behance, site }.
+// 02 — as the land turns to light
+export const STORY = {
+  title: ["Every streak, an idea.", "Together, a world of light."],
+};
+
+// The team, one at a time in the slider. The count shown is TEAM.length.
+//   source: the photo the light-strand portrait is built from (never shown
+//     itself). Head and shoulders, roughly front-facing; a plain, darker
+//     background separates best. Missing file → an anonymous silhouette and
+//     an on-screen note naming the path.
+//   mask (optional): a black-and-white outline of the person, the same size
+//     as the photo (white = the person). The photo is used exactly as it is;
+//     the mask only says where the person ends — for a backdrop the
+//     automatic separation can't tell apart (e.g. a grey studio gradient).
+//   focus: where to frame the photo in the portrait's 4:5 map — x/y (0..1,
+//     the point of the photo put at the centre) and zoom (1 = cover).
 export const TEAM = [
   {
-    name: "Team Member 01",
-    role: "Founder & CEO",
-    discipline: "Strategy",
-    bio: "Placeholder bio. Two or three lines on what they lead at Hyperiux, how they got here, and what they care about in the work.",
-    photo: null,
-    lead: true,
-    links: { linkedin: "#" },
+    id: "harsh-goyal",
+    name: "Harsh Goyal",
+    role: "Frontend Developer",
+    bio: "Crafting immersive, high-performance web experiences with design, motion and technology.",
+    source: "/assets/images/about/team/harsh-goyal.jpg",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
   },
   {
-    name: "Team Member 02",
-    role: "Creative Director",
-    discipline: "Design",
-    bio: "Placeholder bio. Two or three lines on what they lead at Hyperiux, how they got here, and what they care about in the work.",
-    photo: null,
-    lead: true,
-    links: { linkedin: "#" },
+    id: "bhaskar-varshney",
+    name: "Bhaskar Varshney",
+    role: "CEO & Founder",
+    bio: "Leading Hyperiux with a vision to create meaningful digital experiences through design, technology and innovation.",
+    // (his light-line render, as Harsh's source is)
+    source: "/assets/images/about/team/Amber%20Light-Line%20Portrait.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
   },
-  {
-    name: "Team Member 03",
-    role: "Head of Technology",
-    discipline: "Technology",
-    bio: "Placeholder bio. Two or three lines on what they lead at Hyperiux, how they got here, and what they care about in the work.",
-    photo: null,
-    lead: true,
-    links: { linkedin: "#" },
-  },
-  { name: "Team Member 04", role: "UI/UX Designer", discipline: "Design", bio: "Placeholder bio. One or two lines about them.", photo: null, links: { linkedin: "#" } },
-  { name: "Team Member 05", role: "Creative Developer", discipline: "Technology", bio: "Placeholder bio. One or two lines about them.", photo: null, links: { linkedin: "#" } },
-  { name: "Team Member 06", role: "3D Artist", discipline: "Design", bio: "Placeholder bio. One or two lines about them.", photo: null, links: { linkedin: "#" } },
-  { name: "Team Member 07", role: "Brand Strategist", discipline: "Strategy", bio: "Placeholder bio. One or two lines about them.", photo: null, links: { linkedin: "#" } },
-  { name: "Team Member 08", role: "Growth Marketer", discipline: "Marketing", bio: "Placeholder bio. One or two lines about them.", photo: null, links: { linkedin: "#" } },
 ];
 
-export const TEAM_COPY = {
-  index: "002",
-  label: "The team",
-  title: ["The people", "behind the forge"],
-  body: "A small, senior team of strategists, designers, engineers and marketers, working as one from the first idea to the last line of code.",
-  gridLabel: "Everyone",
-};
-
-// Area of expertise (the site's four solutions)
-export const EXPERTISE = {
-  index: "003",
-  label: "Area of expertise",
-  title: ["We Don't Just Offer Solutions,", "We Craft Impact"], // site
-  items: [
-    { glyph: "S", title: "Strategy", body: "Strategic planning based on insight is the starting point of everything we do.", tags: ["UI design strategy", "Branding", "Consumer research"] },
-    { glyph: "D", title: "UI/UX Design", body: "A UI/UX partner for startups and enterprises, from responsive web design to design systems.", tags: ["Responsive web design", "Design systems"] },
-    { glyph: "T", title: "Technology", body: "Our mission is to help you thrive in today's fast-evolving digital landscape.", tags: ["HTML", "CSS", "JavaScript", "React", "Vue", "Angular"] },
-    { glyph: "M", title: "Marketing", body: "Brand marketing, social media, SEO, influencer management and marketing automation.", tags: ["Brand", "Social", "SEO", "Automation"] },
-  ],
-};
-
-export const JOIN = {
-  index: "004",
-  label: "Join us",
-  title: "Curious minds always have a seat at the forge.",
-  body: "We're always glad to hear from designers, engineers and storytellers who want to build what's next. Tell us about yourself and the work you're proudest of.",
-  cta: "Say hello",
-};
-
-export const CTA = {
-  title: "Let's Bring Your Ideas To Life!", // site
-  email: "hi@hyperiux.com",
-  phone: "+91 8178026136",
-  address: "Grandslam I-Thum, A-40, Sector 62, Noida, Uttar Pradesh 201309",
+export const WHITE = {
+  title: "Who We Are",
 };

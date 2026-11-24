@@ -1,8 +1,8 @@
-import HyperiuxAbout from "@/components/HyperiuxAbout/HyperiuxAbout";
+import AboutExperience from "@/components/HyperiuxAbout/AboutExperience";
 
 export const metadata = {
   title: "About · Hyperiux",
-  description: "A growth and experience partner where human behaviour, design, technology and organic growth meet. Meet the team behind Hyperiux.",
+  description: "Revealed by light — the people behind Hyperiux.",
   robots: {
     index: false,
     follow: false,
@@ -10,5 +10,5 @@ export const metadata = {
 };
 
 export default function AboutPage() {
-  return <HyperiuxAbout />;
+  return <AboutExperience />;
 }

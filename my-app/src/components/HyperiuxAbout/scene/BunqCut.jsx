@@ -5,7 +5,7 @@ import { useEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { createCutPass } from "@/components/ForgingSandDuneConceptV3/scene/CutTransition";
-import { T } from "@/components/ForgingSandDuneConceptV3/tuning";
+import { A } from "../tuning";
 import { TEAM_LAYER, teamPose } from "./stage";
 
 // The change from the hero to the team: the forging-sand-dune-concept-v3's
@@ -27,8 +27,6 @@ export function BunqCutDriver({ S, U, cut, stage }) {
     () => ({
       target: new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true }),
       cam: new THREE.PerspectiveCamera(35, 1, 0.5, 4000),
-      pos: new THREE.Vector3(),
-      tgt: new THREE.Vector3(),
       buf: new THREE.Vector2(),
     }),
     []
@@ -41,17 +39,18 @@ export function BunqCutDriver({ S, U, cut, stage }) {
     u.uT.value = t;
     u.uAspect.value = size.width / Math.max(size.height, 1);
     u.uTime.value = state.clock.elapsedTime;
-    // (bunq, from the bottom, as V3's: its own settings)
+    // (V3's bunq discs, with this page's own settings — tuning.js, trans*:
+    // which way they run, and how they look)
     u.uStyle.value = 1;
     u.uBRes.value.set(size.width, Math.max(size.height, 1));
-    u.uBCellPx.value = Math.max(T.transCellPx, 2);
-    u.uBSpread.value = T.transSpread;
-    u.uBJitter.value = T.transJitter;
-    u.uBOvershoot.value = T.transOvershoot;
-    u.uBRefract.value = T.transRefract;
-    u.uBWobble.value = T.transWobble;
-    u.uBBulge.value = T.transBulge;
-    u.uBDir.value = 0;
+    u.uBCellPx.value = Math.max(A.transCellPx, 2);
+    u.uBSpread.value = A.transSpread;
+    u.uBJitter.value = A.transJitter;
+    u.uBOvershoot.value = A.transOvershoot;
+    u.uBRefract.value = A.transRefract;
+    u.uBWobble.value = A.transWobble;
+    u.uBBulge.value = A.transBulge;
+    u.uBDir.value = A.transDir;
     u.uHold.value = 0;
     u.uReveal.value = 0;
     cut.pass.enabled = t > 0.0005 && t < 0.9995;
@@ -59,12 +58,10 @@ export function BunqCutDriver({ S, U, cut, stage }) {
     gl.getDrawingBufferSize(res.buf);
     res.buf.floor();
     if (res.target.width !== res.buf.x || res.target.height !== res.buf.y) res.target.setSize(res.buf.x, res.buf.y);
-    teamPose(stage, S, U.sway, res.pos, res.tgt);
     const cam = res.cam;
     // (the team's own scene only: nothing of the hero in its shot)
     cam.layers.set(TEAM_LAYER);
-    cam.position.copy(res.pos);
-    cam.lookAt(res.tgt);
+    teamPose(stage, S, U.sway, cam);
     cam.aspect = camera.aspect;
     cam.fov = camera.fov;
     cam.near = camera.near;

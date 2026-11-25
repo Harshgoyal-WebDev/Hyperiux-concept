@@ -18,9 +18,9 @@ import FlyingIslands from "@/components/ForgingSandDuneConceptV3/scene/FlyingIsl
 import { SUN_DIR } from "@/components/ForgingSandDuneConceptV3/config";
 import { T } from "@/components/ForgingSandDuneConceptV3/tuning";
 import { LightPortrait } from "./LightPortrait";
-import { EnergyBeams, planStreaks } from "./EnergyBeams";
+import { BEAM_CENTRE, EnergyBeams, planStreaks } from "./EnergyBeams";
 import { LightTerrain, TerrainParticles } from "./LightTerrain";
-import { emptyPortraitTexture, loadPortrait } from "./portraitMap";
+import { emptyPortraitTexture, fullMaskTexture, loadPortrait } from "./portraitMap";
 import { TEAM } from "../content";
 import { A, REBUILD_EVENT } from "../tuning";
 
@@ -60,7 +60,20 @@ function createUniforms(shared) {
     uMapB: u(null),
     uImage: u(null),
     uImageB: u(null),
+    uImageAspect: u(0.8),
+    uImageAspectB: u(0.8),
+    uImageMask: u(null),
+    uImageMaskB: u(null),
+    uDepthA: u(null),
+    uDepthB: u(null),
+    uHasDepthA: u(0),
+    uHasDepthB: u(0),
     uMorph: u(0),
+    uMorphRing: u(0.66),
+    uMorphGap: u(0.28),
+    uRevealFly: u(0.35),
+    uRevealLand: u(0.75),
+    uRevealBlend: u(0.35),
     uPortraitIntensity: u(1),
     sway: { x: 0, y: 0 },
   };
@@ -74,6 +87,7 @@ const NIGHT_GROUND = new THREE.Color("#0b0a12");
 const DARK = new THREE.Color("#0b0706");
 const EMBER_HAZE = new THREE.Color(0.075, 0.026, 0.01);
 const tmpColor = new THREE.Color();
+const FULL_MASK = fullMaskTexture();
 const BG_WARM = new THREE.Color("#4a2d1c");
 const BG_GLOW = new THREE.Color("#d9b893");
 
@@ -146,7 +160,11 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
       alive = false;
       maps.current.forEach((t) => t.dispose());
       maps.current = [];
-      images.current.forEach((t) => t?.dispose());
+      images.current.forEach((t) => {
+        t?.userData.mask?.dispose();
+        t?.userData.depth?.dispose();
+        t?.dispose();
+      });
       images.current = [];
       empty.dispose();
     };
@@ -192,7 +210,6 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
   const { scene } = useThree();
   const fog = useMemo(() => new THREE.FogExp2(HAZE.clone(), T.fogDensity), []);
   const bg = useMemo(() => new THREE.Color(), []);
-  const pose = useMemo(() => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3() }), []);
   useEffect(() => {
     scene.fog = fog;
     scene.background = bg;
@@ -216,15 +233,14 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
     // team's on TEAM_LAYER — so once over, nothing of the hero remains)
     const team = S.cut >= 0.9995;
     if (team) {
-      teamPose(stage, S, U.sway, pose.pos, pose.tgt);
-      cam.position.copy(pose.pos);
-      cam.lookAt(pose.tgt);
+      teamPose(stage, S, U.sway, cam);
     } else {
-      // (moved by the pointer too, a little: the dunes near and far part)
+      // (moved by the pointer too, always looking at the centre beam: the
+      // whole land moves round it, the beam held in the middle)
       const hx = U.sway.x * A.heroParallaxX;
       const hy = U.sway.y * A.heroParallaxY;
       cam.position.set(S.camX + hx, S.camY + hy, S.camZ);
-      cam.lookAt(S.tX + hx * 0.25, S.tY + hy * 0.25, S.tZ);
+      cam.lookAt(BEAM_CENTRE.x, S.tY, BEAM_CENTRE.z);
     }
     cam.layers.set(team ? TEAM_LAYER : 0);
     U.uPixel.value = (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))) / (state.size.height * state.gl.getPixelRatio());
@@ -272,11 +288,15 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
     U.uCenterBeam.value = 1;
     U.uCurrents.value = S.currents;
     U.uFlat.value = S.flat;
-    U.uReveal.value = S.reveal;
+    // (the forming held back a while into the transition, then eased)
+    const rv = THREE.MathUtils.clamp((S.reveal - A.revealDelay) / Math.max(1 - A.revealDelay, 0.05), 0, 1);
+    U.uReveal.value = rv * rv * (3 - 2 * rv);
     U.uDissolve.value = S.exit;
 
     U.uLight.value = S.light;
-    U.uWhite.value = S.white;
+    // (the white is Post's line-by-line wipe over the scene as it is — the
+    // scene itself never fades down under it)
+    U.uWhite.value = 0;
     const slider = S.sScanGlow > S.scanGlow;
     U.uScan.value = slider ? S.sScan : S.scan;
     U.uScanGlow.value = slider ? S.sScanGlow : S.scanGlow;
@@ -284,8 +304,21 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
     // (changing member: the strands re-forming from one face into the next)
     U.uMapB.value = maps.current[S.morphTo] || U.uMap.value;
     U.uMorph.value = S.morph;
+    U.uMorphRing.value = A.swapRing;
+    U.uMorphGap.value = A.swapGap;
+    U.uRevealFly.value = A.revealFly;
+    U.uRevealLand.value = A.revealLand;
+    U.uRevealBlend.value = A.revealBlend;
     U.uImage.value = images.current[S.member] || null;
     U.uImageB.value = images.current[S.morphTo] || U.uImage.value;
+    U.uImageAspect.value = U.uImage.value?.userData.aspect || 0.8;
+    U.uImageAspectB.value = U.uImageB.value?.userData.aspect || 0.8;
+    U.uImageMask.value = U.uImage.value?.userData.mask || FULL_MASK;
+    U.uImageMaskB.value = U.uImageB.value?.userData.mask || FULL_MASK;
+    U.uDepthA.value = U.uImage.value?.userData.depth || FULL_MASK;
+    U.uDepthB.value = U.uImageB.value?.userData.depth || FULL_MASK;
+    U.uHasDepthA.value = U.uImage.value?.userData.depth ? 1 : 0;
+    U.uHasDepthB.value = U.uImageB.value?.userData.depth ? 1 : 0;
   }, -10);
   return null;
 }
@@ -406,11 +439,17 @@ const FINISH = /* glsl */ `
       float broad = h1(floor(uv.x * 22.0) + 3.0);
       float centre = 1.0 - abs(uv.x - 0.5) * 2.0;
       float lead = fine * 0.3 + broad * 0.35 + centre * 0.55 - 0.6 + (uv.y - 0.5) * 0.15;
-      float w = clamp(uAmount * 1.8 - 0.45 + lead * (1.0 - uAmount), 0.0, 1.0);
-      w = w * w * (3.0 - 2.0 * w);
-      vec3 warm = mix(vec3(1.0, 0.92, 0.84), vec3(1.0), smoothstep(0.5, 1.0, uAmount));
-      c = mix(c, warm, w);
-      c = mix(c, vec3(1.0), smoothstep(0.9, 1.0, uAmount));
+      // (each line turning quickly — straight from the scene to a warm
+      // light, never through a grey half-way)
+      float w = smoothstep(0.32, 0.68, uAmount * 1.8 - 0.45 + lead * (1.0 - uAmount));
+      // (each line cut out of the frame — the page behind showing through,
+      // "Why partner with us?" — a warm light on it as it goes)
+      float a = 1.0 - w;
+      a *= 1.0 - smoothstep(0.92, 1.0, uAmount);
+      c = mix(c, vec3(1.0, 0.86, 0.74), w * (1.0 - w) * 2.0);
+      // (premultiplied, for the canvas)
+      outputColor = vec4(c * a, inputColor.a * a);
+      return;
     }
     outputColor = vec4(c, inputColor.a);
   }
@@ -511,7 +550,7 @@ function Post({ S, U, cut }) {
       b.intensity = THREE.MathUtils.lerp(A.bloomIntensity, A.teamBloomIntensity, team) + S.light;
       if (b.luminanceMaterial) b.luminanceMaterial.threshold = THREE.MathUtils.lerp(A.bloomThreshold, A.teamBloomThreshold, team);
     }
-    if (vignette.current) vignette.current.darkness = A.vignette * (1 - U.uLight.value * 0.8);
+    if (vignette.current) vignette.current.darkness = THREE.MathUtils.lerp(A.vignette, A.teamVignette, THREE.MathUtils.smoothstep(S.cut, 0.3, 1)) * (1 - U.uLight.value * 0.8);
   });
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>

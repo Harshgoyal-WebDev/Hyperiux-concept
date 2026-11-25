@@ -2,14 +2,13 @@
 
 // 01 — on the hero, at the top of the scroll
 export const INTRO = {
-  title: ["The people", "behind the light"],
+  title: ["The people", "behind Hyperiux"],
   body: "Hyperiux is a digital experience design agency. Designers, developers and storytellers turning ideas into worlds people can step into.",
-  cue: "Scroll",
 };
 
 // 02 — as the land turns to light
 export const STORY = {
-  title: ["Every streak, an idea.", "Together, a world of light."],
+  title: ["Every streak, an idea.", "Together, a new world."],
 };
 
 // The team, one at a time in the slider. The count shown is TEAM.length.
@@ -42,7 +41,3 @@ export const TEAM = [
     focus: { x: 0.5, y: 0.5, zoom: 1 },
   },
 ];
-
-export const WHITE = {
-  title: "Who We Are",
-};

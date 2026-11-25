@@ -60,6 +60,14 @@ export function prepareSound() {
   engine.ctx.suspend?.();
 }
 
+// The audio woken (silent) in a user gesture — the loader's press — so the
+// sound can start, fading in, when the hold completes a moment later (no
+// longer inside the gesture: Safari would keep it shut otherwise).
+export function unlockSound() {
+  prepareSound();
+  engine?.ctx.resume?.().catch(() => {});
+}
+
 // Call from a user gesture.
 export function setSound(on) {
   try {

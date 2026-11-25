@@ -69,7 +69,7 @@ const FIBRE_FRAGMENT = withHold(STRAND_FRAGMENT.replace("uniform float uHead;", 
   )
   .replace("float I = vStrand.y * (", "float I = uK * smoothstep(0.0, 0.08, vU) * (1.0 - smoothstep(0.55, 1.0, vU)) * vStrand.y * (")
   .replace("* across * start * vWidthFix * uIntensity", "* (across * pow(vWidthFix, 0.4) + halo * uGlowAmt / max(uIntensity, 0.001)) * start * uIntensity");
-if (!FIBRE_VERTEX.includes("vCore = wc / w") || !FIBRE_FRAGMENT.includes("halo * uGlowAmt")) console.warn("[about] fibre glow: V3 strand shader changed");
+if (!FIBRE_VERTEX.includes("vCore = wc / w") || !FIBRE_FRAGMENT.includes("halo * uGlowAmt")) console.warn("[about] fibre look: V3 strand shader changed");
 
 // Where each falling streak lands and when: over the whole land in view, out
 // to the horizon and in round the foot of the view; many at once.

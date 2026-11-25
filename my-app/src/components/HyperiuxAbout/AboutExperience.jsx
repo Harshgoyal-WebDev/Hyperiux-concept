@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Canvas } from "@react-three/fiber";
@@ -9,8 +9,11 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
-import { INTRO, STORY, TEAM, WHITE } from "./content";
+import { INTRO, STORY, TEAM } from "./content";
+import { A, FLOW_EVENT } from "./tuning";
 import { NIGHT_EVENT, T as V3T, setNight } from "@/components/ForgingSandDuneConceptV3/tuning";
+// the staging About page's Awards, Testimonial and FAQ, after the white
+import StagingSections, { StagingValues } from "./staging/StagingSections";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
@@ -19,20 +22,50 @@ const AboutScene = dynamic(() => import("./scene/AboutScene"), { ssr: false });
 const TuningPanel = dynamic(() => import("./TuningPanel"), { ssr: false });
 
 // The Hyperiux About page — "Revealed by light". One long scroll, one
-// persistent canvas, one master timeline (in units of EXPERIENCE_VH):
-//   01 The land of light  0–148   the streaks fall, the land turns to light
-//   02 The transition   148–228   V3's bunq discs, over a long stretch of scroll
-//   03 The Team         226–372   one member at a time (prev / next, keys, swipe)
-//   04 Into the Light   374–454   the portrait dissolves, the light expands,
-//                                 the frame turns pure white
-// …onto the first white section of the 2D page.
-const EXPERIENCE_VH = 454;
+// persistent canvas, one master timeline — its units are vh of real scroll
+// (the pinned section is EXPERIENCE_VH + one screen tall):
+//   01 The land of light    0–136   the streaks fall, the land turns to light
+//   02 The transition     136–215   V3's bunq discs; the person forming out of
+//                                   particles with them
+//   03 The Team           197–271   one member at a time (prev / next, keys,
+//                                   swipe); its copy in as the transition
+//                                   ends, then 50vh of scroll to be with them
+//   04 The line clip      265–348   the scene, just as it is, cut away line
+//                                   by line to "Why partner with us?" behind
+// The flow — every length in vh of real scroll, from the panel's "Scroll
+// flow" (tuning.js: flow*; changing one rebuilds the timeline, and all after
+// it moves with it):
+function flowTimes() {
+  const HERO_END = A.flowHero;
+  const TRANS_LEN = A.flowTransition;
+  const TRANS_END = HERO_END + TRANS_LEN;
+  const WIPE_AT = TRANS_END + A.flowTeamHold;
+  const WIPE_LEN = A.flowClip;
+  const EXPERIENCE_VH = WIPE_AT + WIPE_LEN + 4;
+  return {
+    HERO_END,
+    TRANS_LEN,
+    TRANS_END,
+    WIPE_AT,
+    WIPE_LEN,
+    EXPERIENCE_VH,
+    // (the hero's own beats — the streaks, its two lines of copy — over its
+    // length, as tuned at 136vh)
+    k: HERO_END / 136,
+    // (the team's slider live from as the transition is ~80% done until the
+    // line clip begins; its copy goes as that starts)
+    TEAM_FROM: HERO_END + TRANS_LEN * 0.77,
+    TEAM_TO: WIPE_AT + 6,
+    // (how far "Why partner with us?" is pulled up behind the pinned screen:
+    // its top flowValuesLead past the line clip's start — its heading, sticky
+    // 20vh above that, behind the scene as the lines cut)
+    VALUES_OVERLAP_VH: EXPERIENCE_VH + 100 - (WIPE_AT + A.flowValuesLead),
+  };
+}
 // how far in each line of copy's words are (0 → 1: in out of the blur), set
 // by the scroll's timeline and read each frame (the opening's also by its
 // entrance on load)
 const COPY = { intro: 1, story: 0 };
-const TEAM_FROM = 226;
-const TEAM_TO = 372;
 
 function createState() {
   return {
@@ -46,7 +79,8 @@ function createState() {
     fall: 0, // the streaks coming down, one by one (EnergyBeams)
     dark: 0, // (a touch quieter round the team)
     cut: 0, // the bunq transition from the hero to the team's stage
-    teamPush: 0, // the team camera's slow drift in
+    teamPush: 0, // the team camera's slow drift in (none now: the person never scales up)
+    bgTurn: 0, // the team's backdrop turning a little, horizontally, on scroll
     beams: 1,
     currents: 0,
     flat: 0,
@@ -126,6 +160,16 @@ export default function AboutExperience() {
   const busy = useRef(false);
   const onMissing = useCallback((list) => setMissing(list), []);
   const n = TEAM.length;
+  // the scroll flow (the panel's "Scroll flow": a change rebuilds it all)
+  const [flow, setFlow] = useState(0);
+  useEffect(() => {
+    const on = () => setFlow((v) => v + 1);
+    window.addEventListener(FLOW_EVENT, on);
+    return () => window.removeEventListener(FLOW_EVENT, on);
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- flow is the rebuild trigger
+  const F = useMemo(() => flowTimes(), [flow]);
+  const { HERO_END, TRANS_LEN, TRANS_END, WIPE_AT, WIPE_LEN, EXPERIENCE_VH, TEAM_FROM, TEAM_TO, k } = F;
 
   // no frames once the experience has scrolled away
   useEffect(() => {
@@ -161,7 +205,10 @@ export default function AboutExperience() {
           onUpdate: (self) => {
             const vh = self.progress * EXPERIENCE_VH;
             teamActive.current = vh > TEAM_FROM && vh < TEAM_TO;
-            const light = vh > 434;
+            const light = vh > WIPE_AT + WIPE_LEN * 0.6;
+            // (the wipe cuts the frame out to the page behind: the stage's own
+            // dark backing goes as it starts)
+            if (stage.current) stage.current.style.backgroundColor = vh > WIPE_AT - 1 ? "transparent" : "";
             if (header.current && header.current.dataset.light !== String(light)) header.current.dataset.light = String(light);
           },
         },
@@ -172,41 +219,46 @@ export default function AboutExperience() {
       // centre beam ahead; the streaks come down out of the sky, many at
       // once, the land turning to light as they do — the camera flying on in,
       // all the way
-      at(3, 97, { fall: 1 }, "none");
-      at(0, 228, { camY: 9, camZ: 22, tY: 10, tZ: -200 }, "none");
+      // (over the whole of the hero's scroll: the last of the land turns
+      // just as the transition begins)
+      at(11 * k, 121 * k, { fall: 1 }, "none");
+      at(0, TRANS_END, { camY: 9, camZ: 22, tY: 10, tZ: -200 }, "none");
       // 02 — into the team's section, behind the hero: the bunq transition
       // turns the flight over to the team's stage; there the person gathers
       // out of the light
       // (over a long stretch of scroll: the discs grow slowly, the flight
       // carrying on through them)
-      at(148, 80, { cut: 1 }, "sine.inOut");
-      // (the person is there, whole, as the team's section comes in: formed
-      // before the transition, out of sight)
-      at(130, 16, { reveal: 1 }, "power2.inOut");
-      at(150, 70, { beams: 0.4 }, "sine.inOut");
-      at(230, 20, { dark: 0.2 }, "sine.inOut");
-      // 03 — The Team (the camera all but still; the slider does the rest)
-      at(250, 124, { teamPush: 0.4 }, "none");
-      // 04 — Into the Light
-      at(374, 25, { exit: 1, currents: 1.2 }, "power1.in");
-      at(397, 27, { light: 1, flat: 1, beams: 1.3 });
-      at(422, 32, { white: 1 }, "power1.inOut");
+      at(HERO_END, TRANS_LEN, { cut: 1 }, "sine.inOut");
+      // (the person forming out of particles over the transition — held
+      // back by A.revealDelay, AboutScene.jsx — the image under them)
+      at(HERO_END, TRANS_LEN, { reveal: 1 }, "none");
+      at(HERO_END + 2, TRANS_LEN - 10, { beams: 0.4 }, "sine.inOut");
+      at(TRANS_END + 2, 20, { dark: 0.2 }, "sine.inOut");
+      // 03 — The Team: the person still (never scaling up); only the
+      // backdrop behind turning a little, horizontally, on the scroll — on
+      // through the line clip
+      at(TRANS_END, A.flowTeamHold + A.flowClip, { bgTurn: 1 }, "none");
+      // 04 — Into the Light, on the next scroll and slowly: the person and
+      // the lines of light dissolving into the light, then white
+      // (straight over the scene as it is — no fading it down first: line by
+      // line to white, Post's Finish; S.white only drives that pass)
+      at(WIPE_AT, WIPE_LEN, { white: 1 }, "none");
 
       // the copy
-      tl.to(q("[data-cue]"), { autoAlpha: 0, duration: 6 }, 2);
       // (the two lines of copy: their words' blur-in, as V3's, played by the
       // scroll — in, and back out the same way as it scrolls on; see below)
-      tl.to(COPY, { intro: 0, duration: 20, ease: "none" }, 6);
+      tl.to(COPY, { intro: 0, duration: 18 * k, ease: "none" }, 5.5 * k);
       // 02 — as the land turns to light, out again before the transition
-      tl.fromTo(COPY, { story: 0 }, { story: 1, duration: 20, ease: "none", immediateRender: false }, 48);
-      tl.to(COPY, { story: 0, duration: 16, ease: "none" }, 118);
+      tl.fromTo(COPY, { story: 0 }, { story: 1, duration: 18 * k, ease: "none", immediateRender: false }, 60.5 * k);
+      tl.to(COPY, { story: 0, duration: 13 * k, ease: "none" }, 115.5 * k);
       // 03 — the team's copy, each line out of a blur
-      tl.fromTo(q("[data-team]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 6, ease: "none" }, TEAM_FROM - 6);
-      tl.fromTo(q("[data-team-line]"), { y: 24, autoAlpha: 0, filter: "blur(10px)" }, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 10, stagger: 1.2, ease: "power2.out" }, TEAM_FROM - 6);
+      // (its lines come in by the transition's own progress — A.teamCopyAt,
+      // below — so their timing is the panel's)
+      tl.fromTo(q("[data-team]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 2, ease: "none" }, HERO_END);
       tl.to(q("[data-team]"), { autoAlpha: 0, y: -24, filter: "blur(10px)", duration: 10, ease: "power1.in" }, TEAM_TO - 6);
       tl.set({}, {}, EXPERIENCE_VH);
     },
-    { scope: root }
+    { scope: root, dependencies: [F], revertOnUpdate: true }
   );
 
   // The words' animation, as V3's (GSAP SplitText): each heading character
@@ -255,7 +307,6 @@ export default function AboutExperience() {
       gsap.ticker.add(tick);
       // the first look: the opening comes in as the beam lights far off
       gsap.to(entrance, { v: 1, duration: 2.4, ease: "none", delay: 0.8 });
-      gsap.fromTo(root.current.querySelector("[data-cue]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 1.2, delay: 2 });
     };
     if (document.fonts?.ready) document.fonts.ready.then(build);
     else build();
@@ -267,6 +318,26 @@ export default function AboutExperience() {
       splits.forEach((sp) => sp.revert());
     };
   }, [env]);
+
+  // The team's copy: each line out of a blur, in turn, once the transition is
+  // A.teamCopyAt of the way through, over A.teamCopyLength of it (and back
+  // the same way when scrolling back up).
+  useEffect(() => {
+    const lines = root.current?.querySelectorAll("[data-team-line]");
+    if (!lines?.length) return;
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(lines, { y: 24, autoAlpha: 0, filter: "blur(10px)" }, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 1, stagger: 0.12, ease: "power2.out" });
+    let last = -1;
+    const tick = () => {
+      const k = Math.min(Math.max((S.cut - A.teamCopyAt) / Math.max(A.teamCopyLength, 0.01), 0), 1);
+      if (k !== last) tl.progress((last = k));
+    };
+    gsap.ticker.add(tick);
+    return () => {
+      gsap.ticker.remove(tick);
+      tl.kill();
+    };
+  }, [S]);
 
   // a review frame: ?p=0.5 jumps to that point of the experience
   useEffect(() => {
@@ -292,7 +363,7 @@ export default function AboutExperience() {
       // light that settle back as the next (PortraitParticles.jsx, uMorph);
       // the copy turns over on the way, and once it is done the next is
       // simply the member
-      const dur = fast ? 0.7 : 1.7;
+      const dur = fast ? 0.7 : A.swapDuration;
       tl.set(S, { morphTo: next, morph: 0 }, 0);
       tl.to(S, { morph: 1, duration: dur, ease: "none" }, 0);
       tl.call(() => setIdx(next), null, dur * 0.35);
@@ -316,6 +387,27 @@ export default function AboutExperience() {
     },
     { scope: root, dependencies: [idx] }
   );
+
+  // autoplay: on to the next member every A.teamAutoplay seconds while the
+  // team is there and fully formed (a change by hand — or this — restarts
+  // the count; never with reduced motion or the tab hidden)
+  useEffect(() => {
+    if (getClientEnv()?.reduced) return;
+    let last = performance.now();
+    const id = setInterval(() => {
+      const now = performance.now();
+      const ready = teamActive.current && S.reveal >= 0.999 && S.cut >= 0.999 && !busy.current && !document.hidden;
+      if (!ready || !(A.teamAutoplay > 0)) {
+        last = now;
+        return;
+      }
+      if (now - last >= A.teamAutoplay * 1000) {
+        last = now;
+        step(1);
+      }
+    }, 200);
+    return () => clearInterval(id);
+  }, [step, idx, S]);
 
   // keys and swipes, while the team is on screen
   useEffect(() => {
@@ -359,7 +451,7 @@ export default function AboutExperience() {
   const isMissing = missing.some((x) => x.id === m.id);
 
   return (
-    <main className="w-full bg-[#111111]">
+    <main className="w-full bg-[#FEFEFE]">
       {/* header */}
       <header
         ref={header}
@@ -383,15 +475,15 @@ export default function AboutExperience() {
         </nav>
       </header>
 
-      {/* the experience: EXPERIENCE_VH vh, one screen pinned */}
-      <section ref={root} id="our-team" className="relative w-full" style={{ height: `${EXPERIENCE_VH}vh` }}>
-        <div ref={stage} className="sticky top-0 h-svh w-full touch-pan-y overflow-hidden bg-[#0b0706]">
+      {/* the experience: EXPERIENCE_VH vh of scroll, one screen pinned */}
+      <section ref={root} id="our-team" className="relative w-full" style={{ height: `${EXPERIENCE_VH + 100}vh` }}>
+        <div ref={stage} className="sticky top-0 z-20 h-svh w-full touch-pan-y overflow-hidden bg-[#0b0706]">
           <div className="pointer-events-none absolute inset-0">
             {env?.webgl && (
               <Canvas
                 frameloop={visible ? "always" : "never"}
                 dpr={env.quality.dpr}
-                gl={{ antialias: false, powerPreference: "high-performance", alpha: false }}
+                gl={{ antialias: false, powerPreference: "high-performance", alpha: true }}
                 shadows="percentage"
                 camera={{ position: [0, 20, 270], fov: 35, near: 0.5, far: 4000 }}
                 aria-hidden="true"
@@ -428,10 +520,6 @@ export default function AboutExperience() {
                 </span>
               ))}
             </p>
-          </div>
-          <div data-cue className="invisible pointer-events-none absolute bottom-[5vh] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3">
-            <span className="font-[family-name:var(--font-aeonikpro)] text-[0.7vw] tracking-[0.4em] text-white/60 max-[64rem]:text-[10px]">{INTRO.cue.toUpperCase()}</span>
-            <span className="block h-[5vh] w-px animate-pulse bg-gradient-to-b from-[#FF8A32] to-transparent" />
           </div>
 
           {/* 03: the team member */}
@@ -491,11 +579,12 @@ export default function AboutExperience() {
         />
       )}
 
-      {/* where the light lands: the 2D page continues from here */}
-      <section data-about-white className="relative z-10 flex min-h-svh w-full flex-col justify-center bg-white px-[5.9vw] text-[#111] max-[33.875rem]:px-[6vw]">
-        <h2 className="font-[family-name:var(--font-aeonikpro)] text-[5.4vw] font-normal leading-[0.98] tracking-[-0.025em] max-[64rem]:text-[8vw] max-[33.875rem]:text-[11vw]">{WHITE.title}</h2>
-        <span className="mt-[2vw] block h-[3px] w-[4vw] bg-[#FF5F00] max-[64rem]:mt-6 max-[64rem]:w-12" />
-      </section>
+      {/* where the light lands: staging's "Why partner with us?" — pulled up
+      behind the experience's last screen, so the lines cut the team's scene
+      away to it (its heading already rising in behind) */}
+      <StagingValues overlap={F.VALUES_OVERLAP_VH} delay={A.flowValuesDelay} className="relative z-10" />
+      {/* the rest of the About page: Awards, Testimonial, FAQ (as on staging) */}
+      <StagingSections className="relative z-10 bg-white" />
     </main>
   );
 }

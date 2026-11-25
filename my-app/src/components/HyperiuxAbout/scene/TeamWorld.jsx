@@ -6,7 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { TEAM_CAM_DIST, TEAM_LAYER } from "./stage";
 import { mulberry32 } from "./util";
-import { INVERSE_ACES_GLSL, acesUniforms } from "./aces";
+import { INVERSE_ACES_GLSL, STREAK_RAMP_GLSL, acesUniforms, rampUniforms, setSrgb, syncRamp } from "./aces";
 import { A } from "../tuning";
 
 // The team's own place, as V3's oasis is to its forge: a separate scene,
@@ -28,7 +28,7 @@ function createTeamSky() {
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
-    uniforms: { uBack: { value: 1 }, uWhite: { value: 0 }, ...acesUniforms() },
+    uniforms: { uBack: { value: 1 }, uWhite: { value: 0 }, uLight: { value: 0 }, uDark: { value: new THREE.Color() }, uWarm: { value: new THREE.Color() }, uCream: { value: new THREE.Color() }, ...acesUniforms() },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -39,6 +39,10 @@ function createTeamSky() {
     fragmentShader: /* glsl */ `
       uniform float uBack;
       uniform float uWhite;
+      uniform vec3 uDark; // (sRGB)
+      uniform vec3 uWarm;
+      uniform vec3 uCream;
+      uniform float uLight;
       varying vec3 vDir;
       ${INVERSE_ACES_GLSL}
       void main() {
@@ -47,7 +51,11 @@ function createTeamSky() {
         vec2 q = d.xy / max(-d.z, 0.05);
         float ahead = smoothstep(0.0, 0.3, -d.z);
         float h = exp(-(pow((q.x - 0.12) / 0.45, 2.0) + pow((q.y + 0.18) / 0.38, 2.0))) * ahead;
-        vec3 c = mix(vec3(22.0, 16.0, 15.0) / 255.0, vec3(58.0, 36.0, 30.0) / 255.0, clamp(h * uBack, 0.0, 1.0));
+        // (the renders' own background: a deep red-brown, warmer behind the person)
+        vec3 c = mix(uDark, uWarm, clamp(h * uBack, 0.0, 1.0));
+        // (into the light: brightening to a warm cream, from behind the
+        // person outwards, before the white)
+        c = mix(c, uCream, smoothstep(0.0, 1.0, uLight * (1.4 - (1.0 - h) * 0.4)));
         gl_FragColor = vec4(inverseAces(srgbToLinear(c)) * (1.0 - uWhite), 1.0);
       }
     `,
@@ -115,7 +123,8 @@ function buildLines(count) {
     const width = 0.004 + Math.pow(rand(), 4) * 0.05;
     // (mostly faint, a few bright; faint over the copy)
     const left = 1 - 0.85 * Math.min(Math.max(-x / half - 0.05, 0) / 0.35, 1);
-    const bright = (0.05 + Math.pow(rand(), 3.5) * 0.95) * left;
+    // (most barely there, a few clear: as in the renders)
+    const bright = (0.08 + Math.pow(rand(), 3.2) * 0.92) * left;
     line.set([x, -D, width, bright], i * 4);
     rnd.set([rand() * 10, 0.2 + rand() * 0.8, rand(), rand()], i * 4);
   }
@@ -185,6 +194,7 @@ function buildWaves() {
 
 export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, children }) {
   const group = useRef(null);
+  const back = useRef(null);
   const sky = useMemo(() => createTeamSky(), []);
   useEffect(() => () => sky.dispose(), [sky]);
 
@@ -201,9 +211,10 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
         uH: { value: LINE_H },
         uIntensity: { value: 1 },
         uGlow: { value: 0.3 },
-        uGlowPx: { value: 5 },
-        uColor: { value: new THREE.Color() },
-        uHot: { value: new THREE.Color() },
+        uGlowPx: { value: 4 },
+        ...rampUniforms(),
+        ...acesUniforms(),
+        uRampGain: { value: 1 },
         uBehind: { value: 0.7 },
         uHoldMap: U.uMap,
         uHoldRect: U.uHoldRect,
@@ -212,26 +223,33 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
       },
       vertexShader: /* glsl */ `
         attribute vec4 aLine; // x, depth (z), width (m), brightness
-        attribute vec4 aRnd;
+        attribute vec4 aRnd; // its flare: where, how fast, how bright, how long
         uniform float uPixel;
         uniform float uH;
         uniform float uGlowPx;
         varying vec2 vUv;
-        varying float vFix;
-        varying float vCore;
+        varying float vHalfPx;
+        varying float vCorePx;
+        varying float vY;
+        varying float vView;
         varying float vBright;
         varying vec4 vR;
         void main() {
           vec4 mv = modelViewMatrix * vec4(aLine.x, position.y * uH, aLine.y, 1.0);
           float d = max(-mv.z, 0.01);
-          // (never finer than a pixel; a soft glow uGlowPx pixels either side)
-          float wc = max(aLine.z, d * uPixel * 1.2);
-          float w = wc + d * uPixel * uGlowPx * 2.0;
+          float px = d * uPixel;
+          // (a crisp core, never finer than a pixel, and room either side
+          // for its narrow glow)
+          float wc = max(aLine.z, px);
+          float w = wc + px * uGlowPx * 12.0;
           mv.x += position.x * w;
           gl_Position = projectionMatrix * mv;
-          vFix = aLine.z / wc;
-          vCore = wc / w;
+          vHalfPx = w / px * 0.5;
+          vCorePx = wc / px * 0.5;
           vUv = vec2(position.x * 2.0, position.y);
+          vY = position.y * uH;
+          // (half the frame's height, at its depth)
+          vView = d * 0.3153;
           vBright = aLine.w;
           vR = aRnd;
         }
@@ -241,18 +259,22 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
         uniform float uWhite;
         uniform float uIntensity;
         uniform float uGlow;
-        uniform vec3 uColor;
-        uniform vec3 uHot;
+        uniform float uGlowPx;
+        uniform float uRampGain;
         uniform float uBehind;
         uniform sampler2D uHoldMap;
         uniform vec4 uHoldRect;
         uniform float uHold;
         uniform vec2 uResolution;
         varying vec2 vUv;
-        varying float vFix;
-        varying float vCore;
+        varying float vHalfPx;
+        varying float vCorePx;
+        varying float vY;
+        varying float vView;
         varying float vBright;
         varying vec4 vR;
+        ${INVERSE_ACES_GLSL}
+        ${STREAK_RAMP_GLSL}
         // (dimmer where the person stands in front: their silhouette on screen)
         float behind() {
           vec2 m = (gl_FragCoord.xy / uResolution - uHoldRect.xy) / (uHoldRect.zw - uHoldRect.xy);
@@ -260,20 +282,23 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
           return 1.0 - smoothstep(0.05, 0.5, texture2D(uHoldMap, m).a) * uBehind * max(uHold, 0.0);
         }
         void main() {
-          float sx = abs(vUv.x);
-          float core = 1.0 - smoothstep(0.15 * vCore, vCore, sx);
-          float halo = pow(max(1.0 - sx, 0.0), 3.0) * (1.0 - core);
-          // (up its length: fading in from below the shoulders, each line
-          // its own; thinning away high up)
-          float y = vUv.y;
-          float env = smoothstep(-0.36 - vR.w * 0.1, -0.02 - vR.w * 0.12, y) * (1.0 - smoothstep(0.25, 0.5, y));
-          // light drifting up it, and a slow flicker
-          float flow = 0.7 + 0.3 * sin(y * 36.0 - uTime * (0.4 + vR.y) * 1.5 + vR.x * 6.0);
-          float flick = 0.8 + 0.2 * sin(uTime * (0.4 + vR.y * 0.8) + vR.x * 20.0);
-          float I = vBright * env * flow * flick * (core * pow(vFix, 0.5) + halo * uGlow) * uIntensity * (1.0 - uWhite) * behind();
+          // as the renders' streaks are: a crisp core a pixel or so wide, in
+          // a narrow deep-red glow...
+          float dpx = abs(vUv.x) * vHalfPx;
+          float across = exp(-pow(dpx / max(vCorePx, 0.55), 2.0)) + uGlow * exp(-dpx / max(uGlowPx, 0.3));
+          // ...a faint thread the whole way up, and one flare along it — hot
+          // at its heart, its long tails reddening away up and down — drifting
+          // slowly down through the frame
+          float travel = fract(vR.x + uTime * (0.006 + vR.y * 0.012));
+          float yc = mix(1.5, -1.5, travel) * vView;
+          float len = vView * (0.07 + vR.w * 0.16);
+          float flare = exp(-abs(vY - yc) / len) * (0.25 + pow(vR.z, 3.0) * 3.2);
+          float ends = smoothstep(-0.5, -0.32, vUv.y) * (1.0 - smoothstep(0.32, 0.5, vUv.y));
+          float I = vBright * (0.06 + flare) * across * ends * uIntensity * (1.0 - uWhite) * behind();
           if (I < 0.001) discard;
-          vec3 col = mix(uColor, uHot, core * vR.z * 0.7 * vBright);
-          gl_FragColor = vec4(col * I, 1.0);
+          // (in the renders' own colours, by how bright it is here)
+          float lv = 1.0 - exp(-I * uRampGain * 1.1);
+          gl_FragColor = vec4(inverseAces(srgbToLinear(streakRamp(lv))) * min(lv * 3.0, 1.0), 1.0);
         }
       `,
     });
@@ -328,7 +353,7 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
-      uniforms: { uTime: U.uTime, uPixel: U.uPixel, uWhite: U.uWhite, uIntensity: { value: 0.5 }, uColor: { value: new THREE.Color() }, uHot: { value: new THREE.Color() } },
+      uniforms: { uTime: U.uTime, uPixel: U.uPixel, uWhite: U.uWhite, uIntensity: { value: 0.5 }, uRampGain: { value: 1 }, ...rampUniforms(), ...acesUniforms() },
       vertexShader: /* glsl */ `
         attribute vec2 aT; // along (-1..1), side
         attribute vec4 aShape; // height, swell, frequency, phase
@@ -369,13 +394,14 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
       fragmentShader: /* glsl */ `
         uniform float uWhite;
         uniform float uIntensity;
-        uniform vec3 uColor;
-        uniform vec3 uHot;
+        uniform float uRampGain;
         varying float vSide;
         varying float vAlong;
         varying float vBright;
         varying float vCore;
         varying float vFlow;
+        ${INVERSE_ACES_GLSL}
+        ${STREAK_RAMP_GLSL}
         void main() {
           float sx = abs(vSide);
           float core = 1.0 - smoothstep(0.1 * vCore, vCore, sx);
@@ -386,7 +412,8 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
           float run = 0.55 + 0.45 * pow(0.5 + 0.5 * sin(vFlow), 3.0);
           float I = (core + halo) * side * run * vBright * uIntensity * (1.0 - uWhite);
           if (I < 0.001) discard;
-          gl_FragColor = vec4(mix(uColor, uHot, core * 0.4) * I, 1.0);
+          float lv = 1.0 - exp(-I * uRampGain * 1.1);
+          gl_FragColor = vec4(inverseAces(srgbToLinear(streakRamp(lv))) * min(lv * 2.5, 1.0), 1.0);
         }
       `,
     });
@@ -419,27 +446,33 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
     if (!g.visible) return;
     // everything in it on the team's layer (the portrait's parts included)
     g.traverse((o) => o.layers.set(TEAM_LAYER));
+    // (the backdrop alone turning a little round the person, on the scroll)
+    if (back.current) back.current.rotation.y = (S.bgTurn || 0) * A.teamBgTurn * (Math.PI / 180);
     sky.uniforms.uBack.value = A.teamBackGlow;
-    sky.uniforms.uWhite.value = S.white;
+    setSrgb(sky.uniforms.uDark.value, A.teamBgDark);
+    setSrgb(sky.uniforms.uCream.value, A.lightCream);
+    sky.uniforms.uLight.value = S.light;
+    setSrgb(sky.uniforms.uWarm.value, A.teamBgWarm);
+    sky.uniforms.uWhite.value = 0; // (the white: Post's wipe, over the scene as it is)
     const lu = lines.material.uniforms;
-    lu.uIntensity.value = A.teamLineIntensity;
+    lu.uIntensity.value = A.teamLineIntensity * (1 + S.light * 2.5);
     lu.uGlow.value = A.teamLineGlow;
     lu.uGlowPx.value = A.teamLineGlowPx;
-    lu.uColor.value.set(A.teamLineColor);
+    syncRamp(lu);
+    lu.uRampGain.value = A.lineRampGain * A.teamLineHeat;
     lu.uBehind.value = A.teamLineBehind;
-    lu.uHot.value.set(A.streakHot);
     const wu = waves.material.uniforms;
-    wu.uIntensity.value = A.teamWaves;
-    wu.uColor.value.set(A.teamLineColor);
-    wu.uHot.value.set(A.streakHot);
+    wu.uIntensity.value = A.teamWaves * (1 + S.light * 4);
+    syncRamp(wu);
+    wu.uRampGain.value = A.lineRampGain * A.teamLineHeat;
     const mu = motes.material.uniforms;
     mu.uIntensity.value = A.teamMotesIntensity;
-    mu.uColor.value.set(A.teamLineColor);
+    mu.uColor.value.set(A.teamMotesColor);
   });
 
   return (
     <group ref={group} visible={false}>
-      <group position={[stage.x, stage.y, stage.z]}>
+      <group ref={back} position={[stage.x, stage.y, stage.z]}>
         <mesh renderOrder={-9} frustumCulled={false} material={sky}>
           <sphereGeometry args={[2200, 32, 16]} />
         </mesh>

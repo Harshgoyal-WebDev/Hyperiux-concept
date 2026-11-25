@@ -17,7 +17,8 @@ import StaticJourney from "./StaticJourney";
 import dynamic from "next/dynamic";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { SOUND_EVENT, setSound, soundOn, soundWanted } from "./audio";
-import Loader, { LoaderCover } from "./Loader";
+import Loader, { LoaderCover, REPLAY_LOADER_EVENT } from "./Loader";
+import { loaderTiming } from "./loaderScene";
 import { Q, QUALITY_EVENT } from "./quality";
 import { blastedAt, buildMasterTimeline, cameraSetsOffAt, createJourneyState, deriveBreak } from "./timeline";
 import { deriveReveal, extraTurn } from "./world/oasisCamera";
@@ -375,13 +376,33 @@ function Journey({ env }) {
     const j = createJourneyState();
     if (wantsLoader()) {
       j.enterAt = Infinity;
-      j.arrive = 0;
+      // (the camera already in its place behind the loader — the same shot
+      // it reveals — or, T.loaderFlyIn, far off, to fly in)
+      j.arrive = T.loaderFlyIn ? 0 : 1;
+      // (dark until the loader is held, and its sweep reveals the scene)
+      j.loaderSweep = 0;
     }
     return j;
   });
   const withLoader = useState(wantsLoader)[0];
   const [entered, setEntered] = useState(() => !withLoader); // clicked in (or no loader)
   const [settled, setSettled] = useState(() => !withLoader); // ...and the camera has (mostly) arrived: the scroll is free
+  // the loader run again from the tuning panel (to see its reveal with new
+  // values): back to the top, dark, the beam's race waiting
+  const [loaderRun, setLoaderRun] = useState(0);
+  useEffect(() => {
+    const replay = () => {
+      J.loaderHold = 0;
+      J.loaderSweep = 0;
+      J.enterAt = Infinity;
+      J.arrive = T.loaderFlyIn ? 0 : 1;
+      setEntered(false);
+      setSettled(false);
+      setLoaderRun((n) => n + 1);
+    };
+    window.addEventListener(REPLAY_LOADER_EVENT, replay);
+    return () => window.removeEventListener(REPLAY_LOADER_EVENT, replay);
+  }, [J]);
   const [asset, setAsset] = useForgeAsset();
   const lenis = useLenis();
 
@@ -521,11 +542,16 @@ function Journey({ env }) {
   // (after the loader: once the camera has mostly arrived)
   useGSAP(
     () => {
-      if (!entered) return;
-      const lead = withLoader ? T.arriveDuration * 0.45 : 0;
+      // (the cue waits, hidden, in the loader's dark)
+      if (!entered) {
+        gsap.set("[data-hero-reveal]", { autoAlpha: 0 });
+        return;
+      }
+      // (after the loader: as its sweep comes in — or the camera, flying in)
+      const lead = withLoader || loaderRun > 0 ? (T.loaderFlyIn ? T.arriveDuration * 0.45 : 0.4 + loaderTiming().total * 0.5) : 0;
       // (its words: the scroll loop plays them in as this goes 0 → 1)
       gsap.fromTo(heroIn.current, { v: 0 }, { v: 1, duration: 2.4, ease: "none", delay: lead + 0.3 });
-      gsap.from("[data-hero-reveal]", { autoAlpha: 0, y: 24, duration: 1.2, ease: "power3.out", delay: lead + 1.2 });
+      gsap.fromTo("[data-hero-reveal]", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: "power3.out", delay: lead + 1.2 });
     },
     { scope: heroRef, dependencies: [J, entered, withLoader] }
   );
@@ -545,10 +571,12 @@ function Journey({ env }) {
     // (the click is the gesture the browser needs before sound can start;
     // "Enter quietly" goes in with it off — the header's toggle can still
     // turn it on)
+    // (from the loader: once its reveal is over — opts.soundDelay)
     if (opts.quiet) setSound(false);
+    else if (opts.soundDelay) gsap.delayedCall(opts.soundDelay, () => !soundOn() && setSound(true));
     else if (!soundOn()) setSound(true);
     setEntered(true);
-    gsap.delayedCall(T.arriveDuration * 0.6, () => setSettled(true));
+    gsap.delayedCall(T.loaderFlyIn ? T.arriveDuration * 0.6 : 0.4 + loaderTiming().total * 0.8, () => setSettled(true));
   }, [J]);
 
   const fadeRef = useRef(null);
@@ -897,7 +925,7 @@ function Journey({ env }) {
 
         {/* the light at the end: white, onto the site */}
 
-        {env && withLoader && <Loader J={J} problem={asset?.problem} onEnter={enter} />}
+        {env && (withLoader || loaderRun > 0) && <Loader key={loaderRun} J={J} problem={asset?.problem} onEnter={enter} post={!!tier?.post} replay={loaderRun > 0} />}
         <HeroOverlay ref={heroRef} />
         <OasisCopy lineRefs={copyRefs} />
         <AssetBadge problem={asset?.problem} />

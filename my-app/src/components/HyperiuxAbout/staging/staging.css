@@ -1,0 +1,63 @@
+/*
+  hyperiux-staging's global styles that the Awards / Testimonial / FAQ
+  sections rely on (src/app/globals.css: html/body/p/h1-h4 rules, and
+  components/Footer/base.css: .content__img), scoped to StagingSections.
+
+  These rules are deliberately left unlayered, like staging's globals: an
+  unlayered rule beats Tailwind's layered utilities, which is what the
+  sections were tuned against (e.g. every <p> ends up at line-height 1.5
+  unless its utility is `!important`, every h2/h4 at line-height 1.2).
+*/
+
+[data-staging-sections] {
+  --background: #ffffff;
+  --foreground: #111111;
+  font-size: var(--text-16);
+  letter-spacing: 0.4px;
+  color: var(--foreground);
+  font-family: var(--font-aeonikpro), Arial, Helvetica, sans-serif;
+  background: #fefefe;
+  /* staging's body has overflow-x: hidden (the sections use w-screen);
+     clip, unlike hidden, keeps the testimonial's position: sticky working */
+  overflow-x: clip;
+}
+
+[data-staging-sections] p {
+  line-height: 1.5;
+}
+
+[data-staging-sections] :is(h1, h2, h3, h4) {
+  font-family: var(--font-aeonikpro);
+  line-height: 1.2;
+}
+
+/* the award trail images (Footer/base.css on staging) */
+[data-staging-sections] .content__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  will-change: transform;
+}
+
+/*
+  The FAQ row's .content is mix-blend-difference. On staging each item keeps
+  a GSAP transform from the page-wide fadeUp(), which makes the item its own
+  stacking context, so the blend has nothing behind it and the text stays
+  #111. Isolating the item guarantees the same result before/without it.
+*/
+[data-staging-sections] .faq-tab {
+  isolation: isolate;
+}
+
+/* "Why partner with us?" pulled up behind the About experience's last screen
+   (StagingValues overlap): the experience's stage sits above it (z-20) and
+   its wipe cuts the team's scene away to it */
+[data-staging-sections][data-overlap] {
+  margin-top: calc(var(--overlap, 0vh) * -1); /* (its heading centred behind the scene all through the wipe) */
+}
+@media (max-width: 64rem) {
+  [data-staging-sections][data-overlap] {
+    margin-top: 0;
+  }
+}

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { A } from "../tuning";
 
 // The exact inverse of the post's tone mapping (three's ACESFilmicToneMapping,
 // exposure 1, as the ToneMapping effect applies it): the light to put into
@@ -41,5 +42,35 @@ export const INVERSE_ACES_GLSL = /* glsl */ `
   }
   vec3 srgbToLinear(vec3 c) {
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+  }
+`;
+
+// The light's own colours, as the team renders have them: a line of light
+// from its faint glow, through its body and its bright run, to its hot core.
+// A strand of any kind reads its colour off this by how bright it is there
+// (streakRamp(0 → 1), sRGB); together with inverseAces() it shows on screen
+// in exactly the renders' colours. Values: tuning.js (A.line*).
+export function rampUniforms() {
+  return { uRamp: { value: [new THREE.Color(), new THREE.Color(), new THREE.Color(), new THREE.Color()] } };
+}
+// (as sRGB, as written: three's Color.set() stores a colour in linear, and
+// the shaders take these as sRGB and convert them themselves)
+export function setSrgb(color, hex) {
+  return color.set(hex).convertLinearToSRGB();
+}
+export function syncRamp(u) {
+  const r = u.uRamp.value;
+  setSrgb(r[0], A.lineGlow);
+  setSrgb(r[1], A.lineBody);
+  setSrgb(r[2], A.lineBright);
+  setSrgb(r[3], A.lineHot);
+}
+export const STREAK_RAMP_GLSL = /* glsl */ `
+  uniform vec3 uRamp[4];
+  vec3 streakRamp(float t) {
+    t = clamp(t, 0.0, 1.0) * 3.0;
+    if (t < 1.0) return mix(uRamp[0], uRamp[1], t);
+    if (t < 2.0) return mix(uRamp[1], uRamp[2], t - 1.0);
+    return mix(uRamp[2], uRamp[3], t - 2.0);
   }
 `;

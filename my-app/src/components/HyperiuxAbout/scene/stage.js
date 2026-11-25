@@ -35,10 +35,27 @@ export function teamStage(height) {
 }
 
 // The team camera: square on to the portrait, moved round it by the pointer
-// (the light-strand sculpture's depth shows in the parallax).
-export function teamPose(stage, S, sway, pos, target) {
+// (always looking at it, so the lines behind part around the person). Coming in through the transition the scene sits a
+// little off and leaning (A.teamEnter*: where it starts, as the viewer sees
+// it — to the right, lower, turned towards the bottom right) and settles
+// square as the transition completes.
+export const DEG = Math.PI / 180;
+// (how far into its entrance the team's scene still is: 1 as the transition
+// begins → 0 as it completes, easing in and out)
+export function teamEntering(S) {
+  const t = THREE.MathUtils.clamp(S.cut, 0, 1);
+  return 1 - t * t * t * (t * (t * 6 - 15) + 10);
+}
+export function teamPose(stage, S, sway, cam) {
   const near = THREE.MathUtils.smoothstep(S.reveal, 0.3, 1);
-  // (level with the portrait, square on to it)
-  pos.set(stage.x + sway.x * A.parallaxX * near, stage.y + 0.05 + sway.y * A.parallaxY * near, stage.z + TEAM_CAM_DIST - (S.teamPush || 0));
-  target.copy(stage);
+  const e = teamEntering(S);
+  // (the camera — and what it looks at — moved the other way from where the
+  // scene should seem to be; then turned for the lean)
+  const ox = -e * A.teamEnterX;
+  const oy = -e * A.teamEnterY;
+  cam.position.set(stage.x + sway.x * A.parallaxX * near + ox, stage.y + 0.05 + sway.y * A.parallaxY * near + oy, stage.z + TEAM_CAM_DIST - (S.teamPush || 0) * A.teamPush);
+  cam.lookAt(stage.x + ox, stage.y + oy, stage.z);
+  cam.rotateY(-e * A.teamEnterYaw * DEG);
+  cam.rotateX(e * A.teamEnterPitch * DEG);
+  cam.rotateZ(e * A.teamEnterRoll * DEG);
 }

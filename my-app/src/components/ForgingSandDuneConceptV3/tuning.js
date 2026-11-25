@@ -121,7 +121,21 @@ export const T = {
   arriveDuration: 3.4, // seconds for the scene to come in from far off to the camera
   arriveDistance: 220, // how far back the camera starts (m, along its view)
   arriveLift: 46, // ...and how far up
-  loaderReveal: 2.2, // seconds for the loader to open from the centre out to the edges
+  loaderReveal: 3.25, // seconds the slab's reveal (out from its heart) sets the pace by: it takes 0.42 of this; the desert's ring sets off at 0.3 of it
+  loaderDesert: 4.5, // seconds the ring takes to run out over the desert to the horizon
+  loaderHold: 1.8, // seconds of holding to enter
+  loaderLines: 0, // the outlines inside the glow as each thing is revealed (brightness)
+  loaderLineColor: "#ffffff", // ...their colour
+  loaderGlow: 2.15, // the sweep's glowing edge (brightness)
+  loaderGlowColor: "#ffc592", // ...its colour
+  loaderFill: 0.48, // the glowing fill that sweeps over each surface first (brightness)
+  loaderFillColor: "#ffb67b", // ...its colour
+  loaderLag: 0.31, // ...how far behind it each thing itself comes in (share of its own reveal)
+  loaderJag: 0.1, // ...how ragged, craggy its front is
+  loaderDim: 0.05, // the scene behind the loader, before it is held: just to be made out (brightness)
+  loaderDimColor: "#d7dade", // ...its cold cast
+  loaderHoldLift: 0, // ...how much brighter it comes up as the loader is held (× at the full hold)
+  loaderFlyIn: false, // the camera flying in from far off as the scene is revealed (off: it is already in its place behind the loader)
   revealWarp: 2.0, // the scene warped along the inside of the opening's edge
   revealBlur: 3.0, // ...smeared outwards (motion blur)
   revealChroma: 1.4, // ...and split into its colours

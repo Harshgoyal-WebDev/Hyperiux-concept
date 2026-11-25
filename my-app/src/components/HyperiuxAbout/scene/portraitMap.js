@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { loadPoints } from "./PortraitPoints";
 
 // The light-strand portraits' source pipeline: a team member's photo → a
 // small "light map" the strand shader reads. The photo itself is never
@@ -23,6 +24,11 @@ export function emptyPortraitTexture() {
   return toTexture(new Uint8Array(4 * 4), 2, 2);
 }
 
+// (no mask: the whole image)
+export function fullMaskTexture() {
+  return toTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+}
+
 // Loads a member's photo and builds their map. Never rejects: a missing or
 // broken photo gives an anonymous silhouette and { missing: true }.
 const loadImage = (src) =>
@@ -36,10 +42,10 @@ const loadImage = (src) =>
   });
 
 export async function loadPortrait(member) {
-  const [img, mask] = await Promise.all([loadImage(member.source), loadImage(member.mask)]);
+  const [img, mask, depth, points] = await Promise.all([loadImage(member.source), loadImage(member.mask), loadImage(member.depth), loadPoints(member.points)]);
   if (!img) {
     console.warn(`[about] portrait source for ${member.name} not found: public${member.source}. Showing an anonymous silhouette.`);
-    return { texture: buildFromSource(silhouetteCanvas(), { x: 0.5, y: 0.5, zoom: 1 }), image: null, missing: true };
+    return { texture: buildFromSource(silhouetteCanvas(), { x: 0.5, y: 0.5, zoom: 1 }), image: null, points: null, missing: true };
   }
   if (member.mask && !mask) console.warn(`[about] portrait mask for ${member.name} not found: public${member.mask}. Separating automatically.`);
   // (the image itself too: the portrait shows it as it is, the strands
@@ -49,7 +55,24 @@ export async function loadPortrait(member) {
   image.minFilter = THREE.LinearMipmapLinearFilter;
   image.anisotropy = 4;
   image.needsUpdate = true;
-  return { texture: buildFromSource(img, member.focus, mask), image, missing: false };
+  // (its shape: the portrait shows it at the frame's height, its own width)
+  image.userData.aspect = (img.naturalWidth || img.width) / (img.naturalHeight || img.height);
+  // (and its mask: the portrait shows only the person, cut out of the rest)
+  if (mask) {
+    const m = new THREE.Texture(mask);
+    m.colorSpace = THREE.NoColorSpace;
+    m.needsUpdate = true;
+    image.userData.mask = m;
+  }
+  // (and its depth, where there is one: the particles stand out at it)
+  if (depth) {
+    const d = new THREE.Texture(depth);
+    d.colorSpace = THREE.NoColorSpace;
+    d.minFilter = THREE.LinearFilter;
+    d.needsUpdate = true;
+    image.userData.depth = d;
+  }
+  return { texture: buildFromSource(img, member.focus, mask), image, points, missing: false };
 }
 
 // (an image drawn into the map's frame, as framed by focus)

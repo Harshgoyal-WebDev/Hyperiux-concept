@@ -21,6 +21,8 @@ export function createJourneyState() {
     enterAt: 0, // when the visitor entered (s, page clock): the beam's race starts from it (Infinity while the loader is up)
     reveal: 0, // the loader opening over the scene (0..1, as Loader.jsx draws it; 0 when there is no loader)
     arrive: 1, // the camera's arrival from far off as the visitor enters (0 → 1; the loader sets it going)
+    loaderHold: 0, // the loader's press-and-hold (0..1): the scene's outlines glowing in from the centre (Rig.jsx LoaderRevealEffect)
+    loaderSweep: 1, // ...and the sweep that reveals the scene once it is held (0 dark → 1 all there)
     forgeReady: false, // set by Scene once the forge is built (or found missing)
     warmup: 4, // frames the oasis draws in full at the start, so its materials compile behind the loader
     sceneVersion: 0, // bumped when something that casts shadows arrives (the shadows are redrawn)

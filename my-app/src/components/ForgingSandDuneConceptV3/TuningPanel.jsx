@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { LevaPanel, button, folder, useControls, useCreateStore } from "leva";
 import { NIGHT_EVENT, T, setNight } from "./tuning";
 import { STATES } from "./config";
+import { REPLAY_LOADER_EVENT } from "./Loader";
 
 // Three Leva panels for every look property in tuning.js, in one column down
 // the right: the forge (slab, energy, beam, past the mark, post), the
@@ -36,10 +38,21 @@ const OBJECT_SCHEMA = {
     arriveDuration: [0.5, 8, 0.05],
     arriveDistance: [0, 600, 1],
     arriveLift: [0, 200, 1],
-    loaderReveal: [0.4, 5, 0.05],
-    revealWarp: [0, 3, 0.01],
-    revealBlur: [0, 3, 0.01],
-    revealChroma: [0, 3, 0.01],
+    loaderReveal: [0.4, 6, 0.05],
+    loaderDesert: [0.5, 10, 0.05],
+    loaderHold: [0.3, 5, 0.05],
+    loaderLines: [0, 4, 0.01],
+    loaderLineColor: "color",
+    loaderGlow: [0, 8, 0.05],
+    loaderGlowColor: "color",
+    loaderFill: [0, 4, 0.01],
+    loaderFillColor: "color",
+    loaderLag: [0.02, 0.6, 0.01],
+    loaderJag: [0, 0.6, 0.01],
+    loaderDim: [0, 0.6, 0.005],
+    loaderDimColor: "color",
+    loaderHoldLift: [0, 6, 0.05],
+    loaderFlyIn: "bool",
   },
   "Beam to the core": {
     cameraSettle: [0.01, 0.6, 0.01],
@@ -592,6 +605,8 @@ export default function TuningPanel({ onScrub }) {
         },
         { collapsed: false }
       ),
+      // the loader again, from the top: to see the reveal with new values
+      "Replay loader": button(() => window.dispatchEvent(new Event(REPLAY_LOADER_EVENT))),
       ...buildControls(OBJECT_SCHEMA),
       "Copy settings": button(() => {
         const json = JSON.stringify(T, null, 2);
@@ -640,7 +655,9 @@ export default function TuningPanel({ onScrub }) {
   // labels fit; it scrolls when the open panels run past the screen (its
   // wheel and touch are kept from the page's smooth scroll: Lenis honours
   // data-lenis-prevent, and the page's own wheel listener never hears it)
-  return (
+  // (out at the top of the page, over everything — the loader too: drawn
+  // inside the journey it sat under the loader, and could not be clicked)
+  return createPortal(
     <div
       data-lenis-prevent
       onWheel={(e) => e.stopPropagation()}
@@ -654,7 +671,7 @@ export default function TuningPanel({ onScrub }) {
         display: hidden ? "none" : "flex",
         flexDirection: "column",
         gap: 8,
-        zIndex: 1000,
+        zIndex: 1000, // (over the loader: z 100)
       }}
     >
       {[
@@ -670,6 +687,7 @@ export default function TuningPanel({ onScrub }) {
           <LevaPanel store={store} hidden={hidden} fill collapsed theme={THEME} titleBar={{ title, drag: false }} />
         </div>
       ))}
-    </div>
+    </div>,
+    document.querySelector("main")?.parentElement ?? document.body
   );
 }

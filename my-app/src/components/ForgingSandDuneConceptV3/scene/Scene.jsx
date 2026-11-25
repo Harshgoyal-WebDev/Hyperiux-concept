@@ -21,6 +21,8 @@ import DuneDust from "./DuneDust";
 import BreakupStir from "./BreakupStir";
 import Rocks, { buildRockSet } from "./Rocks";
 import { CameraRig, Dust, Lights, Post, UniformSync } from "./Rig";
+import { LOADER_SCENE } from "../loaderScene";
+import { FRONT_Z, cubeHexagon } from "../world/forgeAsset";
 import { getAudio } from "../audio";
 import { Q, QUALITY_EVENT } from "../quality";
 import Governor from "./Governor";
@@ -115,6 +117,22 @@ export default function Scene({ J, tier, withForge = true, onMissing }) {
   );
 
   const [forge, setForge] = useState(null);
+  // (the loader's reveal tells the slab, the standing stones and the dunes
+  // apart: the terrain's height map, the slab's bounds — Rig.jsx)
+  useEffect(() => {
+    LOADER_SCENE.height = heightField.texture;
+    LOADER_SCENE.heightParams.copy(heightField.params);
+  }, [heightField]);
+  useEffect(() => {
+    if (!forge) return;
+    const box = new THREE.Box3().setFromObject(forge.object);
+    LOADER_SCENE.slabMin.copy(box.min);
+    LOADER_SCENE.slabMax.copy(box.max);
+    // the cube cut out of it: its hexagon (the outline's centre line) on the
+    // face, and the joint its three inner edges meet at
+    const hex = cubeHexagon().map((v) => forge.toWorld(new THREE.Vector3(v.x, v.y, FRONT_Z)));
+    LOADER_SCENE.cube = { hex, junction: hex[4].clone().add(hex[2]).sub(hex[3]) };
+  }, [forge]);
   // the post passes, while the live quality keeps them (quality.js)
   const [post, setPost] = useState(Q.post);
   useEffect(() => {

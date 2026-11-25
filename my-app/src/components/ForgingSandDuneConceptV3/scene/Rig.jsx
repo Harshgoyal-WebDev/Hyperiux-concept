@@ -5,13 +5,14 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
-import { Effect, ShaderPass, ToneMappingMode } from "postprocessing";
+import { Effect, EffectAttribute, EffectPass, ShaderPass, ToneMappingMode } from "postprocessing";
 import { FORGE_LAYER, NO_MIRROR_LAYER, OPENING_NOMINAL, P, SUN_DIR, VALLEY_LAYER } from "../config";
 import { CUT_TO, oasisCamera, routeDistance, runOnPast } from "../world/oasisCamera";
 import { valleyShot } from "./valleyShot";
 import { REVEAL_BAND, REVEAL_ORIGIN, TREE, WATER_Y } from "../world/oasis";
 import { CutPass, OutroPass, createCutPass, createOutroPass } from "./CutTransition";
 import { T } from "../tuning";
+import { LOADER_SCENE, loaderTiming, rememberCube } from "../loaderScene";
 import { rewinding } from "../timeline";
 import { attachPointer } from "../pointer";
 import { applyMagnet, stepMagnet } from "../world/magnet";
@@ -25,8 +26,9 @@ import { applyMagnet, stepMagnet } from "../world/magnet";
 // flying chunks pass through.
 // ---------------------------------------------------------------------------
 const UP = new THREE.Vector3(0, 1, 0);
+const cubeTmp = new THREE.Vector3();
 export function CameraRig({ J, opening }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const v = useMemo(
     () => ({
       p: new THREE.Vector3(),
@@ -97,6 +99,8 @@ export function CameraRig({ J, opening }) {
     }
     camera.position.copy(v.p);
     camera.lookAt(v.t);
+    // (the loader's sweep runs out from the cube cut out of the slab)
+    if (opening) LOADER_SCENE.origin.copy(opening);
     if (roll !== 0) camera.rotateZ(roll);
     if (typeof window !== "undefined" && window.__seek && !window.__cam) window.__cam = camera; // (?debug: measuring the pace)
     // Portrait screens keep more of the horizontal framing (bounded so the
@@ -106,6 +110,28 @@ export function CameraRig({ J, opening }) {
     if (Math.abs(camera.fov - fov) > 1e-3) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
+    }
+    // (after the roll and the lens: exactly as the frame is drawn)
+    // the cube cut out of the slab, on the screen: the loader draws its own
+    // cube exactly over it (its shape and place known only from here on —
+    // until then the loader shows none, rather than a stand-in)
+    const cube = LOADER_SCENE.cube;
+    if (cube && J.loaderSweep < 1) {
+      camera.updateMatrixWorld();
+      const out = (LOADER_SCENE.cubeScreen ??= new Float32Array(14));
+      const view = (LOADER_SCENE.cubeView ??= new Float32Array(21));
+      const pts = [...cube.hex, cube.junction];
+      for (let i = 0; i < pts.length; i++) {
+        cubeTmp.copy(pts[i]).applyMatrix4(camera.matrixWorldInverse);
+        view.set([cubeTmp.x, cubeTmp.y, cubeTmp.z], i * 3);
+        cubeTmp.copy(pts[i]).project(camera);
+        out[i * 2] = (cubeTmp.x * 0.5 + 0.5) * size.width;
+        out[i * 2 + 1] = (0.5 - cubeTmp.y * 0.5) * size.height;
+      }
+      // (and kept, as the camera sees it, so the next visit's loader draws
+      // it from its first frame — before the scene is there: loaderScene.js)
+      LOADER_SCENE.lens = lens;
+      rememberCube(view, lens);
     }
   });
   return null;
@@ -480,6 +506,198 @@ class EdgeFxEffect extends Effect {
 }
 
 // ---------------------------------------------------------------------------
+// The loader's reveal (Loader.jsx), after the reference (bricelab.dev):
+//  · waiting: the scene there, but dim — a cold, faint night over it, the
+//    sky and the land just to be made out;
+//  · held: the light comes up (T.loaderHoldLift);
+//  · held long enough: a soft glow spreads out over the slab from its heart
+//    (the cube cut out of it), behind a ragged front, the stone coming in
+//    through it; then, from the slab's foot, a ring runs out over the desert
+//    like a shockwave to the horizon, the sand and stones coming in behind
+//    it; the sky simply comes up to itself meanwhile (no sweep).
+// What each pixel belongs to, from where it is in the world (the depth):
+// the sky (nothing there); the slab (inside its bounds); the desert.
+// ---------------------------------------------------------------------------
+const LOADER_FX = /* glsl */ `
+uniform float uHold;
+uniform float uSweep;
+uniform float uLines;
+uniform vec3 uLineColor;
+uniform float uGlow;
+uniform vec3 uGlowColor;
+uniform vec3 uFillColor;
+uniform float uFill;
+uniform float uLag;
+uniform float uDim;
+uniform float uHoldLift;
+uniform float uSlabDur;
+uniform float uRingStart;
+uniform float uRingDur;
+uniform vec3 uDimColor;
+uniform float uJag;
+uniform mat4 uProjInv;
+uniform mat4 uCamWorld;
+uniform vec3 uOrigin;
+uniform vec3 uSlabMin;
+uniform vec3 uSlabMax;
+uniform sampler2D uHeight;
+uniform vec4 uHeightParams;
+uniform float uHasHeight;
+float lfHash3(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float lfNoise3(vec3 x) {
+  vec3 i = floor(x), f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(lfHash3(i), lfHash3(i + vec3(1.0, 0.0, 0.0)), f.x), mix(lfHash3(i + vec3(0.0, 1.0, 0.0)), lfHash3(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+             mix(mix(lfHash3(i + vec3(0.0, 0.0, 1.0)), lfHash3(i + vec3(1.0, 0.0, 1.0)), f.x), mix(lfHash3(i + vec3(0.0, 1.0, 1.0)), lfHash3(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+}
+float lfFbm3(vec3 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 3; i++) { v += a * lfNoise3(p); p = p * 2.07 + 5.3; a *= 0.5; }
+  return v / 0.875;
+}
+float lfDist(vec2 uv) {
+  float d = readDepth(uv);
+  return d >= 0.9999 ? 1e4 : -getViewZ(d);
+}
+float lfLum(vec2 uv) {
+  return log(dot(texture2D(inputBuffer, uv).rgb, vec3(0.299, 0.587, 0.114)) + 0.03);
+}
+vec3 lfWorld(vec2 uv, float d) {
+  bool sky = d >= 0.9999;
+  vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, sky ? 1.0 : d * 2.0 - 1.0, 1.0);
+  v /= v.w;
+  if (sky) {
+    vec3 dir = normalize((uCamWorld * vec4(v.xyz, 0.0)).xyz);
+    return uCamWorld[3].xyz + dir * 3000.0;
+  }
+  return (uCamWorld * vec4(v.xyz, 1.0)).xyz;
+}
+float lfGround(vec2 xz) {
+  vec2 t = (xz - uHeightParams.xy) / uHeightParams.z;
+  return texture2D(uHeight, (t + 0.5) / uHeightParams.w).r;
+}
+// a thing's progress through its own reveal, from the whole sweep's
+float lfStage(float u, float start, float dur) { return clamp((u - start) / dur, 0.0, 1.0); }
+void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
+  if (uSweep >= 0.999) {
+    outputColor = inputColor;
+    return;
+  }
+  float dRaw = readDepth(uv);
+  bool sky = dRaw >= 0.9999;
+  vec3 wp = lfWorld(uv, dRaw);
+  bool slab = !sky && all(greaterThan(wp, uSlabMin - 0.4)) && all(lessThan(wp, uSlabMax + 0.4));
+  vec3 sc = (uSlabMin + uSlabMax) * 0.5;
+
+  // where on the thing its glow comes in first (0) to last (1), ragged
+  float c;
+  float start;
+  float dur;
+  float lag;
+  vec3 q = vec3(wp.x, wp.y * 0.7, wp.z) / (3.5 + length(wp - uOrigin) * 0.05);
+  // (smooth, lazy curves — no fine crags: two soft octaves only)
+  float jag = (lfNoise3(q * 0.8) * 0.68 + lfNoise3(q * 1.7 + 4.1) * 0.32 - 0.5) * uJag * 2.0;
+  if (slab) {
+    // the slab: out from its heart (the cube cut out of it) over its face
+    vec3 hs = max((uSlabMax - uSlabMin) * 0.5, vec3(1.0));
+    vec3 rel = (wp - uOrigin) / hs;
+    c = length(rel.xy) / 1.3 + jag;
+    start = 0.0; dur = uSlabDur; lag = uLag;
+  } else {
+    // the desert (and the stones on it): a ring out from the slab's foot
+    // over the ground, like a shockwave, to the horizon
+    float r = length(wp.xz - sc.xz);
+    c = sqrt(r / 2500.0) + jag * 0.35;
+    start = uRingStart; dur = uRingDur; lag = uLag * 0.45;
+  }
+
+  // the outlines: thin, faint, only where the depth breaks
+  vec2 px = texelSize * 0.7;
+  float zc = lfDist(uv);
+  float lap = abs(lfDist(uv - vec2(px.x, 0.0)) + lfDist(uv + vec2(px.x, 0.0)) + lfDist(uv - vec2(0.0, px.y)) + lfDist(uv + vec2(0.0, px.y)) - 4.0 * zc) / max(zc, 1.0);
+  float lineD = smoothstep(0.03, 0.1, lap) * (sky ? 0.0 : 1.0);
+
+  // waiting: the scene dim and cold, coming up a little as it is held
+  float lum = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
+  vec3 dimC = mix(vec3(lum), inputColor.rgb, 0.25) * uDimColor * uDim * (1.0 + uHoldLift * uHold);
+
+  // the sky: no sweep — it simply comes up to itself, once the slab's glow
+  // has spread all over it, as the desert's ring runs out
+  if (sky) {
+    outputColor = vec4(mix(dimC, inputColor.rgb, smoothstep(uSlabDur, min(uSlabDur + uRingDur * 0.6, 1.0), uSweep)), inputColor.a);
+    return;
+  }
+  // (no outlines while it is held: only the light coming up)
+  vec3 dark = dimC;
+
+  // the glow, then the thing itself through it
+  float s = lfStage(uSweep, start, dur);
+  float tF = s * (1.25 + lag) - 0.12;
+  float tR = tF - lag;
+  // (soft-edged: over the open desert softer still — its dunes' crests and
+  // fine ripples would break a hard edge into flicker)
+  float wF = slab ? 0.025 : 0.06;
+  float wR = slab ? 0.06 : 0.12;
+  float filled = 1.0 - smoothstep(tF - wF, tF, c);
+  float real = 1.0 - smoothstep(tR - wR, tR, c);
+  float k = smoothstep(tR, tF, c); // fresh (near the glow's front) → 1
+  float shade = slab ? 0.55 + 0.45 * smoothstep(0.0, 0.6, lum) : 0.85;
+  // (a soft light filling it, translucent — the dim scene still under it —
+  // brightest towards its front; softer over the open dunes)
+  vec3 holo = dimC + uFillColor * shade * mix(0.5, 1.2, k) * uFill * (slab ? 1.0 : 0.55) + uLineColor * lineD * (0.6 + 1.2 * k) * uLines;
+  vec3 col = mix(dark, holo, filled);
+  col = mix(col, inputColor.rgb, real);
+  // (the glow lingering a moment on what has just come in)
+  float after = real * smoothstep(tR - 0.14, tR - 0.01, c);
+  col += uFillColor * after * (0.12 + lineD * 0.5) * uFill;
+  // the glow's front: a soft bright band and a wider halo (no hard line) —
+  // over the desert, the shockwave's ring
+  float edge = abs(c - (tF - wF * 0.5));
+  float bw = slab ? 0.018 : 0.035;
+  float front = ((1.0 - smoothstep(0.0, bw, edge)) * 0.75 + (1.0 - smoothstep(0.0, bw * 4.0, edge)) * 0.22) * smoothstep(0.0, 0.03, s) * (1.0 - smoothstep(0.94, 1.0, s));
+  col += uGlowColor * front * uGlow;
+  outputColor = vec4(col, inputColor.a);
+}
+`;
+class LoaderRevealEffect extends Effect {
+  constructor() {
+    super("LoaderRevealEffect", LOADER_FX, {
+      attributes: EffectAttribute.DEPTH,
+      uniforms: new Map([
+        ["uHold", new THREE.Uniform(0)],
+        ["uSweep", new THREE.Uniform(1)],
+        ["uLines", new THREE.Uniform(1)],
+        ["uLineColor", new THREE.Uniform(new THREE.Color("#ffd9b8"))],
+        ["uGlow", new THREE.Uniform(2)],
+        ["uGlowColor", new THREE.Uniform(new THREE.Color("#ff5f00"))],
+        ["uFillColor", new THREE.Uniform(new THREE.Color("#ffcf9e"))],
+        ["uFill", new THREE.Uniform(1)],
+        ["uLag", new THREE.Uniform(0.2)],
+        ["uDim", new THREE.Uniform(0.1)],
+        ["uHoldLift", new THREE.Uniform(2)],
+        ["uSlabDur", new THREE.Uniform(0.42)],
+        ["uRingStart", new THREE.Uniform(0.3)],
+        ["uRingDur", new THREE.Uniform(0.62)],
+        ["uDimColor", new THREE.Uniform(new THREE.Color("#a9b8d4"))],
+        ["uJag", new THREE.Uniform(0.22)],
+        ["uProjInv", new THREE.Uniform(new THREE.Matrix4())],
+        ["uCamWorld", new THREE.Uniform(new THREE.Matrix4())],
+        ["uOrigin", new THREE.Uniform(new THREE.Vector3())],
+        ["uSlabMin", new THREE.Uniform(new THREE.Vector3())],
+        ["uSlabMax", new THREE.Uniform(new THREE.Vector3())],
+        ["uHeight", new THREE.Uniform(null)],
+        ["uHeightParams", new THREE.Uniform(new THREE.Vector4())],
+        ["uHasHeight", new THREE.Uniform(0)],
+      ]),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The rendered frame made safe before the effects read it: a pixel that came
 // out NaN (a degenerate normal or view vector somewhere) becomes black, and
 // one that overflowed the half-float buffer (infinite) is capped. Otherwise
@@ -520,6 +738,19 @@ export function Post({ J, tier }) {
   const { size } = useThree();
   const edgeFx = useMemo(() => new EdgeFxEffect(), []);
   useEffect(() => () => edgeFx.dispose(), [edgeFx]);
+  // (in a pass of its own: in one shared with the others it would be drawn
+  // first — postprocessing puts the effects that read the depth first — and
+  // the bloom and the rest would come over its dark)
+  const camera = useThree((st) => st.camera);
+  const loaderFx = useMemo(() => new LoaderRevealEffect(), []);
+  const loaderPass = useMemo(() => new EffectPass(camera, loaderFx), [camera, loaderFx]);
+  useEffect(
+    () => () => {
+      loaderPass.dispose();
+      loaderFx.dispose();
+    },
+    [loaderPass, loaderFx]
+  );
   const sanitize = useMemo(() => createSanitizePass(), []);
   useEffect(() => () => sanitize.dispose(), [sanitize]);
   // the cut from the logo to the valley (CutTransition.jsx)
@@ -583,6 +814,40 @@ export function Post({ J, tier }) {
     fx.get("uRevealBlur").value = T.revealBlur;
     fx.get("uRevealChroma").value = T.revealChroma;
     fx.get("uAspect").value = size.width / Math.max(size.height, 1);
+    // the loader's hold and sweep (Loader.jsx)
+    {
+      // (off once the scene is all there: no pass at all)
+      loaderPass.enabled = J.loaderSweep < 0.999;
+      const L = loaderFx.uniforms;
+      L.get("uHold").value = J.loaderHold;
+      L.get("uSweep").value = J.loaderSweep;
+      L.get("uLines").value = T.loaderLines;
+      L.get("uLineColor").value.set(T.loaderLineColor);
+      L.get("uGlow").value = T.loaderGlow;
+      L.get("uGlowColor").value.set(T.loaderGlowColor);
+      L.get("uFillColor").value.set(T.loaderFillColor);
+      L.get("uFill").value = T.loaderFill;
+      L.get("uLag").value = T.loaderLag;
+      L.get("uDim").value = T.loaderDim;
+      L.get("uHoldLift").value = T.loaderHoldLift;
+      {
+        const tm = loaderTiming();
+        L.get("uSlabDur").value = tm.slabDur;
+        L.get("uRingStart").value = tm.ringStart;
+        L.get("uRingDur").value = tm.ringDur;
+      }
+      L.get("uDimColor").value.set(T.loaderDimColor);
+      L.get("uJag").value = T.loaderJag;
+      // (each pixel's place in the world: the camera's lens and place)
+      L.get("uProjInv").value.copy(camera.projectionMatrixInverse);
+      L.get("uCamWorld").value.copy(camera.matrixWorld);
+      L.get("uOrigin").value.copy(LOADER_SCENE.origin);
+      L.get("uSlabMin").value.copy(LOADER_SCENE.slabMin);
+      L.get("uSlabMax").value.copy(LOADER_SCENE.slabMax);
+      L.get("uHeight").value = LOADER_SCENE.height;
+      L.get("uHeightParams").value.copy(LOADER_SCENE.heightParams);
+      L.get("uHasHeight").value = LOADER_SCENE.height ? 1 : 0;
+    }
     if (bloom.current) {
       bloom.current.intensity = (J.bloom + J.breakBurst * 0.8 * T.breakImpact) * T.bloomIntensity;
       bloom.current.luminanceMaterial.threshold = T.bloomThreshold;
@@ -601,6 +866,10 @@ export function Post({ J, tier }) {
       {/* (the edge blur and the bloom in one full-screen pass) */}
       <primitive object={edgeFx} dispose={null} />
       <Bloom ref={bloom} mipmapBlur levels={6} intensity={0.9} luminanceThreshold={1.05} luminanceSmoothing={0.25} radius={0.72} />
+      {/* (the loader's dark, its outlines and its sweep: after the bloom —
+          the bloom is drawn from the frame before this pass, so the sun and
+          the beam would glow through the dark) */}
+      <primitive object={loaderPass} dispose={null} />
       <primitive object={outro.pass} dispose={null} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette ref={vignette} offset={0.32} darkness={0.6} />

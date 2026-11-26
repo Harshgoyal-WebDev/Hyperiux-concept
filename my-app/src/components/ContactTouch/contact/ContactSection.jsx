@@ -17,8 +17,10 @@ const underline =
 function Office({ className = "" }) {
   return (
     <div className={`flex flex-col gap-[2vw] max-md:gap-6 ${className}`}>
-      <h3 className="text-[3.4vw] leading-[1.1] tracking-[-0.02em] max-md:text-[9vw]">Our Office Location</h3>
-      <address className="flex w-[60%] flex-col gap-[0.4vw] text-[1.1vw] font-medium not-italic max-md:w-full max-md:gap-1.5 max-md:text-[4.2vw]">
+      <h3 className="ct-line text-[3.4vw] leading-[1.1] tracking-[-0.02em] max-md:text-[9vw]">
+        <span style={{ "--d": 6 }}>Our Office Location</span>
+      </h3>
+      <address style={{ "--d": 7 }} className="ct-in flex w-[60%] flex-col gap-[0.4vw] text-[1.1vw] font-medium not-italic max-md:w-full max-md:gap-1.5 max-md:text-[4.2vw]">
         <a href={`mailto:${EMAIL}`} className={underline}>
           {EMAIL}
         </a>
@@ -27,7 +29,7 @@ function Office({ className = "" }) {
         </a>
         <span>{ADDRESS}</span>
       </address>
-      <div className="relative mt-[1vw] h-[50vh] w-full overflow-hidden rounded-[2vw] max-md:h-[55vh] max-md:rounded-[6vw]">
+      <div style={{ "--d": 8 }} className="ct-in relative mt-[1vw] h-[50vh] w-full overflow-hidden rounded-[2vw] max-md:h-[55vh] max-md:rounded-[6vw]">
         <Image src="/assets/images/contact-map.webp" alt={`Map showing ${ADDRESS}`} fill sizes="(max-width: 768px) 90vw, 38vw" className="object-cover object-[45%_70%]" />
         {/* (the office on the map) */}
         <span aria-hidden className="absolute left-[41.5%] top-[77.8%] flex size-[2.6vw] min-h-9 min-w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#111111] shadow-[0_6px_18px_rgba(0,0,0,0.25)] ring-4 ring-[#ff5f00]/25">
@@ -48,10 +50,12 @@ export default function ContactSection({ headingId }) {
       <div className="flex w-full justify-between max-md:flex-col max-md:gap-[18vw]">
         <div className="flex w-[42%] flex-col justify-between gap-[22vw] max-md:w-full max-md:gap-0">
           <div className="flex flex-col">
-            <p className="font-medium max-md:mb-[4vw]">OPTION 1</p>
-            <p className="text-center text-[7.5vw] leading-[1.05] tracking-[-0.03em] max-md:text-left max-md:text-[13vw]">Calendly</p>
-            <div className="my-[1.5vw] h-px w-full bg-black/20 max-md:my-[5vw]" />
-            <div className="flex items-center justify-between max-md:flex-col max-md:items-start max-md:gap-[6vw]">
+            <p style={{ "--d": 0 }} className="ct-in font-medium max-md:mb-[4vw]">OPTION 1</p>
+            <p className="ct-line text-center text-[7.5vw] leading-[1.05] tracking-[-0.03em] max-md:text-left max-md:text-[13vw]">
+              <span style={{ "--d": 1 }}>Calendly</span>
+            </p>
+            <div style={{ "--d": 2 }} className="ct-rule my-[1.5vw] h-px w-full bg-black/20 max-md:my-[5vw]" />
+            <div style={{ "--d": 3 }} className="ct-in flex items-center justify-between max-md:flex-col max-md:items-start max-md:gap-[6vw]">
               <p>100% free & non-binding</p>
               <Pill href={BOOK_CALL}>Book A Call</Pill>
             </div>
@@ -59,9 +63,11 @@ export default function ContactSection({ headingId }) {
           <Office className="w-[90%] max-md:hidden" />
         </div>
         <div className="w-[52.5%] max-md:w-full">
-          <p className="font-medium max-md:mb-[4vw]">OPTION 2</p>
-          <p className="pl-[5vw] text-[7.5vw] leading-[1.05] tracking-[-0.03em] max-md:pl-0 max-md:text-[13vw]">Form</p>
-          <div className="my-[1.5vw] h-px w-full bg-black/20 max-md:my-[5vw]" />
+          <p style={{ "--d": 1 }} className="ct-in font-medium max-md:mb-[4vw]">OPTION 2</p>
+          <p className="ct-line pl-[5vw] text-[7.5vw] leading-[1.05] tracking-[-0.03em] max-md:pl-0 max-md:text-[13vw]">
+            <span style={{ "--d": 2 }}>Form</span>
+          </p>
+          <div style={{ "--d": 2 }} className="ct-rule my-[1.5vw] h-px w-full bg-black/20 max-md:my-[5vw]" />
           <ContactForm />
         </div>
         <Office className="hidden w-full max-md:flex" />

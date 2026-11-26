@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { SUN_DIR } from "@/components/ForgingSandDuneConceptV3/config";
 import { C, REBUILD_EVENT } from "../tuning";
+import { createSandSim } from "./sandSim";
 
 // The two hands, their index fingers reaching for each other — made of
 // particles: the left one of threads of light running over its surface, in
@@ -357,6 +358,8 @@ function buildThreads(root, m, opts) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   const A = [];
+  const TH = [];
+  const PK = [];
   const B = [];
   const N = [];
   const I = [];
@@ -411,9 +414,13 @@ function buildThreads(root, m, opts) {
     // (a thread that stopped short — off the surface's edge — is left out: a
     // run of light would light it up whole, a bright dash)
     if (pts.length < Math.max(6, opts.length * 0.3)) continue;
-    made++;
+    const thread = made++;
     const seed = rnd();
     const total = (pts.length - 1) / opts.length;
+    // (a few of its points, to find it under the pointer by: every few steps)
+    for (let k = 0; k < pts.length; k += 5) {
+      PK.push(pts[k].x, pts[k].y, pts[k].z, nms[k].x, nms[k].y, nms[k].z, k / opts.length, thread);
+    }
     for (let k = 0; k < pts.length - 1; k++) {
       // (and no step too short to have a direction)
       if (pts[k].distanceToSquared(pts[k + 1]) < step * step * 0.09) continue;
@@ -423,9 +430,10 @@ function buildThreads(root, m, opts) {
       N.push(nn.x, nn.y, nn.z);
       const al = THREE.MathUtils.clamp(pts[k].clone().sub(m.wrist).dot(m.point) / m.length, 0, 1);
       I.push(seed, k / opts.length, al, total);
+      TH.push(thread);
     }
   }
-  return { a: new Float32Array(A), b: new Float32Array(B), n: new Float32Array(N), info: new Float32Array(I), count: A.length / 3 };
+  return { a: new Float32Array(A), b: new Float32Array(B), n: new Float32Array(N), info: new Float32Array(I), thread: new Float32Array(TH), picks: new Float32Array(PK), threads: made, count: A.length / 3 };
 }
 
 // The hand itself, unseen: drawn only into the depth, a little inside its own
@@ -495,6 +503,13 @@ attribute vec3 aA;
 attribute vec3 aB;
 attribute vec3 aN;
 attribute vec4 aInfo; // thread seed, along the thread (steps / threadLength), along the hand, the thread's length (same units)
+attribute float aThread;
+uniform sampler2D uSpark; // per thread: where on it the pointer lit it, when, how strongly
+uniform float uThreads;
+uniform float uSparkSpeed;
+uniform float uSparkWidth;
+uniform float uSparkLife;
+varying float vSpark;
 uniform float uTime;
 uniform float uSpeed;
 uniform float uPulse;
@@ -529,8 +544,21 @@ void main() {
   vRun = exp(-pow(d / max(uPulse, 0.001), 2.0));
   vDepth = nearFar(aN, mix(ma.xyz, mb.xyz, e));
   vLight = touchLight((modelMatrix * vec4(mix(aA, aB, e), 1.0)).xyz);
+  // the pointer's light on this thread: lit where it passed, then running on
+  // along the thread both ways — strand by strand, never across the hand
+  vec4 sp = texture2D(uSpark, vec2((aThread + 0.5) / uThreads, 0.5));
+  float age = uTime - sp.y;
+  vSpark = 0.0;
+  if (sp.z > 0.0 && age >= 0.0 && age < uSparkLife) {
+    float dist = abs(aInfo.y - sp.x);
+    float reach = age * uSparkSpeed;
+    float front = exp(-pow((dist - reach) / uSparkWidth, 2.0));
+    float trail = (1.0 - smoothstep(reach - uSparkWidth, reach + uSparkWidth * 0.5, dist)) * 0.35;
+    vSpark = (front + trail) * sp.z * (1.0 - smoothstep(uSparkLife * 0.35, uSparkLife, age));
+  }
 }`;
 const STREAK_F = /* glsl */ `
+uniform float uAppear;
 uniform float uOutline;
 uniform float uPulseBright;
 uniform vec3 uColor;
@@ -541,6 +569,8 @@ varying float vRun;
 varying float vEdgeX;
 varying vec2 vDepth;
 varying vec3 vLight;
+varying float vSpark;
+uniform float uSparkBright;
 void main() {
   float core = 1.0 - smoothstep(0.0, 1.0, abs(vEdgeX));
   // (an even light along the threads, the runs only a gentle swell — no hot
@@ -549,13 +579,23 @@ void main() {
   float grazing = 1.0 - 0.7 * vDepth.y;
   vec3 col = mix(uColor, uHot, smoothstep(0.55, 1.0, vAlong)) * uBright * (0.55 + uPulseBright * vRun) * (0.4 + 0.6 * vAlong) * grazing;
   col += uColor * vDepth.y * uOutline * 0.25;
-  col = (col + vLight) * vDepth.x * core;
+  col += mix(uHot, vec3(1.0, 0.86, 0.66), 0.5) * vSpark * uSparkBright;
+  col = (col + vLight) * vDepth.x * core * uAppear;
   gl_FragColor = vec4(col, 1.0);
 }`;
 
 // ---- the right hand: golden sand — grains on the surface, lit by the low
 // sun, shimmering, some catching the light; a share streaming off it, falling
+const TRAIL = 24;
+const pp = new THREE.Vector3();
+const pn = new THREE.Vector3();
+const pq = new THREE.Vector3();
+const simInv = new THREE.Matrix4();
+const rayA = new THREE.Vector3();
+const rayP = new THREE.Vector3();
+const rayV = new THREE.Vector3();
 const SAND_V = /* glsl */ `
+#define TRAIL ${TRAIL}
 attribute vec3 aNrm;
 attribute vec4 aInfo; // seed, along the hand, tint, drift
 uniform float uTime;
@@ -571,14 +611,39 @@ uniform vec3 uColor2;
 uniform float uBright;
 uniform float uSparkle;
 uniform float uNight;
+// the pointer's trail (screen, ndc): where it was, how it was moving, how long ago
+uniform vec4 uTrail[TRAIL];
+uniform float uTrailAge[TRAIL];
+uniform float uAspect;
+uniform float uStirRadius;
+uniform float uStirAmount;
+uniform float uStirSwirl;
+uniform float uStirMax;
+uniform vec2 uCursor;
+uniform sampler2D tSimOff;
+uniform sampler2D tSimVel;
+uniform float uHasSim;
+uniform float uStirGlow;
+attribute vec2 aRef;
 varying vec3 vCol;
 varying float vA;
 ${GLOW_GLSL}
 ${DEPTH_GLSL}
 float h1(float x) { return fract(sin(x * 91.345) * 47453.5453); }
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float sn2(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y);
+}
 void main() {
   float seed = aInfo.x;
   vec3 p = position + aNrm * sin(uTime * 2.3 + seed * 40.0) * uJitter;
+  // (where the simulation has it: off its place by the pointer's stir, and
+  // how stirred it is — sandSim.js)
+  vec4 simOff = texture2D(tSimOff, aRef);
+  float stir = clamp(texture2D(tSimVel, aRef).w, 0.0, 1.0) * uHasSim;
+  p += simOff.xyz * uHasSim;
   vec4 world = modelMatrix * vec4(p, 1.0);
   vA = 1.0;
   // (the drifting share: off the surface, falling and blowing away, over and over)
@@ -598,16 +663,19 @@ void main() {
   float sparkle = pow(h1(seed * 13.0 + floor(uTime * 6.0 + seed * 5.0)), 30.0) * uSparkle * 4.0;
   // (the near side clear, the far side faint, the edges lit pale)
   vec2 nf = nearFar(aNrm, mv.xyz);
-  vCol = (mix(uColor2, uColor, aInfo.z) * (lam + sparkle) * uBright + vec3(1.0, 0.93, 0.78) * nf.y * uOutline) + touchLight(world.xyz);
-  vA *= nf.x;
+  vCol = (mix(uColor2, uColor, aInfo.z) * (lam + sparkle + stir * uStirGlow) * uBright + vec3(1.0, 0.93, 0.78) * nf.y * uOutline) + touchLight(world.xyz);
+  // (the far side faint — a volume of sand, not a shell — and any grain the
+  // pointer has stirred, near side or far, fully there as it streams)
+  vA *= mix(nf.x, 1.0, min(stir * 1.5, 1.0));
 }`;
 const SAND_F = /* glsl */ `
+uniform float uAppear;
 varying vec3 vCol;
 varying float vA;
 void main() {
   float r = length(gl_PointCoord - 0.5) * 2.0;
   if (r > 1.0) discard;
-  gl_FragColor = vec4(vCol, (1.0 - smoothstep(0.65, 1.0, r)) * vA);
+  gl_FragColor = vec4(vCol, (1.0 - smoothstep(0.65, 1.0, r)) * vA * uAppear);
 }`;
 
 // the flash where the fingertips meet (a soft point of light, always facing us)
@@ -658,6 +726,7 @@ function streakObject(t, U) {
   g.setAttribute("aB", new THREE.InstancedBufferAttribute(t.b, 3));
   g.setAttribute("aN", new THREE.InstancedBufferAttribute(t.n, 3));
   g.setAttribute("aInfo", new THREE.InstancedBufferAttribute(t.info, 4));
+  g.setAttribute("aThread", new THREE.InstancedBufferAttribute(t.thread, 1));
   g.instanceCount = t.count;
   const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: STREAK_V, fragmentShader: STREAK_F, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   const mesh = new THREE.Mesh(g, mat);
@@ -666,8 +735,9 @@ function streakObject(t, U) {
   return mesh;
 }
 
-function sandObject(sample, U) {
+function sandObject(sample, U, sim) {
   const g = new THREE.BufferGeometry();
+  g.setAttribute("aRef", new THREE.BufferAttribute(sim ? sim.ref : new Float32Array(sample.pos.length / 3 * 2), 2));
   g.setAttribute("position", new THREE.BufferAttribute(sample.pos, 3));
   g.setAttribute("aNrm", new THREE.BufferAttribute(sample.nor, 3));
   g.setAttribute("aInfo", new THREE.BufferAttribute(sample.info, 4));
@@ -679,7 +749,7 @@ function sandObject(sample, U) {
   return pts;
 }
 
-export default function Hands({ story, anchor, night }) {
+export default function Hands({ story, anchor, night, pointer }) {
   const gltf = useGLTF(HAND_URL);
   const { camera, size, gl } = useThree();
   // (re-made when a count is changed in the panel)
@@ -705,6 +775,13 @@ export default function Hands({ story, anchor, night }) {
   );
   const streakU = useMemo(
     () => ({
+      uSpark: { value: null },
+      uThreads: { value: 1 },
+      uSparkSpeed: { value: 0.4 },
+      uSparkWidth: { value: 0.04 },
+      uSparkLife: { value: 2.5 },
+      uSparkBright: { value: 2 },
+      uAppear: { value: 0 },
       ...glow,
       uTime: { value: 0 },
       uSpeed: { value: 0.3 },
@@ -722,6 +799,19 @@ export default function Hands({ story, anchor, night }) {
   );
   const sandU = useMemo(
     () => ({
+      uTrail: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(9, 9, 0, 0)) },
+      uTrailAge: { value: new Array(TRAIL).fill(1) },
+      uAspect: { value: 1.6 },
+      uStirRadius: { value: 0.12 },
+      uStirAmount: { value: 1 },
+      uStirSwirl: { value: 0.6 },
+      uStirMax: { value: 0.035 },
+      uCursor: { value: new THREE.Vector2(9, 9) },
+      tSimOff: { value: null },
+      tSimVel: { value: null },
+      uHasSim: { value: 0 },
+      uAppear: { value: 0 },
+      uStirGlow: { value: 0.9 },
       ...glow,
       uTime: { value: 0 },
       uSize: { value: 2 },
@@ -761,10 +851,23 @@ export default function Hands({ story, anchor, night }) {
         const outer = new THREE.Group();
         outer.add(inner);
         const m = measureHand(outer);
-        const particles =
-          side.key === "left"
-            ? streakObject(buildThreads(outer, m, { count: Math.max(Math.round(C.threadCount), 10), length: Math.max(Math.round(C.threadLength), 4), step: C.threadStep, follow: C.threadFollow, seed: side.seed }), streakU)
-            : sandObject(sampleHand(outer, m, Math.max(Math.round(C.sandCount), 100), side.seed), sandU);
+        let threads = null;
+        let spark = null;
+        if (side.key === "left") {
+          threads = buildThreads(outer, m, { count: Math.max(Math.round(C.threadCount), 10), length: Math.max(Math.round(C.threadLength), 4), step: C.threadStep, follow: C.threadFollow, seed: side.seed });
+          // (each thread's spark of the pointer's light: where on it, when, how bright)
+          const n = Math.max(threads.threads, 1);
+          spark = new THREE.DataTexture(new Float32Array(n * 4), n, 1, THREE.RGBAFormat, THREE.FloatType);
+          spark.needsUpdate = true;
+        }
+        let sim = null;
+        let particles;
+        if (threads) particles = streakObject(threads, streakU);
+        else {
+          const sample = sampleHand(outer, m, Math.max(Math.round(C.sandCount), 100), side.seed);
+          sim = createSandSim(gl, sample);
+          particles = sandObject(sample, sandU, sim);
+        }
         const holder = new THREE.Group();
         holder.add(particles);
         // (the hand model stays, unseen: its depth hides what is behind it —
@@ -786,10 +889,10 @@ export default function Hands({ story, anchor, night }) {
           o.renderOrder = 1;
         });
         outer.add(holder);
-        return { side, outer, inner, holder, particles, m, occluder };
+        return { side, outer, inner, holder, particles, m, occluder, threads, spark, sim };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the rebuild trigger
-    [gltf, streakU, sandU, occlusion, version]
+    [gltf, streakU, sandU, occlusion, gl, version]
   );
   useEffect(
     () => () =>
@@ -797,6 +900,8 @@ export default function Hands({ story, anchor, night }) {
         h.particles.geometry.dispose();
         h.particles.material.dispose();
         h.occluder?.dispose();
+        h.spark?.dispose();
+        h.sim?.dispose();
       }),
     [hands]
   );
@@ -807,6 +912,7 @@ export default function Hands({ story, anchor, night }) {
   );
   useEffect(() => () => sparkMat.dispose(), [sparkMat]);
   const spark = useRef(null);
+  const trail = useRef({ items: [], lastX: 0, lastY: 0, lastT: 0, still: 0, vx: 0, vy: 0, p: new THREE.Vector3(), hasP: false, force: 0, moved: -9, simT: 0 });
 
   const v = useMemo(
     () => ({
@@ -862,10 +968,17 @@ export default function Hands({ story, anchor, night }) {
       outer.quaternion.copy(v.q);
       holder.scale.setScalar(s);
       inner.scale.set(side.mirror ? -s : s, s, s);
-      inner.visible = C.occlude;
+      // (the sand hand shows what lies behind it, faintly: C.sandOcclude)
+      inner.visible = k === "right" ? C.sandOcclude : C.occlude;
       // its fingertip at the touch — held back along its reach until they meet
       // (and a breath of life while it waits)
-      const away = (1 - story.reach) * reach * 0.9 + 0.02 * s;
+      // (from far: the right hand from well beyond its corner and back from
+      // the camera — C.enterFrom × its reach — so it never pops into view)
+      const from = k === "right" ? C.enterFrom : 0.9;
+      const away = (1 - story.reach) * reach * from + 0.02 * s;
+      // ...and the sand fading in as it comes
+      if (k === "right") sandU.uAppear.value = THREE.MathUtils.smoothstep(story.reach, 0, C.enterFade);
+      else streakU.uAppear.value = THREE.MathUtils.smoothstep(story.reach, 0, 0.12);
       const sway = (1 - story.glow) * 0.004 * s;
       v.tip.copy(T).addScaledVector(dir, -away).addScaledVector(v.up, Math.sin(time * 0.9 + i * 2.1) * sway).addScaledVector(v.right, Math.cos(time * 0.7 + i) * sway);
       outer.position.copy(v.tip).sub(m.tip.clone().multiplyScalar(s).applyQuaternion(v.q));
@@ -882,6 +995,132 @@ export default function Hands({ story, anchor, night }) {
     // the runs of light along the threads — at C.preTouch of it until they
     // touch, then up to C.touchGlow ×)
     const wake = THREE.MathUtils.lerp(C.preTouch, C.touchGlow, story.wake);
+    // ---- the pointer over the hands
+    const ptr = pointer ?? { x: 9, y: 9 };
+    const aspect = size.width / Math.max(size.height, 1);
+    // the trail (sand): a point where it has moved to, with how it moved
+    const tr = trail.current;
+    const dx = ptr.x - tr.lastX;
+    const dy = ptr.y - tr.lastY;
+    const dtp = Math.max(time - tr.lastT, 1e-3);
+    if (Math.hypot(dx * aspect, dy) > 0.004 && tr.lastT > 0) {
+      // (its motion eased: a smooth wake, not a jolt with every twitch)
+      const k = 1 - Math.exp(-dtp * 10);
+      tr.vx += (THREE.MathUtils.clamp(dx / dtp, -4, 4) - tr.vx) * k;
+      tr.vy += (THREE.MathUtils.clamp(dy / dtp, -4, 4) - tr.vy) * k;
+      tr.items.unshift({ x: ptr.x, y: ptr.y, vx: tr.vx * aspect, vy: tr.vy, t: time });
+      if (tr.items.length > TRAIL) tr.items.length = TRAIL;
+    }
+    tr.lastX = ptr.x;
+    tr.lastY = ptr.y;
+    tr.lastT = time;
+    for (let k = 0; k < TRAIL; k++) {
+      const it = tr.items[k];
+      const age = it ? (time - it.t) / Math.max(C.stirSettle, 0.05) : 1;
+      sandU.uTrail.value[k].set(it ? it.x : 9, it ? it.y : 9, it ? it.vx : 0, it ? it.vy : 0);
+      sandU.uTrailAge.value[k] = Math.min(age, 1);
+    }
+    // ---- the sand: the pointer's ray in the hand's own space, its motion
+    // there, and how strongly it holds the sand (eased in as it moves, out as
+    // it rests) — then a step of the simulation
+    const right = hands.find((h) => h.sim);
+    if (right) {
+      const sim = right.sim;
+      const S = sim.U;
+      const dts = Math.min(Math.max(time - (tr.simT || time), 0), 0.05);
+      tr.simT = time;
+      const inv = simInv.copy(right.holder.matrixWorld).invert();
+      const inside = ptr.x > -1.5 && ptr.x < 1.5;
+      if (inside) {
+        rayA.set(ptr.x, ptr.y, 0.5).unproject(camera);
+        S.uRayO.value.copy(camera.position).applyMatrix4(inv);
+        S.uRayD.value.copy(rayA).applyMatrix4(inv).sub(S.uRayO.value).normalize();
+        // (its point on the ray at the hand's depth, and how that moves)
+        // (measured before it is moved: along the ray to the hand's depth)
+        const along = rayP.copy(sim.centre).sub(S.uRayO.value).dot(S.uRayD.value);
+        rayP.copy(S.uRayO.value).addScaledVector(S.uRayD.value, along);
+        if (tr.hasP && dts > 0) {
+          rayV.subVectors(rayP, tr.p).divideScalar(dts);
+          // (a jump — the pointer arriving from elsewhere — is not a stroke)
+          if (rayV.length() < 25) S.uPVel.value.lerp(rayV, 1 - Math.exp(-11 * dts));
+        }
+        tr.p.copy(rayP);
+        tr.hasP = true;
+      } else {
+        tr.hasP = false;
+        S.uPVel.value.multiplyScalar(Math.exp(-6 * dts));
+      }
+      const sp = S.uPVel.value.length();
+      if (sp > 4) S.uPVel.value.multiplyScalar(4 / sp);
+      if (Math.abs(dx) + Math.abs(dy) > 0.0005) tr.moved = time;
+      const live = inside && story.reach > 0.05 && time - (tr.moved || -9) < 1.6;
+      const target = live ? 1 : 0;
+      tr.force = THREE.MathUtils.damp(tr.force || 0, target, live ? 6.4 : 1.6, dts || 0.016);
+      S.uForce.value = tr.force;
+      S.uTime.value = time;
+      S.uDt.value = dts || 0.016;
+      S.uReach2.value = C.stirRadius * C.stirRadius;
+      S.uPush.value = C.stirAmount;
+      S.uLoose.value = C.stirSwirl;
+      // (how fast a grain calms: higher, sooner)
+      S.uSettle.value = Math.max(C.stirSettle, 0.05);
+      S.uGravity.value = C.stirGravity;
+      S.uMax.value = C.stirMax;
+      S.uSpring.value = C.stirSpring;
+      S.uDown.value.set(0, -1, 0).transformDirection(inv);
+      sim.step();
+      sandU.tSimOff.value = sim.offset();
+      sandU.tSimVel.value = sim.velocity();
+      sandU.uHasSim.value = 1;
+      sandU.uStirGlow.value = C.stirGlow;
+    }
+    sandU.uAspect.value = aspect;
+    sandU.uStirRadius.value = C.stirRadius;
+    sandU.uStirAmount.value = story.reach > 0.001 ? C.stirAmount : 0;
+    sandU.uStirSwirl.value = C.stirSwirl;
+    sandU.uStirMax.value = C.stirMax;
+    sandU.uCursor.value.set(ptr.x, ptr.y);
+    // the sparks (threads): the threads under the pointer — on the side we see
+    // — lit where it is over them, the light then running along each one
+    const left = hands.find((h) => h.threads);
+    if (left && left.outer.visible && (Math.abs(dx) + Math.abs(dy) > 0.0005 || tr.still++ < 1)) {
+      if (Math.abs(dx) + Math.abs(dy) > 0.0005) tr.still = 0;
+      const pk = left.threads.picks;
+      const data = left.spark.image.data;
+      const mw = left.holder.matrixWorld;
+      const r2 = C.sparkRadius * C.sparkRadius;
+      let changed = false;
+      for (let k = 0; k < pk.length; k += 8) {
+        pp.set(pk[k], pk[k + 1], pk[k + 2]).applyMatrix4(mw);
+        pn.set(pk[k + 3], pk[k + 4], pk[k + 5]).transformDirection(mw);
+        // (its near side only)
+        if (pn.dot(pq.subVectors(camera.position, pp)) <= 0) continue;
+        pp.project(camera);
+        const ex = (pp.x - ptr.x) * aspect;
+        const ey = pp.y - ptr.y;
+        const d2 = ex * ex + ey * ey;
+        if (d2 > r2) continue;
+        const th = pk[k + 7];
+        const o = th * 4;
+        // (lit afresh — unless it was lit just now, close by)
+        if (time - data[o + 1] < 0.35 && Math.abs(data[o] - pk[k + 6]) < 0.1) continue;
+        data[o] = pk[k + 6];
+        data[o + 1] = time;
+        data[o + 2] = 1 - Math.sqrt(d2 / r2) * 0.5;
+        changed = true;
+      }
+      if (changed) left.spark.needsUpdate = true;
+    }
+    // (from the hand on screen: React may build the hands twice, keeping one)
+    if (left) {
+      streakU.uSpark.value = left.spark;
+      streakU.uThreads.value = Math.max(left.threads.threads, 1);
+    }
+    streakU.uSparkSpeed.value = C.sparkSpeed;
+    streakU.uSparkWidth.value = C.sparkWidth;
+    streakU.uSparkLife.value = C.sparkLife;
+    streakU.uSparkBright.value = C.sparkBright;
+
     // the light at the touch, and back over the hands
     glow.uFlash.value = story.flash;
     glow.uWave.value = story.glow * longest * 1.15;
@@ -899,7 +1138,7 @@ export default function Hands({ story, anchor, night }) {
     streakU.uPulseBright.value = C.pulseBright * wake;
     streakU.uBackFade.value = C.backFade;
     streakU.uOutline.value = C.outline * wake;
-    sandU.uBackFade.value = C.backFade;
+    sandU.uBackFade.value = C.sandBackFade;
     sandU.uOutline.value = C.outline * wake;
     streakU.uColor.value.set(C.streakColor);
     streakU.uHot.value.set(C.streakHot);

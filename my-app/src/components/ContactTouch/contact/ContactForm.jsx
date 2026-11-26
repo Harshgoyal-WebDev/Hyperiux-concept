@@ -50,8 +50,8 @@ function Row({ id, label, error, children }) {
   );
 }
 
-const Part = ({ title, children }) => (
-  <div className="flex w-full flex-col gap-[2vw] max-md:gap-[7vw]">
+const Part = ({ title, children, d = 0 }) => (
+  <div style={{ "--d": d }} className="ct-in flex w-full flex-col gap-[2vw] max-md:gap-[7vw]">
     <h3 className="text-[1.8vw] leading-tight max-md:text-[5.4vw]">{title}</h3>
     <div className="flex w-full flex-col gap-[1vw] max-md:gap-[6vw]">{children}</div>
   </div>
@@ -134,7 +134,7 @@ export default function ContactForm() {
 
   return (
     <form ref={form} noValidate onSubmit={submit} className="flex flex-col gap-[2.5vw] max-md:mt-[5vw] max-md:gap-[8vw]">
-      <Part title="01 | About your project">
+      <Part title="01 | About your project" d={3}>
         <Row id={id("industry")} label="Which industry do you work in?*" error={err("industry")}>
           <input {...field("industry")} placeholder="Industry*" autoComplete="off" />
         </Row>
@@ -149,7 +149,7 @@ export default function ContactForm() {
         </Row>
       </Part>
       <Rule />
-      <Part title="02 | About yourself">
+      <Part title="02 | About yourself" d={5}>
         <Row id={id("name")} label="What's your name?*" error={err("name")}>
           <input {...field("name")} placeholder="Your name*" autoComplete="name" />
         </Row>
@@ -164,7 +164,7 @@ export default function ContactForm() {
         </Row>
       </Part>
       <Rule />
-      <Part title="03 | We appreciate your feedback">
+      <Part title="03 | We appreciate your feedback" d={7}>
         <Row id={id("heard")} label="How did you learn about us?*" error={err("heard")}>
           {select("heard", HEARD)}
         </Row>

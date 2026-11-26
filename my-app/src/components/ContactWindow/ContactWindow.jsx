@@ -8,14 +8,14 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "lenis/react";
 import { TRACK_VH, buildMasterTimeline, createStageState } from "./timeline";
 import { hasWebGL2, pickTier } from "./quality";
-import EnquirySection from "./contact/EnquirySection";
+import ContactSection from "./contact/ContactSection";
 
 // THE WINDOW — the contact experience.
 //   1. a pinned 3D scene the scroll plays through (scene/Experience.jsx, lazy):
 //      two hands — one of orange particles, one of white wireframe — reach
 //      for each other, touch at the fingertips, and their touch opens a
 //      way through to the contact page (timeline.js: the seven stages)
-//   2. the contact page (contact/EnquirySection.jsx, plain HTML), beneath the
+//   2. the contact page (contact/ContactSection.jsx, plain HTML), beneath the
 //      scene: revealed through it as small discs of glass open out from the
 //      touch (scene/Reveal.jsx — forging-vid's change) — held in place while
 //      it opens, then scrolling on as a normal page
@@ -58,7 +58,7 @@ const STILL = { p: 0.5, distance: 1, approach: 1, anticipation: 1, touch: 1, por
 
 function Header({ onSkip }) {
   return (
-    <header className="nc-header pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-[4vw] pb-10 pt-7 max-md:px-6 max-md:pb-8 max-md:pt-5">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between bg-gradient-to-b from-[#050505] via-[#050505]/70 to-transparent px-[4vw] pb-10 pt-7 max-md:px-6 max-md:pb-8 max-md:pt-5">
       <Link href="/" className="pointer-events-auto block focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-[#ff5f00]" aria-label="Hyperiux home">
         {/* eslint-disable-next-line @next/next/no-img-element -- a small static SVG wordmark */}
         <img src="/assets/icons/hyperiux-wordmark.svg" alt="" width={351} height={43} className="h-[0.95rem] w-auto opacity-90 invert" />
@@ -135,7 +135,7 @@ export default function ContactWindow() {
         }
       },
     });
-    // The contact page, beneath the scene, opening through it (scene/PortalCut.jsx).
+    // The contact page, beneath the scene, opening through it (scene/Reveal.jsx).
     // Until the pin lets go it is held at the top of the screen, under the
     // scene, so it opens in place rather than sliding in.
     const el = contact.current;
@@ -148,17 +148,14 @@ export default function ContactWindow() {
       const open = y >= end - 1 ? 1 : stage.portal;
       const hold = y < end ? y - end : 0;
       // (its text waits until the portal is a quarter open, then animates in —
-      // contact/EnquirySection.jsx; its links and fields only answer from then)
+      // contact/ContactSection.jsx; its links and fields only answer from then)
       const revealed = open >= REVEALED_AT;
-      // (the header dark over the light page, once most of it is open)
-      const light = open >= 0.7;
-      const key = `${Math.round(hold)}|${revealed}|${light}`;
+      const key = `${Math.round(hold)}|${revealed}`;
       if (key === last) return;
       last = key;
       el.style.transform = hold ? `translate3d(0, ${hold}px, 0)` : "";
       el.style.pointerEvents = revealed ? "" : "none";
       el.dataset.revealed = String(revealed);
-      document.documentElement.dataset.ncLight = String(light);
     };
     gsap.ticker.add(tick);
     tick();
@@ -173,7 +170,6 @@ export default function ContactWindow() {
       el.style.transform = "";
       el.style.pointerEvents = "";
       delete el.dataset.revealed;
-      delete document.documentElement.dataset.ncLight;
     };
   }, [mode, stage, pinEnd, stageH]);
 
@@ -207,7 +203,7 @@ export default function ContactWindow() {
           </div>
         </section>
         <section id="contact" ref={contact} aria-labelledby={headingId}>
-          <EnquirySection headingId={headingId} />
+          <ContactSection headingId={headingId} />
         </section>
       </main>
     );
@@ -255,13 +251,9 @@ export default function ContactWindow() {
       {/* the contact page, waiting beneath the scene: held in place under it
           while the glass opens onto it, then scrolling on as the page */}
       <section id="contact" ref={contact} aria-labelledby={headingId} onFocus={onFocusContact} data-revealed="false" className="relative z-0 overflow-x-clip" style={{ marginTop: "-100svh" }}>
-        <EnquirySection headingId={headingId} />
+        <ContactSection headingId={headingId} />
       </section>
       <style>{`
-        /* the header over the light contact page: dark */
-        .nc-header img, .nc-header a { transition: filter 0.5s ease, color 0.5s ease; }
-        html[data-nc-light="true"] .nc-header img { filter: none; }
-        html[data-nc-light="true"] .nc-header a { color: rgba(17, 17, 17, 0.7); }
         @keyframes ncScrollCue { 0% { transform: translateY(-100%); } 60%, 100% { transform: translateY(200%); } }
         @keyframes ncLoad { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
         /* the hero's words: in, one after another (--d: its turn), as the cover lifts */

@@ -17,7 +17,6 @@ export const TRACK_VH = 620;
 const clamp01 = (x) => Math.min(Math.max(x, 0), 1);
 const span = (p, a, b) => clamp01((p - a) / (b - a));
 const easeOut = (x, k = 2.4) => 1 - Math.pow(1 - x, k);
-const sineInOut = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
 
 export const TOUCH_AT = 0.5;
 // the cut: from just after the touch — as the glow spreads over the hands
@@ -33,9 +32,11 @@ export function createStory() {
 // the story at scroll progress p (written into s)
 export function tell(p, s) {
   s.p = p;
-  s.hero = 1 - span(p, 0.03, 0.1);
   // (in from the first scroll, easing into the touch — no pause on the way)
   s.reach = easeOut(span(p, 0.06, TOUCH_AT));
+  // the hero's words blur away once the hands are a little way in
+  // (C.heroOutFrom → C.heroOutTo of their reach)
+  s.hero = 1 - clamp01((s.reach - C.heroOutFrom) / Math.max(C.heroOutTo - C.heroOutFrom, 0.01));
   // the moment they meet: in at once, settling to a soft light
   const [c0, c1] = cutSpan();
   const t = span(p, TOUCH_AT - 0.005, TOUCH_AT + 0.08);
@@ -45,7 +46,9 @@ export function tell(p, s) {
   // (the hands' own light, coming up to full as they meet)
   const w = span(p, TOUCH_AT - 0.01, TOUCH_AT + 0.05);
   s.wake = w * w * (3 - 2 * w);
-  s.cut = sineInOut(span(p, c0, c1));
+  // (under way at once — no slow first stretch — easing as it opens out)
+  const ct = span(p, c0, c1);
+  s.cut = 1 - Math.pow(1 - ct, 1.8);
   s.done = p >= c1;
   return s;
 }

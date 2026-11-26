@@ -272,7 +272,7 @@ function World({ story, pointer, quality, onReady }) {
       </RockLook>
       <DuneDust terrain={d.terrain} shared={d.shared} />
       <Sun quality={quality} shared={d.shared} />
-      <Hands story={story} anchor={anchor} night={d.shared.uNight} />
+      <Hands story={story} anchor={anchor} night={d.shared.uNight} pointer={pointer} />
       <Look bloom={bloom} vignette={vignette} />
       <EffectComposer multisampling={0} enableNormalPass={false}>
         <Bloom ref={bloom} mipmapBlur levels={5} intensity={C.bloomIntensity} luminanceThreshold={C.bloomThreshold} luminanceSmoothing={0.25} radius={0.5} />

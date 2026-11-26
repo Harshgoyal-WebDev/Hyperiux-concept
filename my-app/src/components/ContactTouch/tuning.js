@@ -37,8 +37,8 @@ export const C = {
   threadFollow: 0.38, // ...how closely they follow the hand's lines (its fingers' bones), not wandering (rebuild)
   streakWidth: 2.25, // the threads' width (px)
   streakSpeed: 0.22, // the light running along them (runs a second)
-  pulseLength: 0.05, // ...each run of light (share of a thread's length setting)
-  pulseBright: 3, // ...how much brighter it is than the thread (0: an even light)
+  pulseLength: 0.03, // ...each run of light (share of a thread's length setting)
+  pulseBright: 5, // ...how much brighter it is than the thread (0: an even light)
   streakBright: 0.75,
   streakColor: "#ff8952",
   streakHot: "#ff6500", // ...towards the fingertip
@@ -51,6 +51,8 @@ export const C = {
   rightAimPitch: 0,
   rightRoll: 0,
   rightSize: 1.3,
+  enterFrom: 2.2, // how far back it comes from as it enters (× its reach)
+  enterFade: 0.35, // ...fading in over this much of its reach
   sandCount: 90000, // (rebuild)
   sandSize: 3.35, // grain size (px at the touch's distance)
   sandBright: 3.65,
@@ -59,7 +61,26 @@ export const C = {
   sandSparkle: 0.45, // grains catching the light
   sandDrift: 0.004, // share of grains streaming off it, falling
   sandFall: 0.25, // ...how far they fall (× the hand's reach)
+  sandOcclude: true, // ...its near surface hiding what lies behind it (off: the far side shows, faintly — a volume)
+  sandBackFade: 0.3, // ...how much of its far side shows
   sandJitter: 0, // how much the grains shimmer in place (share of the hand's)
+
+  // ---- the pointer over the hands
+  // the sand: a little physical system (scene/sandSim.js — after pick-n-petal's
+  // particles), in the hand's own units (its length about 1)
+  stirRadius: 0.07, // how near the pointer's ray a grain is caught
+  stirAmount: 1.75, // how hard the pointer shoves the grains it catches (pick-n-petal's: 1)
+  stirSwirl: 1.3, // how much a loosened grain drifts on the eddying flow
+  stirGravity: 1.65, // ...and sinks
+  stirSpring: 3.2, // how strongly (and quickly) it is pulled back home
+  stirSettle: 5.4, // how fast a stirred grain calms and settles (higher: sooner)
+  stirMax: 0.72, // the farthest it can be carried (hand lengths)
+  stirGlow: 1.35, // how much a stirred grain lights up
+  sparkRadius: 0.05, // the threads: how near the pointer they are lit (share of the screen's height)
+  sparkSpeed: 0.55, // ...how fast the light runs on along them
+  sparkWidth: 0.05, // ...its length
+  sparkLife: 2.2, // ...how long it lasts (s)
+  sparkBright: 2.5,
 
   // ---- depth: the near side of each hand clear, the far side faint, the edges
   // lit as an outline (so the hand and its fingers read)
@@ -75,11 +96,15 @@ export const C = {
   glowWidth: 0.07, // the band running back over the hands (share of the reach)
   glowBright: 1,
   flashSize: 0.16, // the flash where they meet (share of the reach)
-  cutDelay: 0.04, // the change to the contact section: how long after the touch it starts (share of the scroll) — the glow still running over the hands
+  cutDelay: 0, // the change to the contact section: how long after the touch it starts (share of the scroll) — the glow still running over the hands
   cutLength: 0.3, // ...how long it takes to open right across (share of the scroll)
 
   // ---- day or night (the V3 world's own night: the moon, a blue haze)
   night: false,
+
+  // ---- the hero's words
+  heroOutFrom: 0.55, // they start to blur away once the hands are this far into their reach
+  heroOutTo: 0.72, // ...and are gone by here
 
   // ---- the camera
   parallax: 0.12, // × the about hero's pointer parallax

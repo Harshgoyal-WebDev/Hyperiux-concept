@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable react-hooks/immutability -- R3F pattern: the shared `look` is written imperatively inside useFrame, outside React's render. */
 
 import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -68,10 +67,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float rim = exp(-pow((d - rad) / (aa * 1.2 + 0.035), 2.0)) * glass;
   float k = clamp(d / max(rad, 1e-4), 0.0, 1.0);
   float sheen = cut * glass * (1.0 - k * k) * 0.05;
-  // (what was clear stays clear: the hands' canvas is see-through round
-  // them now, the about hero's world drawn behind it — AboutBackdrop.jsx)
-  float a = inputColor.a * (1.0 - cut);
-  vec3 col = inputColor.rgb * (1.0 - cut);
+  float a = 1.0 - cut;
+  vec3 col = inputColor.rgb * a;
   vec3 warm = vec3(1.0, 0.42, 0.1);
   col += warm * rim * 0.14 + warm * sheen;
   a = clamp(a + rim * 0.14 + sheen, 0.0, 1.0);
@@ -98,25 +95,16 @@ class RevealEffect extends Effect {
   }
 }
 
-// (`shared`: in the about hero's canvas behind the hands — its discs opened
-// where the hands' canvas has them: the touch as the hands' camera sees it)
-export default function Reveal({ look, shared = false }) {
+export default function Reveal({ look }) {
   const effect = useMemo(() => new RevealEffect(), []);
   useEffect(() => () => effect.dispose(), [effect]);
   const ndc = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera, size }) => {
     const u = effect.uniforms;
     u.get("uT").value = look.reveal;
-    let cx;
-    let cy;
-    if (shared && look.revealCenter) {
-      [cx, cy] = look.revealCenter;
-    } else {
-      ndc.copy(CONTACT).project(camera);
-      cx = THREE.MathUtils.clamp(ndc.x * 0.5 + 0.5, 0, 1);
-      cy = THREE.MathUtils.clamp(ndc.y * 0.5 + 0.5, 0, 1);
-      look.revealCenter = [cx, cy];
-    }
+    ndc.copy(CONTACT).project(camera);
+    const cx = THREE.MathUtils.clamp(ndc.x * 0.5 + 0.5, 0, 1);
+    const cy = THREE.MathUtils.clamp(ndc.y * 0.5 + 0.5, 0, 1);
     u.get("uCenter").value.set(cx, cy);
     const ratio = size.width / Math.max(size.height, 1);
     // (to the farthest corner: the whole frame open by the end)

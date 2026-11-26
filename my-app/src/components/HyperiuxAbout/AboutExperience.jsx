@@ -65,7 +65,7 @@ function flowTimes() {
 // how far in each line of copy's words are (0 → 1: in out of the blur), set
 // by the scroll's timeline and read each frame (the opening's also by its
 // entrance on load)
-const COPY = { intro: 1, story: 0 };
+const COPY = { intro: 1, story: 0, teamOut: 0 };
 
 function createState() {
   return {
@@ -156,6 +156,16 @@ export default function AboutExperience() {
   const [idx, setIdx] = useState(0);
   const [missing, setMissing] = useState([]);
   const [visible, setVisible] = useState(true);
+  // (the scene fully cut away to the page: nothing left to draw)
+  const [cleared, setCleared] = useState(false);
+  useEffect(() => {
+    const tick = () => {
+      const c = S.white >= 0.999;
+      setCleared((v) => (v === c ? v : c));
+    };
+    gsap.ticker.add(tick);
+    return () => gsap.ticker.remove(tick);
+  }, [S]);
   const teamActive = useRef(false);
   const busy = useRef(false);
   const onMissing = useCallback((list) => setMissing(list), []);
@@ -235,9 +245,9 @@ export default function AboutExperience() {
       at(HERO_END + 2, TRANS_LEN - 10, { beams: 0.4 }, "sine.inOut");
       at(TRANS_END + 2, 20, { dark: 0.2 }, "sine.inOut");
       // 03 — The Team: the person still (never scaling up); only the
-      // backdrop behind turning a little, horizontally, on the scroll — on
-      // through the line clip
-      at(TRANS_END, A.flowTeamHold + A.flowClip, { bgTurn: 1 }, "none");
+      // backdrop behind turning a little, horizontally, on the scroll
+      // (from a little before the transition starts until the white is fully in)
+      at(HERO_END - 20, WIPE_AT + WIPE_LEN - (HERO_END - 20), { bgTurn: 1 }, "none");
       // 04 — Into the Light, on the next scroll and slowly: the person and
       // the lines of light dissolving into the light, then white
       // (straight over the scene as it is — no fading it down first: line by
@@ -251,11 +261,13 @@ export default function AboutExperience() {
       // 02 — as the land turns to light, out again before the transition
       tl.fromTo(COPY, { story: 0 }, { story: 1, duration: 18 * k, ease: "none", immediateRender: false }, 60.5 * k);
       tl.to(COPY, { story: 0, duration: 13 * k, ease: "none" }, 115.5 * k);
-      // 03 — the team's copy, each line out of a blur
+      // 03 — the team's copy, each row up out of its mask
       // (its lines come in by the transition's own progress — A.teamCopyAt,
       // below — so their timing is the panel's)
-      tl.fromTo(q("[data-team]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 2, ease: "none" }, HERO_END);
-      tl.to(q("[data-team]"), { autoAlpha: 0, y: -24, filter: "blur(10px)", duration: 10, ease: "power1.in" }, TEAM_TO - 6);
+      tl.fromTo(q("[data-team], [data-team-progress]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 2, ease: "none" }, HERO_END);
+      // (and away up into its masks as the line clip starts)
+      tl.fromTo(COPY, { teamOut: 0 }, { teamOut: 1, duration: 10, ease: "none", immediateRender: false }, TEAM_TO - 6);
+      tl.to(q("[data-team], [data-team-progress]"), { autoAlpha: 0, duration: 0.5, ease: "none" }, TEAM_TO + 4);
       tl.set({}, {}, EXPERIENCE_VH);
     },
     { scope: root, dependencies: [F], revertOnUpdate: true }
@@ -319,25 +331,38 @@ export default function AboutExperience() {
     };
   }, [env]);
 
-  // The team's copy: each line out of a blur, in turn, once the transition is
-  // A.teamCopyAt of the way through, over A.teamCopyLength of it (and back
-  // the same way when scrolling back up).
+  // The team's copy: each row (name, role, bio, the buttons, the progress)
+  // up out of an overflow-hidden mask of its own, in turn, once the
+  // transition is A.teamCopyAt of the way through, over A.teamCopyLength of
+  // it — back down the same way scrolling back up — and away up into the
+  // masks as the line clip starts (COPY.teamOut).
   useEffect(() => {
-    const lines = root.current?.querySelectorAll("[data-team-line]");
-    if (!lines?.length) return;
-    const tl = gsap.timeline({ paused: true });
-    tl.fromTo(lines, { y: 24, autoAlpha: 0, filter: "blur(10px)" }, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 1, stagger: 0.12, ease: "power2.out" });
-    let last = -1;
+    const rows = [...(root.current?.querySelectorAll("[data-team-line]") ?? [])];
+    if (!rows.length) return;
+    const inE = gsap.parseEase("power3.out");
+    const outE = gsap.parseEase("power2.in");
+    const n = rows.length;
+    const clamp = (v) => Math.min(Math.max(v, 0), 1);
+    let lk = -1;
+    let lo = -1;
     const tick = () => {
-      const k = Math.min(Math.max((S.cut - A.teamCopyAt) / Math.max(A.teamCopyLength, 0.01), 0), 1);
-      if (k !== last) tl.progress((last = k));
+      const k = clamp((S.cut - A.teamCopyAt) / Math.max(A.teamCopyLength, 0.01));
+      const o = COPY.teamOut;
+      if (k === lk && o === lo) return;
+      lk = k;
+      lo = o;
+      rows.forEach((row, i) => {
+        // (its one child: rebuilt with each member — read each time)
+        const el = row.firstElementChild;
+        if (!el) return;
+        const ti = clamp(k * (1 + (n - 1) * 0.14) - i * 0.14);
+        const to = clamp(o * (1 + (n - 1) * 0.08) - i * 0.08);
+        gsap.set(el, { yPercent: (1 - inE(ti)) * 110 - outE(to) * 110, force3D: true });
+      });
     };
     gsap.ticker.add(tick);
-    return () => {
-      gsap.ticker.remove(tick);
-      tl.kill();
-    };
-  }, [S]);
+    return () => gsap.ticker.remove(tick);
+  }, [S, idx]);
 
   // a review frame: ?p=0.5 jumps to that point of the experience
   useEffect(() => {
@@ -358,7 +383,8 @@ export default function AboutExperience() {
       const fast = !!getClientEnv()?.reduced;
       const q = gsap.utils.selector(root);
       const tl = gsap.timeline({ onComplete: () => (busy.current = false) });
-      tl.to(q("[data-swap]"), { y: -14, autoAlpha: 0, filter: "blur(10px)", duration: 0.5, stagger: 0.05, ease: "power2.in" }, 0);
+      // (its copy away up into the line masks)
+      tl.to(q("[data-swap] .swap-line"), { yPercent: -110, duration: 0.45, stagger: 0.04, ease: "power2.in" }, 0);
       // a ripple from the centre out: the face comes apart into particles of
       // light that settle back as the next (PortraitParticles.jsx, uMorph);
       // the copy turns over on the way, and once it is done the next is
@@ -380,34 +406,73 @@ export default function AboutExperience() {
   );
   const step = useCallback((dir) => goTo((S.member + dir + n) % n), [goTo, S, n]);
 
-  // the new member's copy in
+  // the new member's copy in: each line up out of an overflow-hidden mask
+  // (split again once the fonts are in, or the lines change)
   useGSAP(
     () => {
-      gsap.fromTo(root.current.querySelectorAll("[data-swap]"), { y: 14, autoAlpha: 0, filter: "blur(10px)" }, { y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.9, stagger: 0.08, ease: "power3.out", delay: 0.25 });
+      root.current.querySelectorAll("[data-swap]").forEach((el, i) => {
+        SplitText.create(el, {
+          type: "lines",
+          mask: "lines",
+          linesClass: "swap-line",
+          autoSplit: true,
+          onSplit: (self) => gsap.from(self.lines, { yPercent: 110, duration: 0.85, stagger: 0.06, ease: "power3.out", delay: 0.2 + i * 0.07 }),
+        });
+      });
     },
     { scope: root, dependencies: [idx] }
   );
 
   // autoplay: on to the next member every A.teamAutoplay seconds while the
-  // team is there and fully formed (a change by hand — or this — restarts
-  // the count; never with reduced motion or the tab hidden)
+  // team's section is live — from its copy coming in (the transition ~80%
+  // done) until the line clip — a change by hand (or this) restarting the
+  // count; never with reduced motion or the tab hidden. The progress tabs
+  // show it: those before the current member full, the current one filling
+  // over the duration, those after empty (the current one simply full when
+  // there's no autoplay).
   useEffect(() => {
-    if (getClientEnv()?.reduced) return;
+    const reduced = !!getClientEnv()?.reduced;
+    const fills = [...(root.current?.querySelectorAll("[data-tab-fill]") ?? [])];
+    const shown = fills.map(() => -1);
     let last = performance.now();
-    const id = setInterval(() => {
+    // (the current member's tab: how full)
+    let p = 0;
+    let advanced = false;
+    const tick = () => {
       const now = performance.now();
-      const ready = teamActive.current && S.reveal >= 0.999 && S.cut >= 0.999 && !busy.current && !document.hidden;
-      if (!ready || !(A.teamAutoplay > 0)) {
+      // (where the scroll is, read straight off the page — never stale)
+      const el = root.current;
+      const span = el ? el.offsetHeight - window.innerHeight : 0;
+      const vh = span > 0 ? (-el.getBoundingClientRect().top / span) * EXPERIENCE_VH : -1;
+      const live = vh > TEAM_FROM && vh < TEAM_TO;
+      const on = !reduced && A.teamAutoplay > 0;
+      if (busy.current || advanced) {
+        // (a change under way: the tab stays just as it is — full, if it
+        // filled — until the next member is the current one)
         last = now;
-        return;
-      }
-      if (now - last >= A.teamAutoplay * 1000) {
+      } else if (!on) {
+        p = 1;
+      } else if (!live || document.hidden) {
         last = now;
-        step(1);
+        p = 0;
+      } else {
+        p = Math.min((now - last) / (A.teamAutoplay * 1000), 1);
+        if (p >= 1) {
+          advanced = true;
+          step(1);
+        }
       }
-    }, 200);
-    return () => clearInterval(id);
-  }, [step, idx, S]);
+      fills.forEach((f, i) => {
+        const v = i < idx ? 1 : i === idx ? p : 0;
+        if (v !== shown[i]) {
+          shown[i] = v;
+          f.style.transform = `scaleX(${v})`;
+        }
+      });
+    };
+    gsap.ticker.add(tick);
+    return () => gsap.ticker.remove(tick);
+  }, [step, idx, EXPERIENCE_VH, TEAM_FROM, TEAM_TO]);
 
   // keys and swipes, while the team is on screen
   useEffect(() => {
@@ -481,7 +546,7 @@ export default function AboutExperience() {
           <div className="pointer-events-none absolute inset-0">
             {env?.webgl && (
               <Canvas
-                frameloop={visible ? "always" : "never"}
+                frameloop={visible && !cleared ? "always" : "never"}
                 dpr={env.quality.dpr}
                 gl={{ antialias: false, powerPreference: "high-performance", alpha: true }}
                 shadows="percentage"
@@ -532,17 +597,17 @@ export default function AboutExperience() {
           >
             <div aria-live="polite">
               <h2 data-team-line className="overflow-hidden">
-                <span data-swap className="block pb-[0.08em] font-[family-name:var(--font-aeonikpro)] text-[3.4vw] font-normal leading-[1] tracking-[-0.025em] max-[64rem]:text-[7.4vw]">
+                <span key={m.id} data-swap className="block pb-[0.08em] font-[family-name:var(--font-aeonikpro)] text-[3.4vw] font-normal leading-[1] tracking-[-0.025em] max-[64rem]:text-[7.4vw]">
                   {m.name}
                 </span>
               </h2>
               <p data-team-line className="mt-[1.2vw] overflow-hidden max-[64rem]:mt-2">
-                <span data-swap className="block font-[family-name:var(--font-aeonikpro)] text-[0.8vw] uppercase tracking-[0.3em] text-[#FF8A32] max-[64rem]:text-[11px]">
+                <span key={m.id} data-swap className="block font-[family-name:var(--font-aeonikpro)] text-[0.8vw] uppercase tracking-[0.3em] text-[#FF8A32] max-[64rem]:text-[11px]">
                   {m.role}
                 </span>
               </p>
-              <p data-team-line className="mt-[2.6vw] max-w-[19vw] max-[64rem]:mt-4 max-[64rem]:max-w-none">
-                <span data-swap className="block font-[family-name:var(--font-aeonikpro)] text-[0.98vw] leading-[1.55] text-white/80 max-[64rem]:text-sm">
+              <p data-team-line className="mt-[2.6vw] max-w-[19vw] overflow-hidden max-[64rem]:mt-4 max-[64rem]:max-w-none">
+                <span key={m.id} data-swap className="block font-[family-name:var(--font-aeonikpro)] text-[0.98vw] leading-[1.55] text-white/80 max-[64rem]:text-sm">
                   {m.bio}
                 </span>
               </p>
@@ -552,16 +617,35 @@ export default function AboutExperience() {
                 </p>
               )}
             </div>
-            <div data-team-line className="mt-[4.3vw] flex items-center gap-[3.3vw] max-[64rem]:mt-6 max-[64rem]:gap-6">
-              <RoundButton dir={-1} onClick={() => step(-1)} label={`Previous: ${TEAM[(idx - 1 + n) % n].name}`} />
-              <span className="font-[family-name:var(--font-aeonikpro)] text-[0.95vw] tracking-[0.3em] text-white max-[64rem]:text-xs" aria-label={`${idx + 1} of ${n}`}>
-                {pad(idx + 1)} / {pad(n)}
-              </span>
-              <RoundButton dir={1} onClick={() => step(1)} label={`Next: ${TEAM[(idx + 1) % n].name}`} />
+            {/* (room round the buttons inside their mask, for the focus ring) */}
+            <div data-team-line className="-m-[6px] mt-[calc(4.3vw-6px)] overflow-hidden p-[6px] max-[64rem]:mt-[18px]">
+              <div className="flex items-center gap-[3.3vw] max-[64rem]:gap-6">
+                <RoundButton dir={-1} onClick={() => step(-1)} label={`Previous: ${TEAM[(idx - 1 + n) % n].name}`} />
+                <span className="font-[family-name:var(--font-aeonikpro)] text-[0.95vw] tracking-[0.3em] text-white max-[64rem]:text-xs" aria-label={`${idx + 1} of ${n}`}>
+                  {pad(idx + 1)} / {pad(n)}
+                </span>
+                <RoundButton dir={1} onClick={() => step(1)} label={`Next: ${TEAM[(idx + 1) % n].name}`} />
+              </div>
             </div>
-            <div data-team-line className="ml-[3.3vw] mt-[1.9vw] flex gap-[0.5vw] max-[64rem]:ml-0 max-[64rem]:mt-4 max-[64rem]:gap-1.5" aria-hidden="true">
+          </div>
+
+          {/* 03: the team's progress, bottom centre — a tab per member, each
+          filling as autoplay runs through them (one to jump to) */}
+          <div data-team-progress data-team-line className="invisible absolute bottom-[5.5vh] left-1/2 z-20 -translate-x-1/2 overflow-hidden max-[64rem]:bottom-[2.5vh]">
+            <div className="flex">
               {TEAM.map((p, i) => (
-                <span key={p.id} className={`block h-[2px] w-[2.15vw] transition-colors duration-700 max-[64rem]:w-8 ${i === idx ? "bg-[#FF5F00]" : "bg-white/25"}`} />
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Show ${p.name}`}
+                  aria-current={i === idx ? "true" : undefined}
+                  className="group cursor-pointer px-[0.3vw] py-[1vw] max-[64rem]:px-1 max-[64rem]:py-3"
+                >
+                  <span className="relative block h-[2px] w-[3.4vw] overflow-hidden bg-white/25 transition-colors duration-300 group-hover:bg-white/45 max-[64rem]:w-8">
+                    <span data-tab-fill className="absolute inset-0 origin-left bg-[#FF5F00]" style={{ transform: "scaleX(0)" }} />
+                  </span>
+                </button>
               ))}
             </div>
           </div>

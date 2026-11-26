@@ -127,9 +127,9 @@ export const A = {
   portraitExposure: 1, // its brightness (1: as the render)
   portraitMotes: 1, // the fine motes drifting off the person
   portraitFeather: 0.2, // how softly its sides blend into the backdrop
-  portraitStrandRest: 0.3, // the strands' strength over it at rest (full while forming / changing)
+  portraitStrandRest: 0.21, // the strands' strength over it at rest (full while forming / changing)
   portraitStreaksAround: 1, // the render's own streaks kept in a soft zone round the person (0: none)
-  portraitFlowLight: 1, // light streaming down its lines
+  portraitFlowLight: 0.7, // light streaming down its lines
   portraitLightPass: 0.6, // a light passing across it now and then
   // ---- the person forming as the team's section opens: particles
   revealDelay: 0, // how far into the transition they start forming the person (share of it)
@@ -137,7 +137,8 @@ export const A = {
   teamCopyLength: 0.15, // ...and over how much of it
   revealFly: 0.35, // how long each particle is in flight (share of the forming)
   revealScatter: 0.26, // how far out round the person they come from
-  revealLand: 0.95, // when the particles all land (share of the forming)
+  revealLand: 0.95, // when the last particles — at the edges — land (share of the forming)
+  revealRing: 0.4, // the ripple: how much earlier the centre lands than the edges (share of the forming; 0: all at once)
   revealBlend: 0.42, // how long they hand over to the lit image round the landing (share of the forming)
 
   // ---- the scroll flow, top to bottom (each in vh of real scroll; FLOW:
@@ -190,6 +191,8 @@ export const A = {
   transRefract: 4, // how strongly each glass disc bends the next shot
   transWobble: 0.1, // the fluid wobble of the picture round the discs' rims
   transBulge: 0.115, // how much the front rises in the middle (a dome)
+  transTeamRes: 1, // the team's shot's resolution while the transition runs (share of the screen's: lower is lighter to scroll)
+  transDpr: 1, // the whole frame's pixel ratio while the transition runs (lower is lighter; the hero and team keep theirs either side)
 
   // ---- post
   bloomIntensity: 0.9,

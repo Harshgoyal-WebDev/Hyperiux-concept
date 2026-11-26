@@ -5,7 +5,7 @@
 // cards slide across, on a long sticky scroll. Its selectors are scoped to
 // this section; the Arrow is staging's (components/Buttons).
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import ScrollTrigger from "gsap/dist/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
@@ -58,6 +58,25 @@ export default function Values({ delay = 0 }) {
     { scope: root, dependencies: [delay], revertOnUpdate: true }
   );
 
+  // each card's video only playing while it's turned over (hover): never all
+  // five decoding at once, off screen
+  useEffect(() => {
+    const cards = [...root.current.querySelectorAll(".group")];
+    const offs = cards.map((card) => {
+      const video = card.querySelector("video");
+      if (!video) return () => {};
+      const on = () => video.play().catch(() => {});
+      const off = () => video.pause();
+      card.addEventListener("pointerenter", on);
+      card.addEventListener("pointerleave", off);
+      return () => {
+        card.removeEventListener("pointerenter", on);
+        card.removeEventListener("pointerleave", off);
+      };
+    });
+    return () => offs.forEach((f) => f());
+  }, []);
+
   return (
     <section
       ref={root}
@@ -100,7 +119,7 @@ export default function Values({ delay = 0 }) {
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload="none"
                   className="h-full w-full object-cover rounded-[1.5vw]"
                   style={{ filter: "brightness(0.8)" }}
                 >
@@ -132,7 +151,7 @@ export default function Values({ delay = 0 }) {
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload="none"
                   className="h-full w-full object-cover rounded-[1.5vw]"
                   style={{ filter: "brightness(0.8)" }}
                 >
@@ -167,7 +186,7 @@ export default function Values({ delay = 0 }) {
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload="none"
                   className="h-full w-full object-cover rounded-[1.5vw]"
                   style={{ filter: "brightness(0.8)" }}
                 >
@@ -202,7 +221,7 @@ export default function Values({ delay = 0 }) {
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload="none"
                   className="h-full w-full object-cover rounded-[1.5vw]"
                   style={{ filter: "brightness(0.8)" }}
                 >
@@ -237,7 +256,7 @@ export default function Values({ delay = 0 }) {
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload="none"
                   className="h-full w-full object-cover rounded-[1.5vw]"
                   style={{ filter: "brightness(0.8)" }}
                 >

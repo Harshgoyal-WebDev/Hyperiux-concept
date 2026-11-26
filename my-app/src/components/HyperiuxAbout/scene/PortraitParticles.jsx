@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/immutability -- R3F pattern: three.js uniforms/objects are mutated imperatively inside useFrame, outside React's render. */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mulberry32 } from "./util";
@@ -46,21 +46,23 @@ export const MORPH_GLSL = /* glsl */ `
   float morphLeave(vec2 uv) { return (0.02 + morphOrder(uv) * uMorphRing) * morphFit(); }
   // ...and the next is there a moment behind it
   float morphArrive(vec2 uv) { return morphLeave(uv) + uMorphGap * morphFit(); }
-  // the person forming (uReveal 0 → 1, with the transition): the particles
-  // all landing together — the whole face there in one go — the image
-  // under them as they do
+  // the person forming (uReveal 0 → 1, with the transition): the same
+  // ripple as a change of member — out from the centre, each spot's
+  // particles settling onto the face as the ring passes, the image there
+  // coming up under them
   uniform float uRevealFly; // (how long each is in flight, of the reveal)
-  uniform float uRevealLand; // (when they all land, of the reveal)
-  uniform float uRevealBlend; // (how long the particles hand over to the image, round the landing)
-  float revealArrive(vec2 uv) { return uRevealLand; }
-  // the handover, one window shared by the particles, the image and its
-  // strands: in from (land - blend*lead) to (land + blend*lag) — so the image
-  // comes up under the particles as they close in, and they thin away into it
-  // (always finished by the end of the forming: a late landing with a long
-  // blend squeezes the tail in, never leaving the image part-way at rest)
-  float revealHand(float reveal, float lead, float lag) {
-    float b1 = min(uRevealLand + uRevealBlend * lag, 1.0);
-    float b0 = min(uRevealLand - uRevealBlend * lead, b1 - 0.02);
+  uniform float uRevealLand; // (when the last of them — at the edges — land, of the reveal)
+  uniform float uRevealRing; // (how much earlier the centre lands than the edges: the ripple's spread)
+  uniform float uRevealBlend; // (how long the particles hand over to the image, round each spot's landing)
+  float revealArrive(vec2 uv) { return uRevealLand - uRevealRing * (1.0 - morphOrder(uv)); }
+  // the handover at each spot, shared by the particles, the image and its
+  // strands: in from (its landing - blend*lead) to (its landing + blend*lag)
+  // — the image coming up under the particles as they settle, they thinning
+  // away into it (always done by the end of the forming)
+  float revealHand(vec2 uv, float reveal, float lead, float lag) {
+    float r = revealArrive(uv);
+    float b1 = min(r + uRevealBlend * lag, 1.0);
+    float b0 = min(r - uRevealBlend * lead, b1 - 0.02);
     return smoothstep(b0, b1, reveal);
   }
 `;
@@ -128,6 +130,7 @@ export function PortraitParticles({ U, count, width, height }) {
           uReveal: U.uReveal,
           uRevealFly: U.uRevealFly,
           uRevealLand: U.uRevealLand,
+          uRevealRing: U.uRevealRing,
           uRevealBlend: U.uRevealBlend,
           uRevealScatter: { value: 1 },
           uLiftZ: { value: 0.4 },
@@ -194,16 +197,21 @@ export function PortraitParticles({ U, count, width, height }) {
             vArc = arc;
             // (there only between leaving and landing)
             vA = step(s0, uMorph) * (1.0 - smoothstep(s1, s1 + 0.06, uMorph)) * step(0.0005, uMorph) * (1.0 - step(0.9995, uMorph));
-            // ...or, as the team's section opens, the person forming: the
-            // particles gathering in from round about, each setting off a
-            // little apart, all landing together — the image under them
+            // ...or, as the team's section opens, the person forming — as a
+            // change does: the ring running out from the centre, each spot's
+            // particles coming down onto the face (lifted off it towards the
+            // viewer, a little out with the ring — and gathering in from
+            // round about) as it passes, the image there under them
             if (uReveal < 0.999 && vA < 0.001) {
               float r1 = revealArrive(aFrom);
               float fly = uRevealFly * (0.65 + aRnd.w * 0.35);
               float r0 = r1 - fly;
               float re = 1.0 - pow(1.0 - clamp((uReveal - r0) / fly, 0.0, 1.0), 3.0);
               vec3 home = vec3((aFrom - 0.5) * vec2(uW, uH), 0.0);
-              vec3 from = home + vec3((aRnd.x - 0.5) * 9.0, (aRnd.y - 0.5) * 6.0, 1.0 + aRnd.z * 5.0) * uRevealScatter;
+              vec2 rout = home.xy / max(length(home.xy), 0.001);
+              float rlift = mix(uCalm, 1.0, smoothstep(0.0, 0.9, morphOrder(aFrom))) * uSpread;
+              vec3 from = home + vec3(rout * (0.04 + aRnd.y * 1.0) * uLiftOut, 0.07 + aRnd.z * uLiftZ) * rlift * 1.6;
+              from += vec3((aRnd.x - 0.5) * 9.0, (aRnd.y - 0.5) * 6.0, 1.0 + aRnd.z * 5.0) * uRevealScatter;
               from.xy += vec2(sin(uTime * 0.6 + aRnd.w * 20.0), cos(uTime * 0.5 + aRnd.x * 20.0)) * 0.4 * uRevealScatter;
               mv = modelViewMatrix * vec4(mix(from, home, re), 1.0);
               gl_Position = projectionMatrix * mv;
@@ -215,7 +223,7 @@ export function PortraitParticles({ U, count, width, height }) {
               vArc = (1.0 - re) * 0.8;
               // (in as they set off; thinning away into the image once it's
               // mostly up — the handover, revealHand)
-              vA = smoothstep(r0 - 0.06, r0 + 0.04, uReveal) * (1.0 - revealHand(uReveal, 0.1, 0.65));
+              vA = smoothstep(r0 - 0.06, r0 + 0.04, uReveal) * (1.0 - revealHand(aFrom, uReveal, 0.1, 0.65));
             }
           }
         `,
@@ -251,6 +259,7 @@ export function PortraitParticles({ U, count, width, height }) {
   // (when a change starts: each particle's spot in the face it leaves, and in
   // the face it comes to)
   const pair = useMemo(() => ({ a: null, b: null }), []);
+  const points = useRef(null);
   useFrame(() => {
     const u = material.uniforms;
     u.uSize.value = LOOK.portraitParticleSize;
@@ -262,6 +271,9 @@ export function PortraitParticles({ U, count, width, height }) {
     u.uRevealScatter.value = LOOK.revealScatter;
     const morphing = U.uMorph.value > 0.0005 && U.uMorph.value < 0.9995;
     const forming = U.uReveal.value < 0.999;
+    // (only drawn while they're doing something: at rest every one of them
+    // would be invisible anyway)
+    if (points.current) points.current.visible = morphing || forming;
     const A = U.uMap.value;
     // (forming: the spots of the one face there now)
     const B = morphing ? U.uMapB.value : A;
@@ -273,5 +285,5 @@ export function PortraitParticles({ U, count, width, height }) {
     }
   });
 
-  return <points geometry={geometry} material={material} frustumCulled={false} renderOrder={3} />;
+  return <points ref={points} geometry={geometry} material={material} frustumCulled={false} renderOrder={3} />;
 }

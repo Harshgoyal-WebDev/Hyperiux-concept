@@ -47,7 +47,10 @@ export function teamEntering(S) {
   return 1 - t * t * t * (t * (t * 6 - 15) + 10);
 }
 export function teamPose(stage, S, sway, cam) {
-  const near = THREE.MathUtils.smoothstep(S.reveal, 0.3, 1);
+  // (the pointer moving it the same all through — during the transition as
+  // after; it used to come in with the person forming, so the backdrop moved
+  // faster once the transition was done)
+  const near = 1;
   const e = teamEntering(S);
   // (the camera — and what it looks at — moved the other way from where the
   // scene should seem to be; then turned for the lean)

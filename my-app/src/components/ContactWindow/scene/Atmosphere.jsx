@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { additive } from "./lightBlend";
 import { NOISE, PALETTE, SCENE } from "./shaders/common";
 import { mulberry32 } from "./rand";
 
@@ -37,7 +38,6 @@ void main() {
 }
 `;
 
-const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending };
 
 export function Dust({ uniforms, count = 900 }) {
   const points = useMemo(() => {

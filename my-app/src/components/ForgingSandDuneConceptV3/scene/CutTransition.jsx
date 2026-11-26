@@ -154,7 +154,9 @@ vec4 bunqImage(vec4 inputColor, vec2 uv) {
   if (cut < 1.0) fromC = merge > 0.001 ? bunqFrom(uv, 0.002 * merge) : texture2D(inputBuffer, uv).rgb;
   // (opening onto the page beneath: the discs clear — premultiplied, so the
   // page shows through them as they grow and run together)
-  if (uReveal > 0.5) return vec4(fromC * (1.0 - cut), 1.0 - cut);
+  // (and what was clear stays clear: a see-through frame — the contact page's
+  // hands, over the about hero's world — keeps its own transparency)
+  if (uReveal > 0.5) return vec4(fromC * (1.0 - cut), texture2D(inputBuffer, uv).a * (1.0 - cut));
   if (cut > 0.0) toC = merge > 0.001 ? bunqTo(uvTo, 0.002 * merge) : bunqNext(uvTo);
   return vec4(mix(fromC, toC, cut), inputColor.a);
 }
@@ -165,7 +167,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     return;
   }
   if (uT >= 0.9995) {
-    outputColor = uHold > 0.5 ? vec4(texture2D(tB, uv).rgb, inputColor.a) : inputColor;
+    // (opened onto the page beneath: all clear)
+    outputColor = uReveal > 0.5 ? vec4(0.0) : uHold > 0.5 ? vec4(texture2D(tB, uv).rgb, inputColor.a) : inputColor;
     return;
   }
   if (uStyle > 0.5) {

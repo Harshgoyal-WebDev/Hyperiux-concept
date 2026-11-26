@@ -11,9 +11,9 @@ import { createSceneUniforms } from "./uniforms";
 import Director from "./Director";
 import Hands from "./Hands";
 import TouchEnergy from "./TouchEnergy";
-import Reveal from "./Reveal";
+import PortalCut from "./PortalCut";
 import { Dust } from "./Atmosphere";
-import { Ground, Rocks, Sky } from "./Desert";
+import AboutBackdrop from "./AboutBackdrop";
 
 // The Window's 3D scene (loaded lazily, client only): the canvas, the two
 // hands, the energy of their touch, the portal and the travel through it,
@@ -30,25 +30,26 @@ function Effects({ look, tier }) {
   });
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      <Bloom mipmapBlur intensity={tier.bloom} luminanceThreshold={0.3} luminanceSmoothing={0.35} radius={0.72} />
+      {/* (only the light that is truly bright blooms — the touch, its flash:
+          over the about hero's lit dunes a low threshold put a haze of glow
+          round the whole particle hand) */}
+      <Bloom mipmapBlur intensity={tier.bloom} luminanceThreshold={1.0} luminanceSmoothing={0.2} radius={0.6} />
       {tier.chroma ? <ChromaticAberration offset={offset} radialModulation modulationOffset={0.25} /> : <></>}
       <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.06} />
       <Vignette offset={0.28} darkness={0.72} />
-      {/* (last: the page beneath showing through as the glass opens) */}
-      <Reveal look={look} />
+      {/* (last: the page beneath showing through as the glass opens — the
+          about page's own transition) */}
+      <PortalCut look={look} />
     </EffectComposer>
   );
 }
 
-function World({ data, stage, tier, still }) {
+function World({ data, stage, tier, still, look }) {
   const uniforms = useMemo(() => createSceneUniforms(), []);
-  const look = useMemo(() => createLook(), []);
   return (
     <>
       <Director stage={stage} look={look} uniforms={uniforms} still={still} dof={tier.dof} />
-      <Sky uniforms={uniforms} />
-      <Ground uniforms={uniforms} tier={tier} />
-      <Rocks uniforms={uniforms} />
+      {/* (the desert is the about hero's now, behind: AboutBackdrop) */}
       <Dust uniforms={uniforms} count={tier.dust} />
       <Hands data={data} look={look} uniforms={uniforms} gain={tier.handGain} />
       <TouchEnergy look={look} />
@@ -60,6 +61,27 @@ function World({ data, stage, tier, still }) {
 export default function Experience({ stage, tier, still = false, onReady }) {
   const [data, setData] = useState(null);
   const [active, setActive] = useState(true);
+  // (shared by both canvases: the hands' and the about hero's behind them)
+  const look = useMemo(() => createLook(), []);
+  // once the portal is open right across, nothing of either canvas shows: both
+  // stop drawing until the scroll comes back (the stage's own progress, as
+  // the timeline writes it)
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    let raf;
+    let was = false;
+    const tick = () => {
+      const now = (stage?.portal ?? 0) >= 0.9995;
+      if (now !== was) {
+        was = now;
+        setOpen(now);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [stage]);
+  const running = active && !open;
   const host = useRef(null);
   useEffect(() => {
     let live = true;
@@ -84,18 +106,24 @@ export default function Experience({ stage, tier, still = false, onReady }) {
 
   return (
     <div ref={host} className="pointer-events-none absolute inset-0">
+      {/* behind: the about page's hero world (its own canvas, as there) */}
+      <div className="absolute inset-0">
+        <AboutBackdrop look={look} tier={tier} run={running} still={still} />
+      </div>
+      <div className="absolute inset-0">
       <Canvas
         flat
-        dpr={tier.dpr}
-        frameloop={still ? "demand" : active ? "always" : "never"}
+        dpr={[tier.dpr[0], Math.min(tier.dpr[1], 1.5)]}
+        frameloop={still ? "demand" : running ? "always" : "never"}
         gl={{ antialias: false, alpha: true, premultipliedAlpha: true, stencil: false, powerPreference: "high-performance" }}
         camera={{ fov: 30, near: 0.4, far: 6000, position: [0, 0, 60] }}
         aria-hidden
       >
-        <color attach="background" args={["#050505"]} />
-        {data && <World data={data} stage={stage} tier={tier} still={still} />}
+        {/* (see-through round the hands: the about hero's world shows behind) */}
+        {data && <World data={data} stage={stage} tier={tier} still={still} look={look} />}
         {data && <Ready onReady={onReady} />}
       </Canvas>
+      </div>
     </div>
   );
 }

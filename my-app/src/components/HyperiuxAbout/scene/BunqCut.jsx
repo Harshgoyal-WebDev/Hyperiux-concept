@@ -55,8 +55,10 @@ export function BunqCutDriver({ S, U, cut, stage }) {
     u.uReveal.value = 0;
     cut.pass.enabled = t > 0.0005 && t < 0.9995;
     if (!cut.pass.enabled) return;
+    // (the team's shot drawn at a share of the screen's resolution while the
+    // discs run — both scenes are drawn then; its glow hides the softness)
     gl.getDrawingBufferSize(res.buf);
-    res.buf.floor();
+    res.buf.multiplyScalar(A.transTeamRes).floor().max(new THREE.Vector2(4, 4));
     if (res.target.width !== res.buf.x || res.target.height !== res.buf.y) res.target.setSize(res.buf.x, res.buf.y);
     const cam = res.cam;
     // (the team's own scene only: nothing of the hero in its shot)

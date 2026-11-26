@@ -4,6 +4,7 @@
 import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { additive } from "./lightBlend";
 import { PALETTE } from "./shaders/common";
 import { CONTACT } from "./choreography";
 
@@ -35,7 +36,6 @@ void main() {
   gl_FragColor = vec4(col * uLevel, 1.0);
 }
 `;
-const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending };
 
 export default function TouchEnergy({ look }) {
   const built = useMemo(() => {

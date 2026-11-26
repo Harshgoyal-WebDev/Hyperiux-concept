@@ -7,9 +7,10 @@
 // and answers 2xx on success (a Next.js route handler that sends the mail, a
 // Formspree / Basin / HubSpot form endpoint, etc.). Until it is set, the form
 // does not pretend to send: it says so and offers the visitor a ready-written
-// email to hello@hyperiux.com instead (ContactForm).
+// email to hi@hyperiux.com instead (ContactForm).
 
-export const CONTACT_EMAIL = "hello@hyperiux.com";
+// (as on hyperiux-staging: hi@)
+export const CONTACT_EMAIL = "hi@hyperiux.com";
 const ENDPOINT = process.env.NEXT_PUBLIC_CONTACT_ENDPOINT;
 
 export async function submitContact(fields, { signal } = {}) {

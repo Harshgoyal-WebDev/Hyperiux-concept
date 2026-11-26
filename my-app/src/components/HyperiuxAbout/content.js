@@ -11,7 +11,8 @@ export const STORY = {
   title: ["Every streak, an idea.", "Together, a new world."],
 };
 
-// The team, one at a time in the slider. The count shown is TEAM.length.
+// The team, one at a time in the slider (the first shown by default). The
+// count shown is TEAM.length.
 //   source: the photo the light-strand portrait is built from (never shown
 //     itself). Head and shoulders, roughly front-facing; a plain, darker
 //     background separates best. Missing file → an anonymous silhouette and
@@ -24,20 +25,75 @@ export const STORY = {
 //     the point of the photo put at the centre) and zoom (1 = cover).
 export const TEAM = [
   {
-    id: "harsh-goyal",
-    name: "Harsh Goyal",
-    role: "Frontend Developer",
-    bio: "Crafting immersive, high-performance web experiences with design, motion and technology.",
-    source: "/assets/images/about/team/harsh-goyal.jpg",
-    focus: { x: 0.5, y: 0.5, zoom: 1 },
-  },
-  {
     id: "bhaskar-varshney",
     name: "Bhaskar Varshney",
     role: "CEO & Founder",
     bio: "Leading Hyperiux with a vision to create meaningful digital experiences through design, technology and innovation.",
     // (his light-line render, as Harsh's source is)
-    source: "/assets/images/about/team/Amber%20Light-Line%20Portrait.png",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/bhaskar-varshney-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "hitesh-bhardwaj",
+    name: "Hitesh Bhardwaj",
+    role: "Senior Frontend Developer",
+    bio: "Engineering performant, scalable frontends and bringing ambitious ideas to life with precision and craft.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/hitesh-bhardwaj-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "asim-fazli",
+    name: "Asim Fazli",
+    role: "Senior UI/UX Designer",
+    bio: "Shaping bold visual identities and interfaces, where every layout, type choice and detail tells the story.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/asim-fazli-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "harsh-goyal",
+    name: "Harsh Goyal",
+    role: "Frontend Developer",
+    bio: "Crafting immersive, high-performance web experiences with design, motion and technology.",
+    source: "/assets/images/about/team/harsh-goyal-team.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "vidushi-saxena",
+    name: "Vidushi Saxena",
+    role: "Frontend Developer",
+    bio: "Building clean, responsive interfaces where every interaction feels considered and every detail is in its place.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/vidushi-saxena-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "ishita-srivastav",
+    name: "Ishita Srivastav",
+    role: "Frontend Developer",
+    bio: "Turning designs into fast, accessible experiences, with a love for motion and the craft behind it.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/ishita-srivastav-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "divyam-shashwat",
+    name: "Divyam Shashwat",
+    role: "UI/UX Designer",
+    bio: "Designing intuitive, expressive interfaces, turning ideas and user needs into experiences that feel effortless.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/divyam-shashwat-graded.png",
+    focus: { x: 0.5, y: 0.5, zoom: 1 },
+  },
+  {
+    id: "jyoti-pathak",
+    name: "Jyoti Pathak",
+    role: "Product Manager",
+    bio: "Guiding products from idea to launch, keeping teams aligned and every release focused on the people it is made for.",
+    // (its colour grade brought in line with Harsh's: less orange)
+    source: "/assets/images/about/team/jyoti-pathak-graded.png",
     focus: { x: 0.5, y: 0.5, zoom: 1 },
   },
 ];

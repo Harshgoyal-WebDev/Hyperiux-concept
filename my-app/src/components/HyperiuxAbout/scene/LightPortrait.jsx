@@ -85,6 +85,7 @@ export function LightPortrait({ U, columns, segments, particles, morphParticles,
           uMorphGap: U.uMorphGap,
           uRevealFly: U.uRevealFly,
           uRevealLand: U.uRevealLand,
+          uRevealRing: U.uRevealRing,
           uRevealBlend: U.uRevealBlend,
           uW: { value: PORTRAIT_W },
           uH: { value: PORTRAIT_H },
@@ -168,7 +169,7 @@ export function LightPortrait({ U, columns, segments, particles, morphParticles,
               // (each spot's strands in with that spot of the image, as its
               // particle lands there: the face brightening as it forms, never
               // all at once after)
-              * revealHand(uReveal, 0.45, 0.55) * (1.0 - d);
+              * revealHand(vec2(u, v), uReveal, 0.45, 0.55) * (1.0 - d);
             vMorph = mp;
             vStir = stir;
             // (how alive it is: forming, changing or dissolving — at rest it
@@ -261,6 +262,7 @@ export function LightPortrait({ U, columns, segments, particles, morphParticles,
           uMorphGap: U.uMorphGap,
           uRevealFly: U.uRevealFly,
           uRevealLand: U.uRevealLand,
+          uRevealRing: U.uRevealRing,
           uRevealBlend: U.uRevealBlend,
           uReveal: U.uReveal,
           uDissolve: U.uDissolve,
@@ -365,7 +367,7 @@ export function LightPortrait({ U, columns, segments, particles, morphParticles,
             // (each spot of the image as its particle lands there: the
             // centre first — PortraitParticles.jsx)
             // (coming up under the particles as they close in — revealHand)
-            float rv = revealHand(uReveal, 0.7, 0.3);
+            float rv = revealHand(uv, uReveal, 0.7, 0.3);
             // (into the light: fading in place, all of it together)
             float ds = smoothstep(0.0, 1.0, clamp(uDissolve * 1.25 - n * 0.25, 0.0, 1.0));
             // (its sides soft into the backdrop — sides() above — and its top)

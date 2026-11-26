@@ -73,6 +73,7 @@ function createUniforms(shared) {
     uMorphGap: u(0.28),
     uRevealFly: u(0.35),
     uRevealLand: u(0.75),
+    uRevealRing: u(0.4),
     uRevealBlend: u(0.35),
     uPortraitIntensity: u(1),
     sway: { x: 0, y: 0 },
@@ -92,6 +93,7 @@ const BG_WARM = new THREE.Color("#4a2d1c");
 const BG_GLOW = new THREE.Color("#d9b893");
 
 export default function AboutScene({ S, quality, reduced, onMissing }) {
+  const gl = useThree((s) => s.gl);
   const shared = useMemo(() => createSharedUniforms(), []);
   useEffect(() => watchSandMap(shared), [shared]);
   const U = useMemo(() => createUniforms(shared), [shared]);
@@ -154,6 +156,12 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
       }
       maps.current = res.map((r) => r.texture);
       images.current = res.map((r) => r.image);
+      // (every member's pictures up on the GPU now, not on first sight —
+      // the transition, or a change of member)
+      res.forEach((r) => {
+        if (r.texture?.isTexture) gl.initTexture(r.texture);
+        if (r.image?.isTexture) gl.initTexture(r.image);
+      });
       onMissing?.(res.map((r, i) => (r.missing ? TEAM[i] : null)).filter(Boolean));
     });
     return () => {
@@ -168,12 +176,13 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
       images.current = [];
       empty.dispose();
     };
-  }, [empty, onMissing]);
+  }, [empty, onMissing, gl]);
 
   return (
     <>
       <Director S={S} U={U} shared={shared} world={world} curtain={curtain} maps={maps} images={images} empty={empty} reduced={reduced} stage={stage} />
       <BunqCutDriver S={S} U={U} cut={cut} stage={stage} />
+      <TransitionDpr S={S} quality={quality} />
       <group ref={world}>
         <V3Sky shared={sky} />
         {/* the dark drawing over the sky as the team comes (the land goes into the haze) */}
@@ -204,6 +213,22 @@ export default function AboutScene({ S, quality, reduced, onMissing }) {
       <Post S={S} U={U} cut={cut} />
     </>
   );
+}
+
+// While the transition runs both scenes are drawn every frame (the hero, and
+// the team's shot through the discs): the frame's pixel ratio comes down to
+// A.transDpr for it — lighter to scroll — and back up either side.
+function TransitionDpr({ S, quality }) {
+  const setDpr = useThree((s) => s.setDpr);
+  const last = useRef(null);
+  useFrame(() => {
+    const during = S.cut > 0.002 && S.cut < 0.998;
+    const key = during ? `t${A.transDpr}` : "rest";
+    if (key === last.current) return;
+    last.current = key;
+    setDpr(during ? Math.min(A.transDpr, window.devicePixelRatio || 1) : quality.dpr);
+  });
+  return null;
 }
 
 function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, stage }) {
@@ -268,8 +293,9 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
     // (a warm dark haze between the dune layers once the land is light)
     fog.color.copy(HAZE).lerp(NIGHT_HAZE, night).lerp(tmpColor.set(A.hazeColor).multiplyScalar(0.5).lerp(EMBER_HAZE, 0.5), lit).lerp(DARK, Math.min(dark * 2.2, 1));
     fog.density = THREE.MathUtils.lerp(THREE.MathUtils.lerp(T.fogDensity, A.hazeDensity, lit), 0.1, dark * dark);
-    // (the team's own ridges come in once it is the shot, as it settles)
-    S.ridges = lit * (1 - dark) * (team ? THREE.MathUtils.smoothstep(dark, 0.02, 0.2) : 1);
+    // (none in the team's shot — it has no land — so the depth pass is
+    // skipped there entirely)
+    S.ridges = team ? 0 : lit * (1 - dark);
     U.uFogColor.value.copy(fog.color);
     U.uFogDensity.value = fog.density;
     scene.environmentIntensity = T.envIntensity * (1 - night * 0.8) * (1 - dark * 0.9) * (1 - lit * 0.6);
@@ -308,6 +334,7 @@ function Director({ S, U, shared, world, curtain, maps, images, empty, reduced, 
     U.uMorphGap.value = A.swapGap;
     U.uRevealFly.value = A.revealFly;
     U.uRevealLand.value = A.revealLand;
+    U.uRevealRing.value = A.revealRing;
     U.uRevealBlend.value = A.revealBlend;
     U.uImage.value = images.current[S.member] || null;
     U.uImageB.value = images.current[S.morphTo] || U.uImage.value;

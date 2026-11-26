@@ -145,6 +145,7 @@ const SCHEMA = {
     revealFly: [0.05, 0.8, 0.01],
     revealScatter: [0, 4, 0.01],
     revealLand: [0.4, 0.95, 0.01],
+    revealRing: [0, 0.8, 0.01],
     revealBlend: [0.05, 0.8, 0.01],
   },
   "Point portrait": {
@@ -179,6 +180,8 @@ const SCHEMA = {
     transRefract: [0, 20, 0.1],
     transWobble: [0, 0.5, 0.005],
     transBulge: [0, 0.6, 0.005],
+    transDpr: [0.5, 2, 0.05],
+    transTeamRes: [0.4, 1, 0.05],
   },
   "Mouse parallax": {
     heroParallaxX: [0, 20, 0.1],

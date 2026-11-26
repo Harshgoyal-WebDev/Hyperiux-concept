@@ -4,6 +4,7 @@
 import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { additive } from "./lightBlend";
 import { createRig, placeHand, poseAngles } from "../hand/handRig";
 import { mulberry32 } from "./rand";
 import { particleHandFragment, particleHandVertex } from "./shaders/particleHand";
@@ -42,7 +43,6 @@ function skinnedGeometry(d) {
   return g;
 }
 
-const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending };
 // (the hands' size in the frame, as the reference has them)
 const HAND_SCALE = 1.6;
 

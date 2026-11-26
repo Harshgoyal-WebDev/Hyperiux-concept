@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/immutability -- R3F pattern: three.js uniforms/objects are mutated imperatively inside useFrame, outside React's render. */
 
 import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { TEAM_CAM_DIST, TEAM_LAYER } from "./stage";
 import { mulberry32 } from "./util";
@@ -195,6 +195,38 @@ function buildWaves() {
 export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, children }) {
   const group = useRef(null);
   const back = useRef(null);
+  const layerTick = useRef(0);
+  // its shaders compiled ahead, in the background (while the hero plays),
+  // not in the transition's first frames — each part shown for the compile,
+  // into a target like the frame's own (the same program variant)
+  const { gl, camera, scene } = useThree();
+  useEffect(() => {
+    if (!gl.compileAsync) return;
+    const id = setTimeout(() => {
+      const g = group.current;
+      if (!g) return;
+      const hidden = [];
+      g.traverse((o) => {
+        o.layers.set(TEAM_LAYER);
+        if (!o.visible) {
+          hidden.push(o);
+          o.visible = true;
+        }
+      });
+      const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+      const prev = gl.getRenderTarget();
+      gl.setRenderTarget(target);
+      let done;
+      try {
+        done = gl.compileAsync(g, camera, scene);
+      } finally {
+        gl.setRenderTarget(prev);
+        hidden.forEach((o) => (o.visible = false));
+      }
+      Promise.resolve(done).catch(() => {}).finally(() => target.dispose());
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [gl, camera, scene]);
   const sky = useMemo(() => createTeamSky(), []);
   useEffect(() => () => sky.dispose(), [sky]);
 
@@ -444,8 +476,9 @@ export function TeamWorld({ U, S, stage, lines: lineCount, motes: moteCount, chi
     // (only while the team is in view: from the transition on)
     g.visible = S.cut > 0.0005;
     if (!g.visible) return;
-    // everything in it on the team's layer (the portrait's parts included)
-    g.traverse((o) => o.layers.set(TEAM_LAYER));
+    // everything in it on the team's layer (the portrait's parts included —
+    // checked now and then, for parts rebuilt since; not every frame)
+    if (layerTick.current++ % 30 === 0) g.traverse((o) => o.layers.set(TEAM_LAYER));
     // (the backdrop alone turning a little round the person, on the scroll)
     if (back.current) back.current.rotation.y = (S.bgTurn || 0) * A.teamBgTurn * (Math.PI / 180);
     sky.uniforms.uBack.value = A.teamBackGlow;
